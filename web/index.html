@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Yobble</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    :root{
+      --home-bg:#0a0d12;
+      --home-ink:#f0f3ff;
+      --home-muted:#9aa6c1;
+      --home-card:#141a24;
+      --home-border:#283043;
+      --home-accent:#ffd166;
+      --home-accent-2:#4dd4ff;
+    }
+    body{
+      background:
+        radial-gradient(circle at 12% 12%,rgba(255,209,102,.18),transparent 40%),
+        radial-gradient(circle at 78% 10%,rgba(77,212,255,.14),transparent 45%),
+        linear-gradient(180deg,rgba(12,16,24,.8),rgba(8,10,14,.9)),
+        var(--home-bg);
+      color:var(--home-ink);
+      font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+      min-height:100vh;
+    }
+    main{max-width:1200px;margin:0 auto;padding:36px 20px 60px}
+    .hero{
+      display:grid;
+      grid-template-columns:1.2fr .8fr;
+      gap:22px;
+      align-items:center;
+      padding:24px;
+      position:relative;
+      overflow:hidden;
+    }
+    .hero::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(120deg,rgba(255,209,102,.16),transparent 40%),
+                 linear-gradient(240deg,rgba(77,212,255,.12),transparent 40%);
+      pointer-events:none;
+    }
+    .hero h1{
+      margin:0 0 10px;
+      font-size:44px;
+      letter-spacing:.6px;
+    }
+    .hero p{
+      margin:0;
+      color:var(--home-muted);
+      max-width:520px;
+    }
+    .hero-meta{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:16px;
+    }
+    .pill{
+      border:1px solid var(--home-border);
+      border-radius:999px;
+      padding:6px 12px;
+      font-size:12px;
+      color:var(--home-muted);
+      background:rgba(20,26,36,.6);
+    }
+    .hero-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:18px;
+    }
+    .hero-art{
+      border-radius:16px;
+      border:1px solid var(--home-border);
+      min-height:180px;
+      background:
+        linear-gradient(130deg,rgba(255,209,102,.25),rgba(20,26,36,.4)),
+        repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 12px,transparent 12px 24px);
+      display:flex;
+      align-items:flex-end;
+      padding:16px;
+      font-weight:600;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+      gap:16px;
+      margin-top:18px;
+    }
+    .card{
+      background:var(--home-card);
+      border:1px solid var(--home-border);
+      border-radius:16px;
+      padding:16px;
+    }
+    .feature{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-height:150px;
+      animation:rise .45s ease both;
+    }
+    .feature-title{font-size:18px;font-weight:700}
+    .feature-meta{color:var(--home-muted);font-size:12px}
+    .cta{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .cta .pill.action{
+      border-color:rgba(255,209,102,.45);
+      color:#1b1b1b;
+      background:var(--home-accent);
+      font-weight:700;
+    }
+    .cta .pill.outline{
+      border-color:rgba(77,212,255,.5);
+      color:var(--home-ink);
+    }
+    @keyframes rise{
+      from{opacity:0;transform:translateY(10px)}
+      to{opacity:1;transform:translateY(0)}
+    }
+    @media (prefers-reduced-motion: reduce){
+      .feature{animation:none}
+    }
+    @media (max-width: 900px){
+      .hero{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card hero">
+      <div>
+        <div class="pill">Yobble</div>
+        <h1>Build, publish, and launch web games fast.</h1>
+        <p>A sleek platform UI for creators, testers, and moderators. Launch games locally or in the desktop client.</p>
+        <div class="hero-meta">
+          <span class="pill">Games library</span>
+          <span class="pill">Reports + moderation</span>
+          <span class="pill">Desktop launcher ready</span>
+        </div>
+        <div class="hero-actions">
+          <a class="pill action" href="/games.html">Open app</a>
+          <a class="pill outline" href="/login">Login</a>
+          <a class="pill outline" href="/register">Create account</a>
+        </div>
+      </div>
+      <div class="hero-art">Prototype to launch in minutes</div>
+    </section>
+
+    <section class="grid">
+      <div class="card feature">
+        <div class="feature-title">Launch builds</div>
+        <div class="feature-meta">Upload ZIPs and ship versions with a single entry point.</div>
+        <div class="pill">/upload.html</div>
+      </div>
+      <div class="card feature">
+        <div class="feature-title">Curate the library</div>
+        <div class="feature-meta">Browse games, filter by category, and open instantly.</div>
+        <div class="pill">/games.html</div>
+      </div>
+      <div class="card feature">
+        <div class="feature-title">Moderate with speed</div>
+        <div class="feature-meta">Review reports, appeals, and queues in one place.</div>
+        <div class="pill">/mod-dashboard.html</div>
+      </div>
+      <div class="card feature">
+        <div class="feature-title">Inventory + market</div>
+        <div class="feature-meta">Track items and auto‑list approved content.</div>
+        <div class="pill">/market.html</div>
+      </div>
+    </section>
+
+    <section class="card cta" style="margin-top:18px">
+      <div>
+        <div class="feature-title">Quick start</div>
+        <div class="feature-meta">Create an account, upload a game, and share a launch link.</div>
+      </div>
+      <div class="hero-actions">
+        <a class="pill action" href="/register">Start now</a>
+        <a class="pill outline" href="/report.html">Report abuse</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

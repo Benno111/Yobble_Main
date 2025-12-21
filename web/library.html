@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Library - Yobble</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="card">
+<h1>Library</h1>
+<div id="content">Loading…</div>
+</main>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api.js";
+await mountTopbar("library");
+
+const r = await api("/api/library");
+document.getElementById("content").innerHTML =
+  r.map(g=>`<div>${g.title}</div>`).join("") || "Library empty.";
+
+</script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ban History - Yobble</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  :root{
+    --ban-bg:#0a0d12;
+    --ban-ink:#eef2ff;
+    --ban-muted:#a5b0c6;
+    --ban-card:#141a24;
+    --ban-border:#283043;
+    --ban-accent:#ff8a8a;
+  }
+  body{
+    background:radial-gradient(circle at 12% 15%,rgba(255,138,138,.18),transparent 40%),
+               radial-gradient(circle at 80% 10%,rgba(77,212,255,.12),transparent 45%),
+               var(--ban-bg);
+    color:var(--ban-ink);
+    font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+  }
+  main{max-width:1200px}
+  .ban-wrap{display:flex;flex-direction:column;gap:18px}
+  .hero{
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    gap:20px;
+    padding:20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:linear-gradient(120deg,rgba(255,138,138,.2),transparent 40%),
+               linear-gradient(240deg,rgba(77,212,255,.12),transparent 40%);
+    pointer-events:none;
+  }
+  .hero h1{margin:0 0 8px;font-size:38px}
+  .hero p{margin:0;color:var(--ban-muted)}
+  .pill{
+    border:1px solid var(--ban-border);
+    border-radius:999px;
+    padding:6px 12px;
+    font-size:12px;
+    color:var(--ban-muted);
+    background:rgba(20,26,36,.6);
+  }
+  .hero-art{
+    border-radius:16px;
+    border:1px solid var(--ban-border);
+    min-height:160px;
+    background:
+      linear-gradient(130deg,rgba(255,138,138,.25),rgba(20,26,36,.45)),
+      repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 10px,transparent 10px 20px);
+    display:flex;
+    align-items:flex-end;
+    padding:16px;
+    font-weight:600;
+  }
+  .controls{
+    display:grid;
+    grid-template-columns:2fr 1fr;
+    gap:12px;
+    padding:16px;
+  }
+  .controls label{display:block;font-size:12px;color:var(--ban-muted);margin-bottom:6px}
+  .controls input{
+    width:100%;
+    border:1px solid var(--ban-border);
+    background:#0c1118;
+    color:var(--ban-ink);
+    padding:10px 12px;
+    border-radius:10px;
+    font-family:inherit;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:16px;
+  }
+  .ban-card{
+    background:var(--ban-card);
+    border:1px solid var(--ban-border);
+    border-radius:16px;
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    min-height:140px;
+  }
+  .ban-title{font-size:18px;font-weight:700}
+  .ban-meta{color:var(--ban-muted);font-size:12px}
+  .empty{
+    text-align:center;
+    padding:30px;
+    color:var(--ban-muted);
+  }
+  @media (max-width: 900px){
+    .hero{grid-template-columns:1fr}
+    .controls{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<main class="ban-wrap">
+  <section class="card hero">
+    <div>
+      <div class="pill">Moderation</div>
+      <h1>Ban history</h1>
+      <p>Search bans by user, game, or item code. Export results for audits.</p>
+    </div>
+    <div class="hero-art">Audit trail</div>
+  </section>
+
+  <section class="card controls">
+    <div>
+      <label for="q">Search</label>
+      <input id="q" placeholder="username / game slug / item code">
+    </div>
+    <div style="display:flex;gap:10px;align-items:end">
+      <button id="go" class="primary" style="height:40px;width:100%">Search</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="pill">Results</div>
+      <a class="pill" href="/api/mod/export/bans">Export CSV</a>
+    </div>
+    <div id="out" class="grid" style="margin-top:16px"></div>
+    <div id="empty" class="empty" hidden>No matches.</div>
+  </section>
+  <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
+    <a class="pill" href="/mod-dashboard.html">Dashboard</a>
+    <a class="pill" href="/mod-reports.html">Reports</a>
+    <a class="pill" href="/mod-appeals.html">Appeals</a>
+    <a class="pill" href="/mod-bans.html">Ban History</a>
+    <a class="pill" href="/modqueue.html">Queue</a>
+    <a class="pill" href="/moderation.html">Overview</a>
+  </section>
+</main>
+<script type="module">
+import { api } from "/js/api.js";
+import { requireAuth } from "/js/auth.js";
+import { mountTopbar } from "/js/layout.js";
+
+await mountTopbar("modbans");
+await requireAuth();
+
+const q = document.getElementById("q");
+const out = document.getElementById("out");
+const empty = document.getElementById("empty");
+
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+
+document.getElementById("go").onclick = async () => {
+  const r = await api.get("/api/mod/search?q=" + encodeURIComponent(q.value));
+  out.innerHTML = "";
+  const users = r.users || [];
+  const games = r.games || [];
+  const items = r.items || [];
+
+  if(!users.length && !games.length && !items.length){
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+  for(const u of users){
+    out.innerHTML += `<div class="ban-card"><div class="ban-title">User</div><div class="ban-meta">${escapeHtml(u.username)}</div></div>`;
+  }
+  for(const g of games){
+    out.innerHTML += `<div class="ban-card"><div class="ban-title">Game</div><div class="ban-meta">${escapeHtml(g.slug)}</div></div>`;
+  }
+  for(const i of items){
+    out.innerHTML += `<div class="ban-card"><div class="ban-title">Item</div><div class="ban-meta">${escapeHtml(i.code)}</div></div>`;
+  }
+};
+</script>
+</body>
+</html>

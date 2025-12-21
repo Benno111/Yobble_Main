@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Get Money - Yobble</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  :root{
+    --money-bg:#0a0d12;
+    --money-ink:#eef2ff;
+    --money-muted:#a5b0c6;
+    --money-card:#141a24;
+    --money-border:#283043;
+    --money-accent:#ffd166;
+  }
+  body{
+    background:radial-gradient(circle at 12% 15%,rgba(255,209,102,.18),transparent 40%),
+               radial-gradient(circle at 80% 10%,rgba(77,212,255,.12),transparent 45%),
+               var(--money-bg);
+    color:var(--money-ink);
+    font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+  }
+  main{max-width:900px}
+  .money-wrap{display:flex;flex-direction:column;gap:18px}
+  .panel{
+    background:var(--money-card);
+    border:1px solid var(--money-border);
+    border-radius:16px;
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  label{font-size:12px;color:var(--money-muted)}
+  input,textarea{
+    width:100%;
+    border:1px solid var(--money-border);
+    background:#0c1118;
+    color:var(--money-ink);
+    padding:10px 12px;
+    border-radius:10px;
+    font-family:inherit;
+  }
+  .status{color:var(--money-muted);font-size:12px}
+</style>
+</head>
+<body>
+<main class="money-wrap">
+  <section class="card">
+    <div class="h1">Get money</div>
+    <div class="muted">Admin tools only. Grants currency to your wallet.</div>
+  </section>
+
+  <section class="panel">
+    <div>
+      <label for="username">Username</label>
+      <input id="username" placeholder="Target username">
+    </div>
+    <div>
+      <label for="amount">Amount</label>
+      <input id="amount" type="number" placeholder="100">
+    </div>
+    <div>
+      <label for="reason">Reason</label>
+      <input id="reason" placeholder="Grant for testing">
+    </div>
+    <button class="primary" id="grantBtn" style="width:auto">Grant</button>
+    <div class="status" id="status"></div>
+  </section>
+</main>
+
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api.js";
+import { requireAuth } from "/js/auth.js";
+
+await mountTopbar("wallet");
+const me = await requireAuth();
+if(!["admin","moderator"].includes(me.role)) throw 0;
+
+const username = document.getElementById("username");
+const amount = document.getElementById("amount");
+const reason = document.getElementById("reason");
+const status = document.getElementById("status");
+const balanceEl = document.getElementById("walletBalance");
+
+document.getElementById("grantBtn").onclick = async () => {
+  status.textContent = "";
+  try{
+    const target = username.value.trim();
+    if (!target) {
+      status.textContent = "Username is required.";
+      return;
+    }
+    await api.post("/api/wallet/grant", {
+      username: target,
+      amount: Number(amount.value || 0),
+      reason: reason.value
+    });
+    status.textContent = "Granted ✔";
+    if (balanceEl) {
+      try{
+        const r = await api.get("/api/wallet");
+        const balance = Number(r?.balance ?? 0);
+        balanceEl.textContent = `Balance ${Number.isFinite(balance) ? balance : 0}`;
+      }catch{}
+    }
+  }catch(e){
+    status.textContent = e?.message ? `Failed: ${e.message}` : "Grant failed.";
+  }
+};
+</script>
+</body>
+</html>

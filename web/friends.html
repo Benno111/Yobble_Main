@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Friends - Yobble</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  :root{
+    --fr-bg:#0a0d12;
+    --fr-ink:#eef2ff;
+    --fr-muted:#a5b0c6;
+    --fr-card:#141a24;
+    --fr-border:#283043;
+    --fr-accent:#7cffc4;
+    --fr-accent-2:#4dd4ff;
+  }
+  body{
+    background:radial-gradient(circle at 12% 15%,rgba(124,255,196,.16),transparent 40%),
+               radial-gradient(circle at 80% 10%,rgba(77,212,255,.14),transparent 45%),
+               var(--fr-bg);
+    color:var(--fr-ink);
+    font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+  }
+  main{max-width:1200px}
+  .fr-wrap{display:flex;flex-direction:column;gap:18px}
+  .hero{
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    gap:20px;
+    padding:20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:linear-gradient(120deg,rgba(124,255,196,.2),transparent 40%),
+               linear-gradient(240deg,rgba(77,212,255,.12),transparent 40%);
+    pointer-events:none;
+  }
+  .hero h1{margin:0 0 8px;font-size:38px}
+  .hero p{margin:0;color:var(--fr-muted)}
+  .hero-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .pill{
+    border:1px solid var(--fr-border);
+    border-radius:999px;
+    padding:6px 12px;
+    font-size:12px;
+    color:var(--fr-muted);
+    background:rgba(20,26,36,.6);
+  }
+  .hero-art{
+    border-radius:16px;
+    border:1px solid var(--fr-border);
+    min-height:160px;
+    background:
+      linear-gradient(130deg,rgba(124,255,196,.25),rgba(20,26,36,.45)),
+      repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 10px,transparent 10px 20px);
+    display:flex;
+    align-items:flex-end;
+    padding:16px;
+    font-weight:600;
+  }
+  .controls{
+    display:grid;
+    grid-template-columns:2fr 1fr;
+    gap:12px;
+    padding:16px;
+  }
+  .controls label{display:block;font-size:12px;color:var(--fr-muted);margin-bottom:6px}
+  .controls input,.controls select{
+    width:100%;
+    border:1px solid var(--fr-border);
+    background:#0c1118;
+    color:var(--fr-ink);
+    padding:10px 12px;
+    border-radius:10px;
+    font-family:inherit;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:16px;
+  }
+  .friend-card{
+    position:relative;
+    background:var(--fr-card);
+    border:1px solid var(--fr-border);
+    border-radius:16px;
+    padding:16px;
+    min-height:160px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
+  }
+  .friend-card:hover{
+    transform:translateY(-3px);
+    border-color:rgba(124,255,196,.5);
+    box-shadow:0 16px 30px rgba(0,0,0,.35);
+  }
+  .friend-name{font-size:18px;font-weight:700}
+  .friend-meta{color:var(--fr-muted);font-size:12px}
+  .status{
+    margin-top:auto;
+    font-size:12px;
+    font-weight:600;
+    color:var(--fr-accent-2);
+  }
+  .empty{
+    text-align:center;
+    padding:30px;
+    color:var(--fr-muted);
+  }
+  @media (max-width: 900px){
+    .hero{grid-template-columns:1fr}
+    .controls{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<main class="fr-wrap">
+  <section class="card hero">
+    <div>
+      <div class="pill">Friends</div>
+      <h1>Your circle</h1>
+      <p>See who is online, pending requests, and your trusted crew.</p>
+      <div class="hero-meta">
+        <span class="pill" id="stat-total">0 friends</span>
+        <span class="pill" id="stat-pending">0 pending</span>
+      </div>
+    </div>
+    <div class="hero-art">Party ready</div>
+  </section>
+
+  <section class="card controls">
+    <div>
+      <label for="q">Search</label>
+      <input id="q" type="search" placeholder="Search by username">
+    </div>
+    <div>
+      <label for="status">Status</label>
+      <select id="status">
+        <option value="all">All</option>
+        <option value="accepted">Accepted</option>
+        <option value="pending">Pending</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="pill" id="live-count">0 shown</div>
+    <div id="list" class="grid" style="margin-top:16px"></div>
+    <div id="empty" class="empty" hidden>No friends yet.</div>
+  </section>
+</main>
+
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api.js";
+
+await mountTopbar("friends");
+
+const list = document.getElementById("list");
+const empty = document.getElementById("empty");
+const q = document.getElementById("q");
+const status = document.getElementById("status");
+const statTotal = document.getElementById("stat-total");
+const statPending = document.getElementById("stat-pending");
+const liveCount = document.getElementById("live-count");
+
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+
+let friends = [];
+try{
+  const res = await api.get("/api/friends");
+  friends = Array.isArray(res) ? res : (res.friends || []);
+}catch{
+  empty.hidden = false;
+  empty.textContent = "Could not load friends.";
+}
+
+const pendingCount = friends.filter(f => f.status === "pending").length;
+statTotal.textContent = `${friends.length} friends`;
+statPending.textContent = `${pendingCount} pending`;
+
+function render(){
+  const query = q.value.trim().toLowerCase();
+  const filtered = friends.filter(f => {
+    const name = (f.username || "").toLowerCase();
+    if (query && !name.includes(query)) return false;
+    if (status.value !== "all" && f.status !== status.value) return false;
+    return true;
+  });
+  liveCount.textContent = `${filtered.length} shown`;
+  empty.hidden = filtered.length > 0;
+  list.innerHTML = filtered.map(f => `
+    <div class="friend-card">
+      <div class="friend-name">${escapeHtml(f.username || "Unknown")}</div>
+      <div class="friend-meta">Friend ID ${escapeHtml(f.id ?? "—")}</div>
+      <div class="status">${escapeHtml(f.status || "unknown")}</div>
+    </div>
+  `).join("");
+}
+
+q.addEventListener("input", render);
+status.addEventListener("change", render);
+render();
+</script>
+</body>
+</html>

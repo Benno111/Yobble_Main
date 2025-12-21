@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Moderator Dashboard - Yobble</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  :root{
+    --mod-bg:#0a0d12;
+    --mod-ink:#eef2ff;
+    --mod-muted:#a5b0c6;
+    --mod-card:#141a24;
+    --mod-border:#283043;
+    --mod-accent:#ffd166;
+    --mod-accent-2:#4dd4ff;
+  }
+  body{
+    background:radial-gradient(circle at 12% 15%,rgba(255,209,102,.18),transparent 40%),
+               radial-gradient(circle at 85% 10%,rgba(77,212,255,.14),transparent 45%),
+               var(--mod-bg);
+    color:var(--mod-ink);
+    font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+  }
+  main{max-width:1200px}
+  .mod-wrap{display:flex;flex-direction:column;gap:18px}
+  .hero{
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    gap:20px;
+    padding:20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:linear-gradient(120deg,rgba(255,209,102,.2),transparent 40%),
+               linear-gradient(240deg,rgba(77,212,255,.12),transparent 40%);
+    pointer-events:none;
+  }
+  .hero h1{margin:0 0 8px;font-size:38px}
+  .hero p{margin:0;color:var(--mod-muted)}
+  .hero-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .pill{
+    border:1px solid var(--mod-border);
+    border-radius:999px;
+    padding:6px 12px;
+    font-size:12px;
+    color:var(--mod-muted);
+    background:rgba(20,26,36,.6);
+  }
+  .hero-art{
+    border-radius:16px;
+    border:1px solid var(--mod-border);
+    min-height:160px;
+    background:
+      linear-gradient(130deg,rgba(255,209,102,.25),rgba(20,26,36,.45)),
+      repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 10px,transparent 10px 20px);
+    display:flex;
+    align-items:flex-end;
+    padding:16px;
+    font-weight:600;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:16px;
+  }
+  .stat-card{
+    background:var(--mod-card);
+    border:1px solid var(--mod-border);
+    border-radius:16px;
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    min-height:160px;
+  }
+  .stat-title{font-size:18px;font-weight:700}
+  .stat-value{font-size:28px;font-weight:800}
+  .stat-meta{color:var(--mod-muted);font-size:12px}
+  @media (max-width: 900px){
+    .hero{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<main class="mod-wrap">
+  <section class="card hero">
+    <div>
+      <div class="pill">Moderation</div>
+      <h1>Moderator Dashboard</h1>
+      <p>Track bans, appeals, and review cadence across the platform.</p>
+      <div class="hero-meta">
+        <span class="pill" id="stat-open">0 open appeals</span>
+        <span class="pill" id="stat-activity">0 bans 24h</span>
+      </div>
+    </div>
+    <div class="hero-art">Live queue</div>
+  </section>
+
+  <section class="grid">
+    <div class="stat-card">
+      <div class="stat-title">Active bans</div>
+      <div class="stat-value" id="active">0</div>
+      <div class="stat-meta">Total active bans by target type.</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Permanent bans</div>
+      <div class="stat-value" id="perma">0</div>
+      <div class="stat-meta">Active bans without expiry.</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Temporary bans</div>
+      <div class="stat-value" id="temp">0</div>
+      <div class="stat-meta">Active bans with expiry.</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Appeals open</div>
+      <div class="stat-value" id="appeals">0</div>
+      <div class="stat-meta"><a href="/mod-appeals.html">Review appeals →</a></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-title">Recent bans</div>
+      <div class="stat-value" id="recent">0</div>
+      <div class="stat-meta">Last 24h and last 7d.</div>
+    </div>
+  </section>
+  <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
+    <a class="pill" href="/mod-dashboard.html">Dashboard</a>
+    <a class="pill" href="/mod-reports.html">Reports</a>
+    <a class="pill" href="/mod-appeals.html">Appeals</a>
+    <a class="pill" href="/mod-bans.html">Ban History</a>
+    <a class="pill" href="/modqueue.html">Queue</a>
+    <a class="pill" href="/moderation.html">Overview</a>
+  </section>
+</main>
+<script type="module">
+import { api } from "/js/api.js";
+import { requireAuth } from "/js/auth.js";
+import { mountTopbar } from "/js/layout.js";
+
+await mountTopbar("moddash");
+const me = await requireAuth();
+if(!["admin","moderator"].includes(me.role)) throw 0;
+
+const s = await api.get("/api/mod/stats/bans");
+document.getElementById("active").textContent =
+  (s.activeByType || []).map(x=>`${x.target_type}: ${x.c}`).join(" • ") || "0";
+document.getElementById("perma").textContent = s.permaActive ?? 0;
+document.getElementById("temp").textContent = s.tempActive ?? 0;
+document.getElementById("appeals").textContent = s.openAppeals ?? 0;
+document.getElementById("recent").textContent = `24h ${s.created24h} • 7d ${s.created7d}`;
+document.getElementById("stat-open").textContent = `${s.openAppeals ?? 0} open appeals`;
+document.getElementById("stat-activity").textContent = `${s.created24h ?? 0} bans 24h`;
+</script>
+</body>
+</html>

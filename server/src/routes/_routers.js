@@ -1,0 +1,36 @@
+// Central router registry
+// Import ALL API routers here
+
+import { authRouter } from "./auth.js";
+import { gamesRouter } from "./games.js";
+import { notificationsRouter } from "./notifications.js";
+import { reviewsRouter } from "./routes.reviews.js";
+import { profileRouter } from "./routes.profile.js";
+import { reportsRouter } from "./routes.reports.js";
+import { gameHostingRouter } from "./routes.gamehosting.js";
+
+// Optional / existing routers (uncomment when files exist)
+import { friendsRouter } from "./friends.js";
+import { inventoryRouter } from "./inventory.js";
+import { marketRouter } from "./market.js";
+import { walletRouter } from "./wallet.js";
+import { moderationRouter } from "./moderation.js";
+import { itemsRouter } from "./routes.items.js";
+import { statsRouter } from "./stats.js";
+
+export {
+  authRouter,
+  gamesRouter,
+  notificationsRouter,
+  reviewsRouter,
+  profileRouter,
+  reportsRouter,
+  gameHostingRouter,
+  friendsRouter,
+  inventoryRouter,
+  marketRouter,
+  walletRouter,
+  moderationRouter,
+  itemsRouter,
+  statsRouter
+};

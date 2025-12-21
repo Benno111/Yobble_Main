@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Upload - Yobble</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  :root{
+    --up-bg:#0a0d12;
+    --up-ink:#eef2ff;
+    --up-muted:#a5b0c6;
+    --up-card:#141a24;
+    --up-border:#283043;
+    --up-accent:#7cffc4;
+  }
+  body{
+    background:radial-gradient(circle at 12% 15%,rgba(124,255,196,.16),transparent 40%),
+               radial-gradient(circle at 80% 10%,rgba(77,212,255,.12),transparent 45%),
+               var(--up-bg);
+    color:var(--up-ink);
+    font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+  }
+  main{max-width:1200px}
+  .up-wrap{display:flex;flex-direction:column;gap:18px}
+  .hero{
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    gap:20px;
+    padding:20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:linear-gradient(120deg,rgba(124,255,196,.2),transparent 40%),
+               linear-gradient(240deg,rgba(77,212,255,.12),transparent 40%);
+    pointer-events:none;
+  }
+  .hero h1{margin:0 0 8px;font-size:38px}
+  .hero p{margin:0;color:var(--up-muted)}
+  .pill{
+    border:1px solid var(--up-border);
+    border-radius:999px;
+    padding:6px 12px;
+    font-size:12px;
+    color:var(--up-muted);
+    background:rgba(20,26,36,.6);
+  }
+  .hero-art{
+    border-radius:16px;
+    border:1px solid var(--up-border);
+    min-height:160px;
+    background:
+      linear-gradient(130deg,rgba(124,255,196,.25),rgba(20,26,36,.45)),
+      repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 10px,transparent 10px 20px);
+    display:flex;
+    align-items:flex-end;
+    padding:16px;
+    font-weight:600;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:16px;
+  }
+  .panel{
+    background:var(--up-card);
+    border:1px solid var(--up-border);
+    border-radius:16px;
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  label{font-size:12px;color:var(--up-muted)}
+  input,select,textarea{
+    width:100%;
+    border:1px solid var(--up-border);
+    background:#0c1118;
+    color:var(--up-ink);
+    padding:10px 12px;
+    border-radius:10px;
+    font-family:inherit;
+  }
+  textarea{resize:vertical}
+  .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .status{color:var(--up-muted);font-size:12px}
+  @media (max-width: 900px){
+    .hero{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<main class="up-wrap">
+  <section class="card hero">
+    <div>
+      <div class="pill">Game upload</div>
+      <h1>Publish a game build</h1>
+      <p>Upload a web build ZIP to create or update a game version.</p>
+    </div>
+    <div class="hero-art">Upload queue</div>
+  </section>
+
+  <section class="grid">
+    <div class="panel">
+      <div class="pill">Game upload</div>
+      <div>
+        <label for="title">Title</label>
+        <input id="title" placeholder="Game title">
+      </div>
+      <div>
+        <label for="slug">Slug</label>
+        <input id="slug" placeholder="game-slug (optional)">
+      </div>
+      <div>
+        <label for="version">Version</label>
+        <input id="version" placeholder="1.0.0">
+      </div>
+      <div>
+        <label for="entry">Entry HTML</label>
+        <input id="entry" placeholder="index.html">
+      </div>
+      <div>
+        <label for="category">Category</label>
+        <input id="category" placeholder="Action, Puzzle, RPG">
+      </div>
+      <div>
+        <label for="description">Description</label>
+        <textarea id="description" rows="4" placeholder="Short description"></textarea>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="pill">ZIP build</div>
+      <input id="zip" type="file" accept=".zip">
+      <div class="actions">
+        <button id="uploadBtn" class="primary">Upload</button>
+        <span class="status" id="status"></span>
+      </div>
+      <div class="pill">Notes</div>
+      <div class="status">ZIP must include the entry HTML (default index.html).</div>
+      <div class="status">Large uploads may take a minute to process.</div>
+      <div class="pill">Latest upload</div>
+      <div id="last" class="status">No uploads yet.</div>
+    </div>
+    <div class="panel">
+      <div class="pill">Item upload</div>
+      <div>
+        <label for="item_code">Item code</label>
+        <input id="item_code" placeholder="item-code">
+      </div>
+      <div>
+        <label for="item_name">Item name</label>
+        <input id="item_name" placeholder="Item name">
+      </div>
+      <div>
+        <label for="item_desc">Description</label>
+        <textarea id="item_desc" rows="4" placeholder="Short description"></textarea>
+      </div>
+      <div>
+        <label for="item_icon">Icon (optional)</label>
+        <input id="item_icon" type="file" accept=".png,.jpg,.jpeg,.webp">
+      </div>
+      <div class="actions">
+        <button id="itemUploadBtn" class="primary">Upload item</button>
+        <span class="status" id="itemStatus"></span>
+      </div>
+      <div class="status">Icons up to 2MB (PNG/JPG/WEBP).</div>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api.js";
+import { requireAuth } from "/js/auth.js";
+
+await mountTopbar("upload");
+await requireAuth();
+
+const status = document.getElementById("status");
+const uploadBtn = document.getElementById("uploadBtn");
+const last = document.getElementById("last");
+const itemUploadBtn = document.getElementById("itemUploadBtn");
+const itemStatus = document.getElementById("itemStatus");
+
+function slugify(v){
+  return String(v || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+uploadBtn.onclick = async () => {
+  status.textContent = "";
+  uploadBtn.disabled = true;
+  const zip = document.getElementById("zip").files?.[0];
+  if (!zip) {
+    status.textContent = "Select a ZIP file.";
+    uploadBtn.disabled = false;
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("zip", zip);
+  const title = document.getElementById("title").value.trim();
+  const slugInput = document.getElementById("slug").value.trim();
+  const slug = slugInput || slugify(title);
+  const version = document.getElementById("version").value.trim();
+  const entry = document.getElementById("entry").value.trim() || "index.html";
+  const category = document.getElementById("category").value.trim();
+  const description = document.getElementById("description").value.trim();
+
+  if (!title || !version) {
+    status.textContent = "Title and version are required.";
+    uploadBtn.disabled = false;
+    return;
+  }
+  if (!slug) {
+    status.textContent = "Slug must include letters or numbers.";
+    uploadBtn.disabled = false;
+    return;
+  }
+
+  fd.append("title", title);
+  fd.append("slug", slug);
+  fd.append("version", version);
+  fd.append("entry_html", entry);
+  fd.append("category", category);
+  fd.append("description", description);
+
+  try{
+    const r = await api.post("/api/gamehosting/upload", fd);
+    status.textContent = r?.url ? `Uploaded ✔ ${r.url}` : "Uploaded ✔";
+    last.textContent = r?.url ? `Latest: ${r.url}` : "Latest: uploaded.";
+  }catch(e){
+    status.textContent = e?.message ? `Upload failed: ${e.message}` : "Upload failed.";
+  }finally{
+    uploadBtn.disabled = false;
+  }
+};
+
+itemUploadBtn.onclick = async () => {
+  itemStatus.textContent = "";
+  itemUploadBtn.disabled = true;
+
+  const code = document.getElementById("item_code").value.trim();
+  const name = document.getElementById("item_name").value.trim();
+  const description = document.getElementById("item_desc").value.trim();
+  const icon = document.getElementById("item_icon").files?.[0];
+
+  if (!code || !name) {
+    itemStatus.textContent = "Item code and name are required.";
+    itemUploadBtn.disabled = false;
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("code", code);
+  fd.append("name", name);
+  fd.append("description", description);
+  if (icon) fd.append("icon", icon);
+
+  try{
+    const r = await api.post("/api/items/upload", fd);
+    itemStatus.textContent = r?.status ? `Item uploaded (${r.status}).` : "Item uploaded.";
+  }catch(e){
+    itemStatus.textContent = e?.message ? `Upload failed: ${e.message}` : "Upload failed.";
+  }finally{
+    itemUploadBtn.disabled = false;
+  }
+};
+</script>
+</body>
+</html>
