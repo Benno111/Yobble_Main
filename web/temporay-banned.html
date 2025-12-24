@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temporarily Banned - Yobble</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    :root{
+      --tb-bg:#0a0d12;
+      --tb-ink:#eef2ff;
+      --tb-muted:#9aa6be;
+      --tb-card:#131924;
+      --tb-border:#2a3247;
+      --tb-accent:#ffb84a;
+      --tb-accent-2:#5ad7ff;
+    }
+    body{
+      background:
+        radial-gradient(circle at 12% 15%,rgba(255,184,74,.18),transparent 40%),
+        radial-gradient(circle at 80% 10%,rgba(90,215,255,.12),transparent 45%),
+        var(--tb-bg);
+      color:var(--tb-ink);
+      font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+      min-height:100vh;
+    }
+    main{max-width:900px;margin:0 auto;padding:36px 20px 60px}
+    .hero{
+      display:grid;
+      grid-template-columns:1.1fr .9fr;
+      gap:18px;
+      padding:20px;
+      position:relative;
+      overflow:hidden;
+    }
+    .hero::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(120deg,rgba(255,184,74,.2),transparent 45%),
+                 linear-gradient(240deg,rgba(90,215,255,.12),transparent 45%);
+      pointer-events:none;
+    }
+    .hero h1{margin:0 0 8px;font-size:36px}
+    .hero p{margin:0;color:var(--tb-muted)}
+    .hero-art{
+      border-radius:16px;
+      border:1px solid var(--tb-border);
+      min-height:160px;
+      background:
+        linear-gradient(130deg,rgba(255,184,74,.25),rgba(18,23,34,.55)),
+        repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 10px,transparent 10px 20px);
+      display:flex;
+      align-items:flex-end;
+      padding:14px;
+      font-weight:600;
+    }
+    .card{
+      background:var(--tb-card);
+      border:1px solid var(--tb-border);
+      border-radius:16px;
+      padding:16px;
+      box-shadow:0 18px 50px rgba(0,0,0,.35);
+      margin-top:16px;
+    }
+    .pill{
+      border:1px solid var(--tb-border);
+      border-radius:999px;
+      padding:6px 12px;
+      font-size:12px;
+      color:var(--tb-muted);
+      background:rgba(20,26,36,.6);
+    }
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    .action{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      border-radius:12px;
+      padding:10px 14px;
+      border:1px solid var(--tb-border);
+      color:var(--tb-ink);
+      text-decoration:none;
+      background:transparent;
+      cursor:pointer;
+      font:inherit;
+    }
+    .action.primary{
+      background:linear-gradient(120deg,var(--tb-accent),#ff9f1c);
+      border:none;
+      color:#201408;
+      font-weight:700;
+    }
+    .muted{color:var(--tb-muted);font-size:12px}
+    @media (max-width: 900px){
+      .hero{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card hero">
+      <div>
+        <div class="pill">Temporary ban</div>
+        <h1>This account is temporarily banned.</h1>
+        <p>You can log back in once the timeout expires.</p>
+        <div class="actions">
+          <a class="action primary" id="appealBtn" href="/appeal.html">Submit appeal</a>
+          <button class="action" id="logoutBtn" type="button">Logout</button>
+        </div>
+        <div class="muted" id="appealStatus" style="margin-top:12px"></div>
+        <div class="muted" id="untilText" style="margin-top:12px"></div>
+      </div>
+      <div class="hero-art">Access paused</div>
+    </section>
+  </main>
+  <script type="module">
+    import { logout } from "/js/auth.js";
+    import { api } from "/js/api.js";
+    const params = new URLSearchParams(location.search);
+    const until = params.get("until");
+    const el = document.getElementById("untilText");
+    const appealStatus = document.getElementById("appealStatus");
+    const appealBtn = document.getElementById("appealBtn");
+    if (until) {
+      const ts = Number(until);
+      if (Number.isFinite(ts)) {
+        el.textContent = `Timeout ends: ${new Date(ts).toLocaleString()}`;
+      }
+    }
+    const token = localStorage.getItem("token");
+    if (token) {
+      try{
+        const res = await api.get("/api/appeals/my-bans");
+        const bans = Array.isArray(res?.bans) ? res.bans : [];
+        let active = null;
+        if (until) {
+          const ts = Number(until);
+          active = bans.find(b => b.expires_at === ts) || null;
+        }
+        active = active || bans[0] || null;
+        if (active?.has_open_appeal) {
+          appealStatus.textContent = "An appeal is already open for this ban.";
+          appealBtn.classList.remove("primary");
+          appealBtn.textContent = "Appeal submitted";
+          appealBtn.setAttribute("aria-disabled", "true");
+          appealBtn.addEventListener("click", (e) => e.preventDefault());
+        }
+      }catch{
+        appealStatus.textContent = "";
+      }
+    }
+    document.getElementById("logoutBtn")?.addEventListener("click", logout);
+  </script>
+</body>
+</html>

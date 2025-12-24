@@ -64,12 +64,13 @@ adminRouter.post("/create_game", async (req,res)=>{
   const slug = String(req.body?.slug || "").trim();
   const title = String(req.body?.title || "").trim();
   const description = String(req.body?.description || "").trim();
+  const owner_user_id = Number(req.body?.owner_user_id) || req.user.uid;
   if(!slug || !title) return res.status(400).json({ error:"missing_fields" });
 
   try{
     const r = await run(
-      `INSERT INTO games(slug,title,description,created_at) VALUES(?,?,?,?)`,
-      [slug, title, description || null, nowMs()]
+      `INSERT INTO games(slug,title,description,created_at,owner_user_id) VALUES(?,?,?,?,?)`,
+      [slug, title, description || null, nowMs(), owner_user_id]
     );
     res.json({ ok:true, game_id: r.lastID });
   }catch(e){

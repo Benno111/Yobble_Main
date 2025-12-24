@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOS Editor - Yobble</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  :root{
+    --mod-bg:#0a0d12;
+    --mod-ink:#eef2ff;
+    --mod-muted:#a5b0c6;
+    --mod-card:#141a24;
+    --mod-border:#283043;
+    --mod-accent:#ffd166;
+    --mod-accent-2:#4dd4ff;
+  }
+  body{
+    background:radial-gradient(circle at 12% 15%,rgba(255,209,102,.18),transparent 40%),
+               radial-gradient(circle at 85% 10%,rgba(77,212,255,.14),transparent 45%),
+               var(--mod-bg);
+    color:var(--mod-ink);
+    font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+  }
+  main{max-width:1200px}
+  .editor-wrap{display:flex;flex-direction:column;gap:18px}
+  .hero{
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    gap:20px;
+    padding:20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:linear-gradient(120deg,rgba(255,209,102,.2),transparent 40%),
+               linear-gradient(240deg,rgba(77,212,255,.12),transparent 40%);
+    pointer-events:none;
+  }
+  .hero h1{margin:0 0 8px;font-size:36px}
+  .hero p{margin:0;color:var(--mod-muted)}
+  .pill{
+    border:1px solid var(--mod-border);
+    border-radius:999px;
+    padding:6px 12px;
+    font-size:12px;
+    color:var(--mod-muted);
+    background:rgba(20,26,36,.6);
+  }
+  .editor{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .editor textarea{
+    min-height:260px;
+    resize:vertical;
+    border:1px solid var(--mod-border);
+    background:#0c1118;
+    color:var(--mod-ink);
+    padding:12px;
+    border-radius:12px;
+    font-family:"IBM Plex Mono","Space Grotesk","Segoe UI",sans-serif;
+    line-height:1.5;
+  }
+  .form-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:12px;
+  }
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .field label{
+    font-size:12px;
+    color:var(--mod-muted);
+  }
+  .field input, .field textarea{
+    border:1px solid var(--mod-border);
+    background:#0c1118;
+    color:var(--mod-ink);
+    padding:10px 12px;
+    border-radius:10px;
+    font-family:inherit;
+  }
+  .list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .list-item{
+    border:1px solid var(--mod-border);
+    background:rgba(12,17,24,.6);
+    border-radius:12px;
+    padding:10px;
+    display:grid;
+    gap:8px;
+  }
+  .list-row{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:10px;
+    align-items:center;
+  }
+  .btn-inline{
+    background:transparent;
+    border:1px solid var(--mod-border);
+    color:var(--mod-ink);
+    padding:6px 10px;
+    border-radius:999px;
+    cursor:pointer;
+    font-size:12px;
+  }
+  .btn-inline.danger{
+    border-color:rgba(255,92,92,.4);
+    color:#ffb3b3;
+  }
+  .section-card{
+    border:1px solid var(--mod-border);
+    border-radius:16px;
+    padding:14px;
+    background:rgba(12,17,24,.6);
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .section-card h3{margin:0;font-size:16px}
+  .split{
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    gap:16px;
+  }
+  .split .card{height:100%}
+  .editor-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .editor-actions button{
+    background:var(--mod-accent);
+    border:none;
+    color:#1c1405;
+    padding:8px 12px;
+    border-radius:10px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .editor-actions button.secondary{
+    background:transparent;
+    border:1px solid var(--mod-border);
+    color:var(--mod-ink);
+    font-weight:600;
+  }
+  .editor-status{color:var(--mod-muted);font-size:12px}
+  @media (max-width: 900px){
+    .hero{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<main class="editor-wrap">
+  <section class="card hero">
+    <div>
+      <div class="pill">Moderation</div>
+      <h1>TOS JSON Editor</h1>
+      <p>Edit the Terms of Service JSON and publish it instantly to the public TOS page.</p>
+    </div>
+    <div class="hero-art">Policy control</div>
+  </section>
+
+  <section class="split">
+    <section class="card editor">
+      <div class="pill">Visual editor</div>
+      <div class="form-grid">
+        <div class="field">
+          <label for="tosTitle">Title</label>
+          <input id="tosTitle" type="text" placeholder="Terms of Service">
+        </div>
+        <div class="field">
+          <label for="tosUpdated">Updated date</label>
+          <input id="tosUpdated" type="date">
+        </div>
+        <div class="field">
+          <label for="tosContact">Contact email</label>
+          <input id="tosContact" type="email" placeholder="support@yobble.example">
+        </div>
+      </div>
+      <div class="field">
+        <label for="tosIntro">Intro</label>
+        <textarea id="tosIntro" rows="3" placeholder="Short intro paragraph"></textarea>
+      </div>
+      <div class="section-card">
+        <h3>Meta pills</h3>
+        <div class="list" id="metaList"></div>
+        <button type="button" class="btn-inline" id="addMeta">Add meta pill</button>
+      </div>
+      <div class="section-card">
+        <h3>Highlights</h3>
+        <div class="list" id="highlightList"></div>
+        <button type="button" class="btn-inline" id="addHighlight">Add highlight</button>
+      </div>
+      <div class="section-card">
+        <h3>Sections</h3>
+        <div class="list" id="sectionList"></div>
+        <button type="button" class="btn-inline" id="addSection">Add section</button>
+      </div>
+      <div class="editor-actions">
+        <button type="button" id="loadTos">Load current</button>
+        <button type="button" class="secondary" id="openTos">Open TOS</button>
+        <button type="button" id="saveTos">Save changes</button>
+        <span class="editor-status" id="tosStatus"></span>
+      </div>
+    </section>
+    <section class="card editor">
+      <div class="pill">Advanced JSON</div>
+      <textarea id="tosJsonInput" spellcheck="false"></textarea>
+    </section>
+  </section>
+
+  <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
+    <a class="pill" href="/mod-dashboard.html">Dashboard</a>
+    <a class="pill" href="/mod-reports.html">Reports</a>
+    <a class="pill" href="/mod-appeals.html">Appeals</a>
+    <a class="pill" href="/mod-bans.html">Ban History</a>
+    <a class="pill" href="/mod-tos.html">TOS Editor</a>
+    <a class="pill" href="/modqueue.html">Queue</a>
+    <a class="pill" href="/moderation.html">Overview</a>
+  </section>
+</main>
+<script type="module">
+import { api } from "/js/api.js";
+import { requireAuth } from "/js/auth.js";
+import { mountTopbar } from "/js/layout.js";
+
+await mountTopbar("moddash");
+const me = await requireAuth();
+if(!["admin","moderator"].includes(me.role)) throw 0;
+
+const input = document.getElementById("tosJsonInput");
+const titleInput = document.getElementById("tosTitle");
+const updatedInput = document.getElementById("tosUpdated");
+const contactInput = document.getElementById("tosContact");
+const introInput = document.getElementById("tosIntro");
+const metaList = document.getElementById("metaList");
+const highlightList = document.getElementById("highlightList");
+const sectionList = document.getElementById("sectionList");
+let lastEdited = "form";
+const statusEl = document.getElementById("tosStatus");
+
+function setStatus(msg){
+  statusEl.textContent = msg || "";
+}
+
+function createMetaRow(value){
+  const row = document.createElement("div");
+  row.className = "list-row";
+  row.innerHTML = `
+    <input type="text" placeholder="Meta label">
+    <button type="button" class="btn-inline danger">Remove</button>
+  `;
+  row.querySelector("input").value = value || "";
+  row.querySelector("button").addEventListener("click", () => row.remove());
+  return row;
+}
+
+function createHighlightCard(item){
+  const card = document.createElement("div");
+  card.className = "list-item";
+  card.innerHTML = `
+    <div class="field">
+      <label>Title</label>
+      <input type="text" placeholder="Highlight title">
+    </div>
+    <div class="field">
+      <label>Text</label>
+      <textarea rows="2" placeholder="Highlight text"></textarea>
+    </div>
+    <button type="button" class="btn-inline danger">Remove highlight</button>
+  `;
+  const [titleEl, textEl] = card.querySelectorAll("input,textarea");
+  titleEl.value = item?.title || "";
+  textEl.value = item?.text || "";
+  card.querySelector("button").addEventListener("click", () => card.remove());
+  return card;
+}
+
+function createSectionCard(section){
+  const card = document.createElement("div");
+  card.className = "list-item";
+  card.innerHTML = `
+    <div class="form-grid">
+      <div class="field">
+        <label>Section ID</label>
+        <input type="text" placeholder="acceptance">
+      </div>
+      <div class="field">
+        <label>Section title</label>
+        <input type="text" placeholder="1. Acceptance of these terms">
+      </div>
+    </div>
+    <div class="field">
+      <label>Paragraphs (one per line)</label>
+      <textarea rows="3" placeholder="Paragraph line 1\\nParagraph line 2"></textarea>
+    </div>
+    <div class="field">
+      <label>Bullets (one per line)</label>
+      <textarea rows="3" placeholder="Bullet 1\\nBullet 2"></textarea>
+    </div>
+    <div class="section-card">
+      <h3>Subsections</h3>
+      <div class="list subsection-list"></div>
+      <button type="button" class="btn-inline add-sub">Add subsection</button>
+    </div>
+    <button type="button" class="btn-inline danger">Remove section</button>
+  `;
+  const inputs = card.querySelectorAll("input,textarea");
+  inputs[0].value = section?.id || "";
+  inputs[1].value = section?.title || "";
+  inputs[2].value = Array.isArray(section?.paragraphs) ? section.paragraphs.join("\n") : "";
+  inputs[3].value = Array.isArray(section?.bullets) ? section.bullets.join("\n") : "";
+
+  const subsectionList = card.querySelector(".subsection-list");
+  const addSub = card.querySelector(".add-sub");
+  (section?.subsections || []).forEach(s => subsectionList.appendChild(createSubsectionCard(s)));
+  addSub.addEventListener("click", () => subsectionList.appendChild(createSubsectionCard({})));
+  card.querySelector("button.btn-inline.danger").addEventListener("click", () => card.remove());
+  return card;
+}
+
+function createSubsectionCard(sub){
+  const card = document.createElement("div");
+  card.className = "list-item";
+  card.innerHTML = `
+    <div class="field">
+      <label>Subsection title</label>
+      <input type="text" placeholder="2.1 Account responsibility">
+    </div>
+    <div class="field">
+      <label>Paragraphs (one per line)</label>
+      <textarea rows="2" placeholder="Paragraph line"></textarea>
+    </div>
+    <div class="field">
+      <label>Bullets (one per line)</label>
+      <textarea rows="2" placeholder="Bullet line"></textarea>
+    </div>
+    <button type="button" class="btn-inline danger">Remove subsection</button>
+  `;
+  const fields = card.querySelectorAll("input,textarea");
+  fields[0].value = sub?.title || "";
+  fields[1].value = Array.isArray(sub?.paragraphs) ? sub.paragraphs.join("\n") : "";
+  fields[2].value = Array.isArray(sub?.bullets) ? sub.bullets.join("\n") : "";
+  card.querySelector("button").addEventListener("click", () => card.remove());
+  return card;
+}
+
+function fillEditor(data){
+  titleInput.value = data?.title || "";
+  updatedInput.value = data?.updated || "";
+  contactInput.value = data?.contact || "";
+  introInput.value = data?.intro || "";
+
+  metaList.innerHTML = "";
+  (data?.meta || []).forEach(m => metaList.appendChild(createMetaRow(m)));
+
+  highlightList.innerHTML = "";
+  (data?.highlights || []).forEach(h => highlightList.appendChild(createHighlightCard(h)));
+
+  sectionList.innerHTML = "";
+  (data?.sections || []).forEach(s => sectionList.appendChild(createSectionCard(s)));
+
+  input.value = JSON.stringify(data || {}, null, 2) + "\n";
+  lastEdited = "form";
+}
+
+function buildPayload(){
+  const meta = Array.from(metaList.querySelectorAll(".list-row input"))
+    .map(el => el.value.trim())
+    .filter(Boolean);
+
+  const highlights = Array.from(highlightList.children).map(card => {
+    const [titleEl, textEl] = card.querySelectorAll("input,textarea");
+    return { title: titleEl.value.trim(), text: textEl.value.trim() };
+  }).filter(h => h.title || h.text);
+
+  const sections = Array.from(sectionList.children).map(card => {
+    const [idEl, titleEl, paragraphsEl, bulletsEl] = card.querySelectorAll("input,textarea");
+    const subsections = Array.from(card.querySelectorAll(".subsection-list .list-item")).map(sub => {
+      const [subTitleEl, subParaEl, subBulletsEl] = sub.querySelectorAll("input,textarea");
+      const subParagraphs = subParaEl.value.split("\n").map(s => s.trim()).filter(Boolean);
+      const subBullets = subBulletsEl.value.split("\n").map(s => s.trim()).filter(Boolean);
+      const out = { title: subTitleEl.value.trim() };
+      if (subParagraphs.length) out.paragraphs = subParagraphs;
+      if (subBullets.length) out.bullets = subBullets;
+      return out.title || out.paragraphs || out.bullets ? out : null;
+    }).filter(Boolean);
+
+    const paragraphs = paragraphsEl.value.split("\n").map(s => s.trim()).filter(Boolean);
+    const bullets = bulletsEl.value.split("\n").map(s => s.trim()).filter(Boolean);
+    const section = { id: idEl.value.trim(), title: titleEl.value.trim() };
+    if (paragraphs.length) section.paragraphs = paragraphs;
+    if (bullets.length) section.bullets = bullets;
+    if (subsections.length) section.subsections = subsections;
+    return section;
+  }).filter(s => s.id || s.title);
+
+  return {
+    title: titleInput.value.trim(),
+    intro: introInput.value.trim(),
+    updated: updatedInput.value,
+    contact: contactInput.value.trim(),
+    meta,
+    highlights,
+    sections
+  };
+}
+
+async function loadTos(){
+  setStatus("Loading…");
+  try{
+    const data = await api.get("/api/mod/tos");
+    fillEditor(data || {});
+    setStatus("Loaded.");
+  }catch{
+    setStatus("Load failed.");
+  }
+}
+
+document.getElementById("loadTos").addEventListener("click", loadTos);
+document.getElementById("openTos").addEventListener("click", () => {
+  window.open("/tos.html", "_blank");
+});
+
+document.getElementById("saveTos").addEventListener("click", async () => {
+  setStatus("Saving…");
+  try{
+    let payload = null;
+    if (lastEdited === "json") {
+      payload = JSON.parse(input.value || "{}");
+    } else {
+      payload = buildPayload();
+      input.value = JSON.stringify(payload, null, 2) + "\n";
+    }
+    await api.put("/api/mod/tos", payload || {});
+    setStatus("Saved.");
+  }catch{
+    setStatus("Save failed. Ensure valid JSON.");
+  }
+});
+
+document.getElementById("addMeta").addEventListener("click", () => {
+  metaList.appendChild(createMetaRow(""));
+});
+document.getElementById("addHighlight").addEventListener("click", () => {
+  highlightList.appendChild(createHighlightCard({}));
+});
+document.getElementById("addSection").addEventListener("click", () => {
+  sectionList.appendChild(createSectionCard({}));
+});
+
+function syncFromForm(){
+  if (lastEdited === "json") return;
+  const payload = buildPayload();
+  input.value = JSON.stringify(payload, null, 2) + "\n";
+}
+
+function markFormEdited(){
+  lastEdited = "form";
+  syncFromForm();
+}
+
+function markJsonEdited(){
+  lastEdited = "json";
+}
+
+input.addEventListener("input", () => {
+  markJsonEdited();
+  setStatus("JSON edited.");
+});
+
+input.addEventListener("blur", () => {
+  if (lastEdited !== "json") return;
+  try{
+    const parsed = JSON.parse(input.value || "{}");
+    fillEditor(parsed);
+    setStatus("Synced from JSON.");
+  }catch{
+    setStatus("JSON not valid.");
+  }
+});
+
+[titleInput, updatedInput, contactInput, introInput].forEach(el => {
+  el.addEventListener("input", markFormEdited);
+});
+
+metaList.addEventListener("input", markFormEdited);
+highlightList.addEventListener("input", markFormEdited);
+sectionList.addEventListener("input", markFormEdited);
+
+await loadTos();
+</script>
+</body>
+</html>

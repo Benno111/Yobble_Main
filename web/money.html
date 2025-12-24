@@ -2,16 +2,19 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Get Money - Yobble</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get Balance - Yobble</title>
 <link rel="stylesheet" href="/style.css">
 <style>
   :root{
     --money-bg:#0a0d12;
     --money-ink:#eef2ff;
-    --money-muted:#a5b0c6;
-    --money-card:#141a24;
+    --money-muted:#9aa6be;
+    --money-card:#121722;
     --money-border:#283043;
     --money-accent:#ffd166;
+    --money-accent-2:#5ad7ff;
+    --money-ring:rgba(90,215,255,.35);
   }
   body{
     background:radial-gradient(circle at 12% 15%,rgba(255,209,102,.18),transparent 40%),
@@ -20,8 +23,38 @@
     color:var(--money-ink);
     font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
   }
-  main{max-width:900px}
+  main{max-width:960px}
   .money-wrap{display:flex;flex-direction:column;gap:18px}
+  .hero{
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    gap:18px;
+    padding:18px;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:linear-gradient(120deg,rgba(255,209,102,.2),transparent 45%),
+               linear-gradient(240deg,rgba(90,215,255,.16),transparent 45%);
+    pointer-events:none;
+  }
+  .hero h1{margin:0 0 6px;font-size:34px}
+  .hero p{margin:0;color:var(--money-muted)}
+  .hero-art{
+    border-radius:16px;
+    border:1px solid var(--money-border);
+    min-height:140px;
+    background:
+      linear-gradient(135deg,rgba(255,209,102,.25),rgba(18,23,34,.55)),
+      repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 10px,transparent 10px 20px);
+    display:flex;
+    align-items:flex-end;
+    padding:14px;
+    font-weight:600;
+  }
   .panel{
     background:var(--money-card);
     border:1px solid var(--money-border);
@@ -30,7 +63,28 @@
     display:flex;
     flex-direction:column;
     gap:12px;
+    box-shadow:0 18px 50px rgba(0,0,0,.35);
   }
+  .panel-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .pill{
+    border:1px solid var(--money-border);
+    border-radius:999px;
+    padding:6px 12px;
+    font-size:12px;
+    color:var(--money-muted);
+    background:rgba(20,26,36,.6);
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  .field{display:flex;flex-direction:column;gap:6px}
   label{font-size:12px;color:var(--money-muted)}
   input,textarea{
     width:100%;
@@ -41,30 +95,150 @@
     border-radius:10px;
     font-family:inherit;
   }
+  input:focus,textarea:focus{outline:none;box-shadow:0 0 0 2px var(--money-ring)}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .primary{
+    background:linear-gradient(120deg,var(--money-accent),#ffb84a);
+    border:none;
+    color:#201a08;
+    padding:10px 14px;
+    border-radius:12px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .ghost{
+    background:transparent;
+    border:1px solid var(--money-border);
+    color:var(--money-ink);
+    padding:10px 14px;
+    border-radius:12px;
+    cursor:pointer;
+  }
+  .hint{font-size:12px;color:var(--money-muted)}
   .status{color:var(--money-muted);font-size:12px}
+  .wallet-lock{
+    background:rgba(12,17,24,.75);
+    border:1px dashed var(--money-border);
+    border-radius:16px;
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .wallet-lock .primary{width:auto}
+  .wallet-addr{
+    font-size:12px;
+    color:var(--money-muted);
+    word-break:break-all;
+  }
+  .panel.disabled{
+    opacity:.6;
+    pointer-events:none;
+  }
+  .purchase-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:12px;
+  }
+  .purchase-card{
+    border:1px solid var(--money-border);
+    border-radius:14px;
+    padding:14px;
+    background:rgba(12,17,24,.7);
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .purchase-card h3{margin:0;font-size:16px}
+  .purchase-card .meta{font-size:12px;color:var(--money-muted)}
+  .purchase-card button{width:100%}
+  .rate-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .rate-row input{
+    max-width:200px;
+  }
+  .rate-row button{
+    width:auto;
+  }
+  @media (max-width: 900px){
+    .hero{grid-template-columns:1fr}
+    .grid{grid-template-columns:1fr}
+  }
 </style>
 </head>
 <body>
 <main class="money-wrap">
-  <section class="card">
-    <div class="h1">Get money</div>
-    <div class="muted">Admin tools only. Grants currency to your wallet.</div>
+  <section class="card hero">
+    <div>
+      <div class="pill">Balance Tools</div>
+      <h1>Get Balance</h1>
+      <p>Use the tools below to manage your in-app currency balance. Connect a crypto wallet to get started.</p>
+    </div>
+    <div class="hero-art">Balance boost</div>
   </section>
 
-  <section class="panel">
-    <div>
-      <label for="username">Username</label>
-      <input id="username" placeholder="Target username">
+  <section class="panel wallet-lock" id="walletLock">
+    <div class="panel-header">
+      <div>
+        <div class="h1" style="margin:0">Connect a crypto wallet</div>
+        <div class="hint">A connected wallet is required to access platform money tools.</div>
+      </div>
+      <div class="pill" id="walletStatus">Not connected</div>
     </div>
-    <div>
-      <label for="amount">Amount</label>
-      <input id="amount" type="number" placeholder="100">
+    <div class="wallet-addr" id="walletAddr"></div>
+    <div class="actions">
+      <a class="primary" href="/connect-wallet.html" style="width:auto;text-decoration:none;display:inline-block">Connect wallet</a>
+      <a class="ghost" href="/connect-wallet.html" style="width:auto;text-decoration:none;display:inline-block">Switch wallet</a>
     </div>
-    <div>
+  </section>
+
+  <section class="panel" id="purchasePanel">
+    <div class="panel-header">
+      <div>
+        <div class="h1" style="margin:0">Purchase options</div>
+        <div class="hint">1 in-app $ = $0.01 USD.</div>
+      </div>
+      <div class="pill">Top-ups</div>
+    </div>
+    <div class="rate-row">
+      <input id="ethRate" type="number" min="1" step="0.01" placeholder="e.g. 3000" hidden>
+      <button class="ghost" id="refreshRate" type="button" hidden>Auto fetch</button>
+      <div class="hint">Sent to <code>0x11bf0f444574d29b49225f841b6b0e0a6c8534a7</code></div>
+    </div>
+    <div class="purchase-grid" id="purchaseGrid"></div>
+    <div class="status" id="purchaseStatus"></div>
+  </section>
+
+  <section class="panel" id="grantPanel">
+    <div class="panel-header">
+      <div>
+        <div class="h1" style="margin:0">Grant currency</div>
+        <div class="hint">Leave username empty to grant to yourself.</div>
+      </div>
+      <div class="pill" id="roleBadge">User</div>
+    </div>
+    <div class="grid">
+      <div class="field" id="usernameField">
+        <label for="username">Username (mods/admin only)</label>
+        <input id="username" placeholder="Target username">
+      </div>
+      <div class="field">
+        <label for="amount">Amount</label>
+        <input id="amount" type="number" placeholder="100" min="1" step="1">
+      </div>
+    </div>
+    <div class="field">
       <label for="reason">Reason</label>
       <input id="reason" placeholder="Grant for testing">
     </div>
-    <button class="primary" id="grantBtn" style="width:auto">Grant</button>
+    <div class="actions">
+      <button class="primary" id="grantBtn" style="width:auto">Grant</button>
+      <button class="ghost" id="fillBtn" style="width:auto">Quick fill 100</button>
+    </div>
     <div class="status" id="status"></div>
   </section>
 </main>
@@ -76,25 +250,157 @@ import { requireAuth } from "/js/auth.js";
 
 await mountTopbar("wallet");
 const me = await requireAuth();
-if(!["admin","moderator"].includes(me.role)) throw 0;
+const isPrivileged = (me.role === "admin" || me.role === "moderator" || me.role === "mod");
+
+const walletLock = document.getElementById("walletLock");
+const walletStatus = document.getElementById("walletStatus");
+const walletAddr = document.getElementById("walletAddr");
+const grantPanel = document.getElementById("grantPanel");
+const purchaseStatus = document.getElementById("purchaseStatus");
+const purchaseGrid = document.getElementById("purchaseGrid");
+const ethRateInput = document.getElementById("ethRate");
+const refreshRateBtn = document.getElementById("refreshRate");
+let connectedWallet = null;
+const purchaseAddress = "0x11bf0f444574d29b49225f841b6b0e0a6c8534a7";
+
+async function fetchEthRate(){
+  try{
+    purchaseStatus.textContent = "Fetching ETH price…";
+    const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd");
+    if (!res.ok) throw new Error("bad_response");
+    const data = await res.json();
+    const rate = Number(data?.ethereum?.usd || 0);
+    if (!Number.isFinite(rate) || rate <= 0) throw new Error("bad_rate");
+    ethRateInput.value = rate.toFixed(2);
+    purchaseStatus.textContent = "ETH price updated.";
+  }catch{
+    purchaseStatus.textContent = "Could not fetch ETH price. Enter it manually.";
+  }
+}
+
+async function getConnectedAccount(){
+  if (!window.ethereum) return null;
+  try{
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    return accounts && accounts[0] ? accounts[0] : null;
+  }catch{
+    return null;
+  }
+}
+
+function setWalletState(addr){
+  connectedWallet = addr || null;
+  if (addr) {
+    walletStatus.textContent = "Connected";
+    walletAddr.textContent = `Wallet ${addr}`;
+    grantPanel.classList.remove("disabled");
+    walletLock.setAttribute("data-connected", "true");
+  } else {
+    walletStatus.textContent = "Not connected";
+    walletAddr.textContent = window.ethereum ? "No wallet connected." : "No wallet detected. Install MetaMask or a compatible wallet.";
+    grantPanel.classList.add("disabled");
+    walletLock.removeAttribute("data-connected");
+  }
+}
+
+const existing = await getConnectedAccount();
+setWalletState(existing || null);
+if (!existing) {
+  const redirect = encodeURIComponent("/money.html");
+  location.href = `/connect-wallet.html?redirect=${redirect}`;
+}
+fetchEthRate();
+refreshRateBtn.addEventListener("click", fetchEthRate);
+if (window.ethereum) {
+  window.ethereum.on?.("accountsChanged", (accounts) => {
+    const addr = accounts && accounts[0] ? accounts[0] : null;
+    setWalletState(addr);
+  });
+}
 
 const username = document.getElementById("username");
 const amount = document.getElementById("amount");
 const reason = document.getElementById("reason");
 const status = document.getElementById("status");
+const usernameField = document.getElementById("usernameField");
+const roleBadge = document.getElementById("roleBadge");
 const balanceEl = document.getElementById("walletBalance");
+
+roleBadge.textContent = isPrivileged ? "Moderator" : "User";
+if(!isPrivileged){
+  usernameField.style.display = "none";
+  grantPanel.style.display = "none";
+}
+
+document.getElementById("fillBtn").onclick = () => {
+  amount.value = "100";
+  if(!reason.value) reason.value = "Testing grant";
+};
+
+for (let usd = 1; usd <= 20; usd += 1) {
+  const amount = usd * 100;
+  const card = document.createElement("div");
+  card.className = "purchase-card";
+  card.innerHTML = `
+    <h3>${amount} in-app $</h3>
+    <div class="meta">$${usd.toFixed(2)} USD</div>
+    <button class="primary" type="button" data-amount="${amount}">Buy $${usd}</button>
+  `;
+  const btn = card.querySelector("button");
+  btn.addEventListener("click", async () => {
+    purchaseStatus.textContent = "";
+    if (!connectedWallet) {
+      purchaseStatus.textContent = "Connect a crypto wallet before purchasing.";
+      return;
+    }
+    const rate = Number(ethRateInput.value || 0);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      purchaseStatus.textContent = "Enter a valid ETH price in USD.";
+      return;
+    }
+    const usdAmount = usd;
+    const ethAmount = usdAmount / rate;
+    const wei = toWei(ethAmount);
+    try{
+      await window.ethereum.request({
+        method: "eth_sendTransaction",
+        params: [{
+          from: connectedWallet,
+          to: purchaseAddress,
+          value: "0x" + wei.toString(16)
+        }]
+      });
+      purchaseStatus.textContent = `Transaction submitted for $${usdAmount.toFixed(2)} USD.`;
+    }catch{
+      purchaseStatus.textContent = "Transaction cancelled or failed.";
+    }
+  });
+  purchaseGrid.appendChild(card);
+}
+
+function toWei(eth){
+  const parts = eth.toFixed(18).split(".");
+  const whole = BigInt(parts[0] || "0");
+  const frac = BigInt((parts[1] || "").padEnd(18, "0").slice(0, 18));
+  return whole * 10n ** 18n + frac;
+}
 
 document.getElementById("grantBtn").onclick = async () => {
   status.textContent = "";
+  if (!connectedWallet) {
+    status.textContent = "Connect a crypto wallet before using money tools.";
+    return;
+  }
   try{
     const target = username.value.trim();
-    if (!target) {
-      status.textContent = "Username is required.";
+    const amt = Number(amount.value || 0);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      status.textContent = "Amount must be a positive number.";
       return;
     }
     await api.post("/api/wallet/grant", {
-      username: target,
-      amount: Number(amount.value || 0),
+      username: target || undefined,
+      amount: amt,
       reason: reason.value
     });
     status.textContent = "Granted ✔";

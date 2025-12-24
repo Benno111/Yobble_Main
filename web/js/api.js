@@ -29,6 +29,9 @@ export async function api(url, opts = {}){
   });
 
   const data = await readBody(res);
+  if (data?.token) {
+    localStorage.setItem("token", data.token);
+  }
   if (!res.ok) {
     const msg = typeof data === "string" ? data : (data?.error || res.statusText);
     const err = new Error(msg || "Request failed");

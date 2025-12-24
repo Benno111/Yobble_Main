@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Games - Yobble</title>
 <link rel="stylesheet" href="/style.css">
 <style>
@@ -281,7 +282,7 @@ function render(){
 
   list.innerHTML = sorted.map((g, i) => `
     <a class="game-card" style="--hue:${(i * 47) % 360}" href="/games/${encodeURIComponent(g.slug)}">
-      ${i < 3 ? `<div class="ribbon">Featured</div>` : ``}
+      ${g.is_featured ? `<div class="ribbon">Featured</div>` : ``}
       <div class="meta">
         <span class="badge">${escapeHtml(g.category || "Uncategorized")}</span>
         <span>${escapeHtml(g.slug)}</span>

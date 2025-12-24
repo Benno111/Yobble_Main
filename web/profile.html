@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Profile - Yobble</title>
 <link rel="stylesheet" href="/style.css">
 <style>
@@ -84,6 +85,40 @@
   .profile-name{font-size:20px;font-weight:700}
   .profile-meta{color:var(--pro-muted);font-size:12px}
   .profile-status{color:var(--pro-accent-2);font-size:13px}
+  .bio-editor{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .bio-input{
+    min-height:96px;
+    border-radius:12px;
+    border:1px solid var(--pro-border);
+    background:#0f141d;
+    color:var(--pro-ink);
+    padding:10px 12px;
+    resize:vertical;
+    font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+    font-size:13px;
+  }
+  .bio-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+  }
+  .bio-save{
+    border:1px solid rgba(77,212,255,.45);
+    background:rgba(77,212,255,.2);
+    color:var(--pro-ink);
+    padding:6px 12px;
+    border-radius:999px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .bio-msg{
+    color:var(--pro-muted);
+    font-size:12px;
+  }
   .empty{
     text-align:center;
     padding:30px;
@@ -116,6 +151,7 @@
 <script type="module">
 import { mountTopbar } from "/js/layout.js";
 import { api } from "/js/api.js";
+import { logout } from "/js/auth.js";
 
 await mountTopbar("profile");
 
@@ -139,14 +175,28 @@ function escapeHtml(v){
 let profile = null;
 try{
   if (lookupUser) {
-    const res = await api.get(`/api/profile/lookup?q=${encodeURIComponent(lookupUser)}`);
-    const users = res.users || [];
-    profile = users.find(u => (u.username || "").toLowerCase() === lookupUser.toLowerCase()) || null;
+    const res = await api.get(`/api/profile/lookup-exact?u=${encodeURIComponent(lookupUser)}`);
+    profile = res.profile || null;
   } else {
     const res = await api.get("/api/profile/me");
     profile = res.profile || res;
   }
-}catch{
+}catch(err){
+  if (lookupUser) {
+    if (err?.status === 403 && err?.data?.error === "account_banned") {
+      location.href = "/404.html?msg=" + encodeURIComponent("Account deleted.");
+      throw err;
+    }
+    if (err?.status === 403 && err?.data?.error === "account_timed_out") {
+      const until = err?.data?.until ? new Date(Number(err.data.until)).toLocaleString() : "unknown";
+      location.href = "/404.html?msg=" + encodeURIComponent(`User is temporarily banned until ${until}.`);
+      throw err;
+    }
+    if (err?.status === 404) {
+      location.href = "/404.html?msg=" + encodeURIComponent("User not found.");
+      throw err;
+    }
+  }
   empty.hidden = false;
   empty.textContent = "Could not load profile.";
 }
@@ -168,17 +218,58 @@ if(profile){
       <div class="profile-meta">Account</div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <div class="profile-name">${escapeHtml(profile.role || "user")}</div>
-        ${isSelf ? "" : `<a class="pill action" href="/report.html?target_type=user&target_ref=${encodeURIComponent(profile.username || "")}">Report</a>`}
+        ${
+          isSelf
+            ? `<button class="pill action" id="logoutBtn" type="button">Logout</button>`
+            : `<a class="pill action" href="/report.html?target_type=user&target_ref=${encodeURIComponent(profile.username || "")}">Report</a>`
+        }
       </div>
       <div class="profile-meta">User ID ${escapeHtml(profile.id ?? "—")}</div>
     </div>
     <div class="profile-card">
       <div class="profile-meta">Bio</div>
-      <div>${escapeHtml(profile.bio || "Add a bio to tell others who you are.")}</div>
+      ${
+        isSelf
+          ? `
+        <div class="bio-editor">
+          <textarea class="bio-input" id="bioInput" placeholder="Add a bio to tell others who you are.">${escapeHtml(profile.bio || "")}</textarea>
+          <div class="bio-actions">
+            <span class="bio-msg" id="bioMsg"></span>
+            <button class="bio-save" id="bioSave" type="button">Save</button>
+          </div>
+        </div>
+      `
+          : `<div>${escapeHtml(profile.bio || "Add a bio to tell others who you are.")}</div>`
+      }
     </div>
   `;
+
+  if(isSelf){
+    const logoutBtn = document.getElementById("logoutBtn");
+    if(logoutBtn){
+      logoutBtn.addEventListener("click", logout);
+    }
+    const bioInput = document.getElementById("bioInput");
+    const bioSave = document.getElementById("bioSave");
+    const bioMsg = document.getElementById("bioMsg");
+    if(bioSave && bioInput && bioMsg){
+      bioSave.addEventListener("click", async () => {
+        bioMsg.textContent = "";
+        try{
+          await api("/api/profile/me", { method:"PATCH", body:{ bio: bioInput.value }});
+          bioMsg.textContent = "Saved.";
+        }catch(e){
+          bioMsg.textContent = "Save failed.";
+        }
+      });
+    }
+  }
 }else{
-  empty.hidden = false;
+  if (lookupUser) {
+    location.href = "/404.html?msg=" + encodeURIComponent("User not found.");
+  } else {
+    empty.hidden = false;
+  }
 }
 </script>
 </body>

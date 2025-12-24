@@ -13,10 +13,14 @@ async function request(url, opts={}){
     }
   });
 
-  if(r.status === 401 || r.status === 403){
+  if(r.status === 401){
     localStorage.removeItem("token");
     location.href = "/login.html";
     throw new Error("unauthorized");
+  }
+  if(r.status === 403){
+    location.href = "/login.html";
+    throw new Error("forbidden");
   }
   if(!r.ok){
     let e;

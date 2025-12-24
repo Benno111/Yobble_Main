@@ -1,10 +1,12 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 
-import { initDb, get } from "./db.js";
+import { initDb, get, run } from "./db.js";
+import { requireAuth, verifyToken } from "./auth.js";
 
 // ⭐ Single import for all routers
 import {
@@ -21,7 +23,10 @@ import {
   walletRouter,
   moderationRouter,
   itemsRouter,
-  statsRouter
+  statsRouter,
+  appealsRouter,
+  storageRouter,
+  libraryRouter
 } from "./routes/_routers.js";
 
 /* -----------------------------
@@ -33,6 +38,21 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
 const WEB_DIR = path.join(PROJECT_ROOT, "web");
 const GAME_STORAGE_DIR = path.join(PROJECT_ROOT, "game_storage");
+
+function readCookie(req, name) {
+  const header = req.headers.cookie || "";
+  if (!header) return null;
+  const entries = header.split(";").map((part) => part.trim());
+  for (const entry of entries) {
+    if (!entry) continue;
+    const idx = entry.indexOf("=");
+    if (idx === -1) continue;
+    const key = entry.slice(0, idx);
+    if (key !== name) continue;
+    return decodeURIComponent(entry.slice(idx + 1));
+  }
+  return null;
+}
 
 function listFilesRecursive(baseDir, sub = "") {
   const abs = path.join(baseDir, sub);
@@ -61,7 +81,86 @@ function listFilesRecursive(baseDir, sub = "") {
 const app = express();
 app.set("trust proxy", true);
 app.use(cors());
+app.use(compression());
 app.use(express.json({ limit: "8mb" }));
+
+app.use(async (req, res, next) => {
+  const pathName = req.path || "";
+  if (pathName.startsWith("/api")) return next();
+  if (pathName.startsWith("/Permanetly-Banned")) return next();
+  if (pathName.startsWith("/temporay-banned")) return next();
+  if (pathName.startsWith("/appeal")) return next();
+
+  const h = req.headers.authorization || "";
+  const token = h.startsWith("Bearer ") ? h.slice(7) : null;
+  if (!token) return next();
+
+  try {
+    const decoded = verifyToken(token);
+    const u = await get(
+      `SELECT id, is_banned, ban_reason, banned_at, timeout_until, timeout_reason
+       FROM users WHERE id=?`,
+      [decoded.uid]
+    );
+    if (!u) return next();
+
+    const now = Date.now();
+    const permaBan = await get(
+      `SELECT reason, created_at
+       FROM bans
+       WHERE target_type='user' AND target_id=?
+         AND lifted_at IS NULL
+         AND expires_at IS NULL
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [u.id]
+    );
+    let activeTempBan = null;
+    if (!permaBan) {
+      activeTempBan = await get(
+        `SELECT id, reason, created_at, expires_at
+         FROM bans
+         WHERE target_type='user' AND target_id=?
+           AND lifted_at IS NULL
+           AND expires_at IS NOT NULL
+           AND expires_at > ?
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [u.id, now]
+      );
+      if (!activeTempBan && u.is_banned) {
+        await run(
+          `UPDATE users
+           SET is_banned=0, ban_reason=NULL, banned_at=NULL
+           WHERE id=?`,
+          [u.id]
+        );
+        u.is_banned = 0;
+        u.ban_reason = null;
+        u.banned_at = null;
+      }
+    }
+
+    if (permaBan || (u.is_banned && activeTempBan)) {
+      return res.redirect("/Permanetly-Banned");
+    }
+    if (activeTempBan || (u.timeout_until && u.timeout_until > now)) {
+      if (activeTempBan) {
+        const appeal = await get(
+          `SELECT id FROM ban_appeals WHERE ban_id=? AND status='open'`,
+          [activeTempBan.id]
+        );
+        if (appeal) return next();
+      }
+      const until = activeTempBan?.expires_at || u.timeout_until;
+      const qs = until ? `?until=${encodeURIComponent(until)}` : "";
+      return res.redirect(`/temporay-banned${qs}`);
+    }
+  } catch {
+    return next();
+  }
+  return next();
+});
 
 /* -----------------------------
    API MOUNTING (ONE PLACE)
@@ -81,13 +180,26 @@ app.use("/api/wallet", walletRouter);
 app.use("/api/mod", moderationRouter);
 app.use("/api/items", itemsRouter);
 app.use("/api/stats", statsRouter);
+app.use("/api/appeals", appealsRouter);
+app.use("/api/storage", storageRouter);
+app.use("/api/library", libraryRouter);
 
 /* -----------------------------
    GAME LANDING PAGE
 ----------------------------- */
 app.get("/games/:slug", (req, res, next) => {
   if (req.path.split("/").length !== 3) return next();
-  res.sendFile(path.join(WEB_DIR, "game.html"));
+  (async () => {
+    try {
+      const row = await get("SELECT is_hidden FROM games WHERE slug=?", [req.params.slug]);
+      if (!row || row.is_hidden) {
+        return res.redirect("/404.html?msg=" + encodeURIComponent("Game not found."));
+      }
+      return res.sendFile(path.join(WEB_DIR, "game.html"));
+    } catch {
+      return res.redirect("/404.html?msg=" + encodeURIComponent("Game not found."));
+    }
+  })();
 });
 
 /* -----------------------------
@@ -103,6 +215,56 @@ app.use("/games/:slug", async (req, res, next) => {
     return res.sendStatus(500);
   }
   next();
+});
+
+app.use("/games/:slug/:version", async (req, res, next) => {
+  const slug = String(req.params.slug || "").trim();
+  const version = String(req.params.version || "").trim();
+  if (!slug || !version) return res.sendStatus(404);
+
+  try {
+    const g = await get("SELECT id, owner_user_id FROM games WHERE slug=? AND is_hidden=0", [slug]);
+    if (!g) return res.sendStatus(404);
+
+    const v = await get(
+      `SELECT approval_status, is_published
+       FROM game_versions
+       WHERE game_id=? AND version=?`,
+      [g.id, version]
+    );
+
+    if (v && v.is_published === 1) return next();
+
+    let h = req.headers.authorization || "";
+    if (!h.startsWith("Bearer ")) {
+      const cookieToken = readCookie(req, "auth_token");
+      if (cookieToken) {
+        req.headers.authorization = `Bearer ${cookieToken}`;
+        h = req.headers.authorization;
+      }
+    }
+    if (!h.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "not_authenticated" });
+    }
+    return requireAuth(req, res, async () => {
+      const isOwner = g.owner_user_id === req.user.uid;
+      const isPrivileged = req.user.role === "admin" || req.user.role === "moderator";
+      if (isOwner || isPrivileged) return next();
+
+      if (v) {
+        const wl = await get(
+          `SELECT 1 FROM game_version_whitelist
+           WHERE game_id=? AND version=? AND user_id=?
+           LIMIT 1`,
+          [g.id, version, req.user.uid]
+        );
+        if (wl) return next();
+      }
+      return res.status(403).send("Not authorized for this version.");
+    });
+  } catch {
+    return res.status(500).send("Server error.");
+  }
 });
 
 app.get("/games/:slug/:version/assets.json", async (req, res) => {
@@ -149,12 +311,18 @@ app.get("/:page", (req, res, next) => {
   });
 });
 
+app.use((req, res) => {
+  res.status(404).sendFile(path.join(WEB_DIR, "404.html"));
+});
+
 /* -----------------------------
    START
 ----------------------------- */
 await initDb();
 
 const PORT = Number(process.env.PORT || 5050);
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+app.listen(PORT, () => {console.log(`Server running at http://localhost:${PORT}`);
+});
+const PORT2 = Number(process.env.PORT || 3000);
+app.listen(PORT2, () => {console.log(`Server running at http://localhost:${PORT2}`);
 });

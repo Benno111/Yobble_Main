@@ -4,6 +4,14 @@ export async function mountTopbar(page){
   const res = await fetch("/partials/header.html");
   document.body.insertAdjacentHTML("afterbegin", await res.text());
 
+  const navToggle = document.getElementById("navToggle");
+  if (navToggle) {
+    navToggle.addEventListener("click", () => {
+      const isOpen = document.body.classList.toggle("nav-open");
+      navToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+  }
+
   const user = await getCurrentUser();
   if(user && (user.role==="admin"||user.role==="moderator")){
     const el=document.getElementById("adminLinks"); if(el) el.hidden=false;

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connect Wallet - Yobble</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  :root{
+    --cw-bg:#0a0d12;
+    --cw-ink:#eef2ff;
+    --cw-muted:#9aa6be;
+    --cw-card:#121722;
+    --cw-border:#283043;
+    --cw-accent:#ffd166;
+    --cw-accent-2:#5ad7ff;
+  }
+  body{
+    background:radial-gradient(circle at 12% 15%,rgba(255,209,102,.18),transparent 40%),
+               radial-gradient(circle at 80% 10%,rgba(90,215,255,.12),transparent 45%),
+               var(--cw-bg);
+    color:var(--cw-ink);
+    font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+  }
+  main{max-width:860px;margin:0 auto;padding:36px 20px 60px}
+  .card{
+    background:var(--cw-card);
+    border:1px solid var(--cw-border);
+    border-radius:18px;
+    padding:18px;
+    box-shadow:0 18px 50px rgba(0,0,0,.35);
+  }
+  .hero{
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    gap:18px;
+    align-items:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:linear-gradient(120deg,rgba(255,209,102,.2),transparent 45%),
+               linear-gradient(240deg,rgba(90,215,255,.16),transparent 45%);
+    pointer-events:none;
+  }
+  .hero h1{margin:0 0 8px;font-size:36px}
+  .hero p{margin:0;color:var(--cw-muted)}
+  .hero-art{
+    border-radius:16px;
+    border:1px solid var(--cw-border);
+    min-height:140px;
+    background:
+      linear-gradient(135deg,rgba(255,209,102,.25),rgba(18,23,34,.55)),
+      repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 10px,transparent 10px 20px);
+    display:flex;
+    align-items:flex-end;
+    padding:14px;
+    font-weight:600;
+  }
+  .panel{
+    margin-top:16px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .pill{
+    border:1px solid var(--cw-border);
+    border-radius:999px;
+    padding:6px 12px;
+    font-size:12px;
+    color:var(--cw-muted);
+    background:rgba(20,26,36,.6);
+  }
+  .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .primary{
+    background:linear-gradient(120deg,var(--cw-accent),#ffb84a);
+    border:none;
+    color:#201a08;
+    padding:10px 14px;
+    border-radius:12px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .ghost{
+    background:transparent;
+    border:1px solid var(--cw-border);
+    color:var(--cw-ink);
+    padding:10px 14px;
+    border-radius:12px;
+    cursor:pointer;
+    text-decoration:none;
+  }
+  .status{color:var(--cw-muted);font-size:12px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:12px;color:var(--cw-muted)}
+  .field input{
+    width:100%;
+    border:1px solid var(--cw-border);
+    background:#0c1118;
+    color:var(--cw-ink);
+    padding:10px 12px;
+    border-radius:10px;
+    font-family:inherit;
+  }
+  .field input:focus{outline:none;box-shadow:0 0 0 2px rgba(90,215,255,.35)}
+  @media (max-width: 900px){
+    .hero{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<main>
+  <section class="card hero">
+    <div>
+      <div class="pill">Wallet Access</div>
+      <h1>Connect your crypto wallet</h1>
+      <p>To access platform money tools, connect a compatible wallet like MetaMask.</p>
+    </div>
+    <div class="hero-art">Wallet sync</div>
+  </section>
+
+  <section class="card panel">
+    <div class="panel-header">
+      <div class="pill" id="walletStatus">Not connected</div>
+    </div>
+    <div class="status" id="walletHint"></div>
+    <div class="field">
+      <label for="walletLabel">Wallet label</label>
+      <input id="walletLabel" placeholder="e.g. Main Wallet">
+    </div>
+    <div class="actions">
+      <button class="primary" id="connectBtn" type="button">Connect wallet</button>
+      <a class="ghost" href="/money.html">Back to Money</a>
+    </div>
+  </section>
+</main>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api.js";
+import { requireAuth } from "/js/auth.js";
+
+await mountTopbar("wallet");
+
+const walletStatus = document.getElementById("walletStatus");
+const walletHint = document.getElementById("walletHint");
+const connectBtn = document.getElementById("connectBtn");
+const walletLabel = document.getElementById("walletLabel");
+const params = new URLSearchParams(location.search);
+const redirectTo = params.get("redirect") || "/money.html";
+
+function setStatus(text, hint){
+  walletStatus.textContent = text;
+  walletHint.textContent = hint || "";
+}
+
+async function connectWallet(){
+  const label = walletLabel.value.trim();
+  if (!label) {
+    setStatus("Add a label", "Enter a wallet label before continuing.");
+    return;
+  }
+  if (!window.ethereum) {
+    setStatus("No wallet detected", "Install MetaMask or a compatible wallet to continue.");
+    return;
+  }
+  try{
+    await requireAuth();
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    if (accounts && accounts[0]) {
+      await api.post("/api/wallet/connect", { address: accounts[0], label });
+      localStorage.setItem("wallet_connected", "true");
+      setStatus("Connected", `Wallet ${accounts[0]}`);
+      setTimeout(() => {
+        location.href = redirectTo;
+      }, 600);
+    } else {
+      setStatus("Not connected", "No wallet selected.");
+    }
+  }catch(e){
+    const msg = typeof e?.data?.error === "string" ? e.data.error : null;
+    if (msg === "address_in_use") {
+      setStatus("Wallet in use", "That wallet is already connected to another account.");
+    } else if (msg === "missing_label") {
+      setStatus("Missing label", "Add a wallet label to continue.");
+    } else if (msg === "label_too_long") {
+      setStatus("Label too long", "Keep the label under 60 characters.");
+    } else if (msg === "invalid_address") {
+      setStatus("Invalid address", "The wallet address could not be validated.");
+    } else {
+      setStatus("Connection failed", "Please approve the wallet connection request.");
+    }
+  }
+}
+
+connectBtn.addEventListener("click", connectWallet);
+
+if (window.ethereum) {
+  window.ethereum.request({ method: "eth_accounts" }).then((accounts) => {
+    if (accounts && accounts[0]) {
+      setStatus("Connected", `Wallet ${accounts[0]}`);
+    } else {
+      setStatus("Not connected", "Connect your wallet to continue.");
+    }
+  }).catch(() => {
+    setStatus("Not connected", "Connect your wallet to continue.");
+  });
+} else {
+  setStatus("No wallet detected", "Install MetaMask or a compatible wallet to continue.");
+}
+</script>
+</body>
+</html>

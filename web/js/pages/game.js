@@ -77,13 +77,21 @@ async function load(){
   }
   const g = gRes.game || gRes;
 
-  const vRes = await safeGet("/api/games/" + encodeURIComponent(slug) + "/versions", []);
-  const rawVersions = Array.isArray(vRes) ? vRes : (vRes.versions || []);
-  const versions = [...new Set(rawVersions.map(v => {
-    if (typeof v === "string") return v;
-    return v?.version || v?.name || "";
-  }).filter(Boolean))];
+  const vRes = await safeGet("/api/gamehosting/playable-versions?slug=" + encodeURIComponent(slug), null);
+  let versions = Array.isArray(vRes?.versions) ? vRes.versions : [];
+  if (!versions.length) {
+    const fallback = await safeGet("/api/games/" + encodeURIComponent(slug) + "/versions", []);
+    const rawVersions = Array.isArray(fallback) ? fallback : (fallback.versions || []);
+    versions = [...new Set(rawVersions.map(v => {
+      if (typeof v === "string") return v;
+      return v?.version || v?.name || "";
+    }).filter(Boolean))];
+  }
   const published = g.latest_version || versions[0] || "";
+
+  if (me && !(me.username === g.owner_username || ["admin","moderator"].includes(me?.role))) {
+    versions = versions.filter(Boolean);
+  }
 
   const inLibRes = await safeGet("/api/library/has?slug=" + encodeURIComponent(slug), null);
   let inLib = !!inLibRes?.in_library;
@@ -105,6 +113,7 @@ async function load(){
     <h1>${escapeHtml(g.title || "Untitled")}</h1>
     <p>${escapeHtml(g.description || "No description yet.")}</p>
     <div class="hero-meta">
+      <span class="badge">By ${escapeHtml(g.owner_display_name || g.owner_username || "Unknown")}</span>
       <span class="badge">Rating ${escapeHtml(g.avg_rating ?? "—")}</span>
       <span class="badge">${escapeHtml(g.rating_count ?? 0)} reviews</span>
       <span class="badge">Slug ${escapeHtml(g.slug)}</span>
@@ -123,8 +132,12 @@ async function load(){
       <select id="versionSelect"></select>
     </div>
     <button class="primary" id="playBtn">Play</button>
-    <button class="secondary" id="desktopBtn">Play on desktop</button>
+    ${(me && g.owner_username && me.username === g.owner_username)
+      ? `<a class="secondary" id="dashBtn" href="/game-dashboard.html?slug=${encodeURIComponent(g.slug)}">Open dashboard</a>`
+      : ""}
     ${libAvailable ? `<button class="secondary" id="libBtn">${inLib ? "In Library" : "Add to Library"}</button>` : ""}
+    ${["admin","moderator"].includes(me?.role) ? `<button class="secondary" id="featureBtn">${g.is_featured ? "Unfeature" : "Feature"}</button>` : ""}
+    <div class="muted" id="playNotice"></div>
   `;
 
   const sel = document.getElementById("versionSelect");
@@ -147,7 +160,23 @@ async function load(){
     document.getElementById("playBtn").disabled = true;
   }
 
-  document.getElementById("playBtn").onclick = async ()=>{
+  const playBtn = document.getElementById("playBtn");
+  const playNotice = document.getElementById("playNotice");
+
+  async function updatePlayAccess(){
+    const version = sel.value;
+    if(!version) return;
+    try{
+      await api.get(`/api/gamehosting/can-play?slug=${encodeURIComponent(slug)}&version=${encodeURIComponent(version)}`);
+      playBtn.disabled = false;
+      if(playNotice) playNotice.textContent = "";
+    }catch{
+      playBtn.disabled = true;
+      if(playNotice) playNotice.textContent = "Unpublished: whitelist required.";
+    }
+  }
+
+  playBtn.onclick = async ()=>{
     const version = sel.value;
     if(!version) return;
     const entry = g.entry_html || "index.html";
@@ -165,30 +194,8 @@ async function load(){
     else location.href = url;
   };
 
-  document.getElementById("desktopBtn").onclick = async ()=>{
-    const version = sel.value;
-    if(!version) return;
-    const entry = g.entry_html || "index.html";
-    let token = "";
-    try{
-      const t = await api.post("/api/launcher/token", { game_slug: slug });
-      token = t.token || "";
-    }catch{}
-    const url =
-      `/play.html?slug=${encodeURIComponent(slug)}` +
-      `&version=${encodeURIComponent(version)}` +
-      `&entry=${encodeURIComponent(entry)}` +
-      (token ? `&launch_token=${encodeURIComponent(token)}` : "");
-    if(window.electron?.openGame) {
-      window.electron.openGame(url);
-    } else {
-      const proto = `benno111engene://${encodeURIComponent(slug)}/${encodeURIComponent(version)}`;
-      console.log(proto)
-      console.log(version)
-      console.log(slug)
-      location.href = proto;
-    }
-  };
+  sel.addEventListener("change", updatePlayAccess);
+  await updatePlayAccess();
 
   if(libAvailable){
     document.getElementById("libBtn").onclick = async ()=>{
@@ -200,6 +207,20 @@ async function load(){
         await api.post("/api/library/add", { slug });
         inLib = true;
         document.getElementById("libBtn").textContent = "In Library";
+      }
+    };
+  }
+
+  const featureBtn = document.getElementById("featureBtn");
+  if(featureBtn){
+    featureBtn.onclick = async ()=>{
+      try{
+        const next = g.is_featured ? 0 : 1;
+        await api.post("/api/mod/games/feature", { slug, featured: next });
+        g.is_featured = next;
+        featureBtn.textContent = g.is_featured ? "Unfeature" : "Feature";
+      }catch{
+        featureBtn.textContent = "Failed";
       }
     };
   }

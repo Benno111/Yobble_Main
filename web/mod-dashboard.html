@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Moderator Dashboard - Yobble</title>
 <link rel="stylesheet" href="/style.css">
 <style>
@@ -80,6 +81,11 @@
   .stat-title{font-size:18px;font-weight:700}
   .stat-value{font-size:28px;font-weight:800}
   .stat-meta{color:var(--mod-muted);font-size:12px}
+  .tos-card{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
   @media (max-width: 900px){
     .hero{grid-template-columns:1fr}
   }
@@ -127,11 +133,17 @@
       <div class="stat-meta">Last 24h and last 7d.</div>
     </div>
   </section>
+  <section class="card tos-card">
+    <div class="stat-title">Terms of Service</div>
+    <div class="stat-meta">Manage the JSON-driven TOS from the editor page.</div>
+    <a class="pill" href="/mod-tos.html">Open TOS editor →</a>
+  </section>
   <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
     <a class="pill" href="/mod-dashboard.html">Dashboard</a>
     <a class="pill" href="/mod-reports.html">Reports</a>
     <a class="pill" href="/mod-appeals.html">Appeals</a>
     <a class="pill" href="/mod-bans.html">Ban History</a>
+    <a class="pill" href="/mod-tos.html">TOS Editor</a>
     <a class="pill" href="/modqueue.html">Queue</a>
     <a class="pill" href="/moderation.html">Overview</a>
   </section>
@@ -154,6 +166,7 @@ document.getElementById("appeals").textContent = s.openAppeals ?? 0;
 document.getElementById("recent").textContent = `24h ${s.created24h} • 7d ${s.created7d}`;
 document.getElementById("stat-open").textContent = `${s.openAppeals ?? 0} open appeals`;
 document.getElementById("stat-activity").textContent = `${s.created24h ?? 0} bans 24h`;
+
 </script>
 </body>
 </html>

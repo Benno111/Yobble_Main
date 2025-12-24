@@ -58,6 +58,9 @@
   border-bottom:1px solid var(--border);
   background: rgba(15,18,26,.55);
   backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
 .topbar .left{

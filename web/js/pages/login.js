@@ -8,8 +8,24 @@ document.getElementById("btn").onclick = async ()=>{
     const r = await api.post("/api/auth/login", { username:u.value, password:p.value });
     if(!r.token) throw new Error("no token");
     localStorage.setItem("token", r.token);
-    location.href = "/games.html";
+    if (r.user?.is_banned) {
+      location.href = "/Permanetly-Banned";
+    } else if (r.user?.timeout_until) {
+      const until = r.user.timeout_until ? `?until=${encodeURIComponent(r.user.timeout_until)}` : "";
+      location.href = `/temporay-banned${until}`;
+    } else {
+      location.href = "/games.html";
+    }
   }catch(e){
+    if (e?.status === 403 && e?.data?.error === "account_banned") {
+      location.href = "/Permanetly-Banned";
+      return;
+    }
+    if (e?.status === 403 && e?.data?.error === "account_timed_out") {
+      const until = e?.data?.until ? `?until=${encodeURIComponent(e.data.until)}` : "";
+      location.href = `/temporay-banned${until}`;
+      return;
+    }
     err.textContent = typeof e === "string" ? e : JSON.stringify(e,null,2);
   }
 };

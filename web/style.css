@@ -4,13 +4,16 @@
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui;background:var(--bg);color:var(--text)}
 a{color:inherit;text-decoration:none}
-header{display:flex;gap:16px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:#0c0f14;position:sticky;top:0}
+header{display:flex;gap:16px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:#0c0f14;position:sticky;top:0;z-index:1000}
 nav a{margin-right:10px;opacity:.85}
 nav a.active{color:var(--accent);opacity:1}
 main{max-width:1100px;margin:20px auto;padding:0 16px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
 .iconBtn{background:none;border:none;color:inherit;cursor:pointer;position:relative}
+#navToggle{display:none}
+.navToggle{border:1px solid var(--border);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:4px}
+.navToggleBar{width:18px;height:2px;background:var(--text);display:block;border-radius:999px}
 #notifBadge{position:absolute;top:-6px;right:-6px;background:red;color:#fff;border-radius:999px;padding:2px 6px;font-size:10px}
 .dropdown{position:absolute;right:12px;top:52px;background:var(--card);border:1px solid var(--border);width:320px;max-height:420px;overflow:auto}
 .dropdown.hidden{display:none}
@@ -20,3 +23,23 @@ main{max-width:1100px;margin:20px auto;padding:0 16px}
 button.primary{background:var(--accent);border:none;color:#000;padding:6px 10px;border-radius:6px}
 button.danger{background:#ff5d5d;border:none;color:#000;padding:6px 10px;border-radius:6px}
 .pill{padding:6px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted);font-size:12px}
+
+@media (max-width: 800px){
+  header{flex-wrap:wrap;gap:10px;padding:10px 12px}
+  nav{display:flex;flex-wrap:wrap;gap:8px}
+  nav a{margin-right:0}
+  #navToggle{display:flex;margin-left:auto}
+  #mainNav{order:4;width:100%;display:none;flex-direction:column;gap:6px;padding:6px 0}
+  #mainNav a{white-space:nowrap;padding:6px 8px;border-radius:8px}
+  body.nav-open #mainNav{display:flex}
+  #walletBalance{margin-left:0;order:3}
+  main{margin:12px auto;padding:0 12px}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+  .card{padding:14px}
+  .dropdown{right:12px;left:12px;width:auto}
+}
+
+@media (max-width: 520px){
+  nav a{font-size:13px}
+  .pill{font-size:11px}
+}

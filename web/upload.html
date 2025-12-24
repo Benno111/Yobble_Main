@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Upload - Yobble</title>
 <link rel="stylesheet" href="/style.css">
 <style>
@@ -87,6 +88,21 @@
   textarea{resize:vertical}
   .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .status{color:var(--up-muted);font-size:12px}
+  .progress{
+    width:100%;
+    height:8px;
+    border-radius:999px;
+    background:#0f151f;
+    border:1px solid var(--up-border);
+    overflow:hidden;
+  }
+  .progress > span{
+    display:block;
+    height:100%;
+    width:0%;
+    background:linear-gradient(120deg,var(--up-accent),#4dd4ff);
+    transition:width .2s ease;
+  }
   @media (max-width: 900px){
     .hero{grid-template-columns:1fr}
   }
@@ -139,6 +155,9 @@
         <button id="uploadBtn" class="primary">Upload</button>
         <span class="status" id="status"></span>
       </div>
+      <div class="progress" aria-hidden="true">
+        <span id="uploadProgress"></span>
+      </div>
       <div class="pill">Notes</div>
       <div class="status">ZIP must include the entry HTML (default index.html).</div>
       <div class="status">Large uploads may take a minute to process.</div>
@@ -183,6 +202,7 @@ await requireAuth();
 const status = document.getElementById("status");
 const uploadBtn = document.getElementById("uploadBtn");
 const last = document.getElementById("last");
+const uploadProgress = document.getElementById("uploadProgress");
 const itemUploadBtn = document.getElementById("itemUploadBtn");
 const itemStatus = document.getElementById("itemStatus");
 
@@ -198,6 +218,7 @@ function slugify(v){
 uploadBtn.onclick = async () => {
   status.textContent = "";
   uploadBtn.disabled = true;
+  uploadProgress.style.width = "0%";
   const zip = document.getElementById("zip").files?.[0];
   if (!zip) {
     status.textContent = "Select a ZIP file.";
@@ -234,12 +255,31 @@ uploadBtn.onclick = async () => {
   fd.append("description", description);
 
   try{
-    const r = await api.post("/api/gamehosting/upload", fd);
-    status.textContent = r?.url ? `Uploaded ✔ ${r.url}` : "Uploaded ✔";
-    last.textContent = r?.url ? `Latest: ${r.url}` : "Latest: uploaded.";
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/gamehosting/upload");
+    xhr.upload.addEventListener("progress", (evt) => {
+      if (!evt.lengthComputable) return;
+      const pct = Math.round((evt.loaded / evt.total) * 100);
+      uploadProgress.style.width = pct + "%";
+    });
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        let r = {};
+        try{ r = JSON.parse(xhr.responseText || "{}"); }catch{}
+        status.textContent = r?.url ? `Uploaded ✔ ${r.url}` : "Uploaded ✔";
+        last.textContent = r?.url ? `Latest: ${r.url}` : "Latest: uploaded.";
+      } else {
+        status.textContent = "Upload failed.";
+      }
+      uploadBtn.disabled = false;
+    });
+    xhr.addEventListener("error", () => {
+      status.textContent = "Upload failed.";
+      uploadBtn.disabled = false;
+    });
+    xhr.send(fd);
   }catch(e){
     status.textContent = e?.message ? `Upload failed: ${e.message}` : "Upload failed.";
-  }finally{
     uploadBtn.disabled = false;
   }
 };

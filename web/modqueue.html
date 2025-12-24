@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Moderation Queue - Yobble</title>
 <link rel="stylesheet" href="/style.css">
 <style>
@@ -140,13 +141,21 @@ if(!rows.length){
   content.innerHTML = rows.map(x => `
     <div class="queue-card">
       <div class="queue-title">${escapeHtml((x.type || "item").toUpperCase())}</div>
-      <div class="queue-meta">${escapeHtml(x.ref || "")}</div>
+      <div class="queue-meta">${escapeHtml(x.ref || "")}${x.version ? " · v" + escapeHtml(x.version) : ""}</div>
       <div class="queue-meta">Status ${escapeHtml(x.status || "pending")}</div>
       ${
         x.type === "item"
           ? `<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:auto">
                <button class="primary" data-approve="${escapeHtml(x.ref || "")}">Approve</button>
                <button class="secondary" data-reject="${escapeHtml(x.ref || "")}">Reject</button>
+             </div>`
+          : x.type === "game"
+          ? `<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:auto">
+               <button class="primary" data-approve-game="${escapeHtml(x.ref || "")}" data-version="${escapeHtml(x.version || "")}">Approve</button>
+               <button class="secondary" data-reject-game="${escapeHtml(x.ref || "")}" data-version="${escapeHtml(x.version || "")}">Reject</button>
+               <button class="secondary" data-reject-ban-game="${escapeHtml(x.ref || "")}" data-version="${escapeHtml(x.version || "")}">Reject + ban</button>
+               <button class="secondary" data-delete-game="${escapeHtml(x.ref || "")}" data-version="${escapeHtml(x.version || "")}">Delete</button>
+               <a class="secondary" href="/play.html?slug=${encodeURIComponent(x.ref || "")}&version=${encodeURIComponent(x.version || "")}&entry=${encodeURIComponent(x.entry_html || "index.html")}&return=${encodeURIComponent("/modqueue.html")}">Playtest</a>
              </div>`
           : ``
       }
@@ -167,6 +176,51 @@ if(!rows.length){
       const reason = prompt("Rejection reason?") || "";
       await api.post("/api/mod/items/reject", { code, reason });
       btn.textContent = "Rejected";
+      btn.disabled = true;
+    });
+  });
+  document.querySelectorAll("[data-approve-game]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const slug = btn.dataset.approveGame;
+      const version = btn.dataset.version;
+      await api.post("/api/mod/games/approve", { slug, version, publish:false });
+      btn.textContent = "Approved";
+      btn.disabled = true;
+    });
+  });
+  document.querySelectorAll("[data-reject-game]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const slug = btn.dataset.rejectGame;
+      const version = btn.dataset.version;
+      const reason = prompt("Rejection reason?") || "";
+      await api.post("/api/mod/games/reject", { slug, version, reason });
+      btn.textContent = "Rejected";
+      btn.disabled = true;
+    });
+  });
+  document.querySelectorAll("[data-reject-ban-game]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const slug = btn.dataset.rejectBanGame;
+      const version = btn.dataset.version;
+      const reason = prompt("Ban reason? (optional)") || "";
+      const hoursRaw = prompt("Ban duration hours? Leave blank for permanent.");
+      const duration_hours = hoursRaw ? Number(hoursRaw) : null;
+      if (hoursRaw && (!Number.isFinite(duration_hours) || duration_hours <= 0)) {
+        alert("Invalid duration.");
+        return;
+      }
+      await api.post("/api/mod/games/reject-ban", { slug, version, reason, duration_hours });
+      btn.textContent = "Rejected + banned";
+      btn.disabled = true;
+    });
+  });
+  document.querySelectorAll("[data-delete-game]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const slug = btn.dataset.deleteGame;
+      const version = btn.dataset.version;
+      if (!confirm(`Delete version ${version}? This cannot be undone.`)) return;
+      await api.post("/api/gamehosting/version/delete", { slug, version });
+      btn.textContent = "Deleted";
       btn.disabled = true;
     });
   });

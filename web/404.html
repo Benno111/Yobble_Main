@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 - Yobble</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  :root{
+    --nf-bg:#0a0d12;
+    --nf-ink:#eef2ff;
+    --nf-muted:#a5b0c6;
+    --nf-card:#141a24;
+    --nf-border:#283043;
+    --nf-accent:#ff9f1c;
+  }
+  body{
+    background:radial-gradient(circle at 18% 20%,rgba(255,159,28,.18),transparent 45%),
+               radial-gradient(circle at 80% 10%,rgba(77,212,255,.14),transparent 45%),
+               var(--nf-bg);
+    color:var(--nf-ink);
+    font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+  }
+  main{max-width:900px}
+  .card{
+    background:var(--nf-card);
+    border:1px solid var(--nf-border);
+    border-radius:18px;
+    padding:24px;
+  }
+  .title{font-size:34px;margin:0 0 6px}
+  .muted{color:var(--nf-muted)}
+  .action{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    margin-top:16px;
+    padding:10px 14px;
+    border-radius:12px;
+    border:1px solid var(--nf-border);
+    color:var(--nf-ink);
+    text-decoration:none;
+  }
+  .action.primary{
+    background:linear-gradient(120deg,var(--nf-accent),#ffd166);
+    border:none;
+    color:#1f1406;
+    font-weight:700;
+  }
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<main>
+  <section class="card">
+    <div class="muted"></div>Error 404</div>
+    <h1 class="title" id="errTitle">Page not found.</h1>
+    <div class="actions">
+      <a class="action primary" href="/games.html">Browse games</a>
+      <a class="action" href="/index.html">Home</a>
+    </div>
+  </section>
+</main>
+<script>
+  const params = new URLSearchParams(location.search);
+  const msg = params.get("msg");
+  if (msg) {
+    document.getElementById("errTitle").textContent = msg;
+  }
+</script>
+</body>
+</html>

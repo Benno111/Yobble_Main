@@ -58,6 +58,9 @@ export async function initDb() {
   await addColumnIfMissing("users", "banned_at", "INTEGER");
   await addColumnIfMissing("users", "timeout_until", "INTEGER");
   await addColumnIfMissing("users", "timeout_reason", "TEXT");
+  await addColumnIfMissing("users", "wallet_address", "TEXT");
+  await addColumnIfMissing("users", "wallet_connected_at", "INTEGER");
+  await addColumnIfMissing("users", "wallet_label", "TEXT");
 
   /* GAMES */
   await run(`CREATE TABLE IF NOT EXISTS games(
@@ -67,9 +70,22 @@ export async function initDb() {
     description TEXT,
     is_hidden INTEGER DEFAULT 0
   )`);
+  await addColumnIfMissing("games", "is_featured", "INTEGER DEFAULT 0");
+  await addColumnIfMissing("games", "owner_user_id", "INTEGER");
   await addColumnIfMissing("games", "category", "TEXT");
   await addColumnIfMissing("games", "banner_path", "TEXT");
   await addColumnIfMissing("games", "screenshots_json", "TEXT");
+  await run(
+    `UPDATE games
+     SET owner_user_id = (
+       SELECT uploader_user_id
+       FROM game_uploads gu
+       WHERE gu.game_id = games.id
+       ORDER BY gu.created_at ASC
+       LIMIT 1
+     )
+     WHERE owner_user_id IS NULL`
+  );
 
   /* GAME VERSIONS */
   await run(`CREATE TABLE IF NOT EXISTS game_versions(
@@ -291,6 +307,28 @@ export async function initDb() {
     decision_note TEXT,
     FOREIGN KEY(ban_id) REFERENCES bans(id) ON DELETE CASCADE,
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
+
+  /* GAME STORAGE */
+  await run(`CREATE TABLE IF NOT EXISTS game_kv(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    slug TEXT NOT NULL,
+    version TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT,
+    updated_at INTEGER NOT NULL,
+    UNIQUE(user_id, slug, version, key)
+  )`);
+
+  /* GAME VERSION WHITELIST */
+  await run(`CREATE TABLE IF NOT EXISTS game_version_whitelist(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id INTEGER NOT NULL,
+    version TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    added_at INTEGER NOT NULL,
+    UNIQUE(game_id, version, user_id)
   )`);
 
   console.log("[DB] schema ready");

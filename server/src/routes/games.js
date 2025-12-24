@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { all, get } from "../db.js";
+import { requireAuth } from "../auth.js";
 
 export const gamesRouter = express.Router();
 
@@ -45,11 +46,49 @@ function listFilesRecursive(baseDir, sub = "") {
 /* -----------------------------
    GET /api/games
 ----------------------------- */
-gamesRouter.get("/", async (_req, res) => {
-  const rows = await all(
-    "SELECT slug,title,description,category FROM games WHERE is_hidden=0"
+gamesRouter.get("/", requireAuth, async (req, res) => {
+  const games = await all(
+    `SELECT g.id, g.slug, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured,
+            g.owner_user_id,
+            u.username AS owner_username, pr.display_name AS owner_display_name,
+            (SELECT v.version FROM game_versions v
+             WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved'
+             ORDER BY v.created_at DESC LIMIT 1) AS latest_version,
+            (SELECT v.entry_html FROM game_versions v
+             WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved'
+             ORDER BY v.created_at DESC LIMIT 1) AS entry_html,
+            (SELECT ROUND(AVG(r.rating),2) FROM game_reviews r WHERE r.game_id=g.id) AS avg_rating,
+            (SELECT COUNT(*) FROM game_reviews r WHERE r.game_id=g.id) AS rating_count,
+            (SELECT COUNT(*) FROM game_versions v
+             WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved') AS playable_count,
+            (SELECT COUNT(*) FROM game_version_whitelist w
+             WHERE w.game_id=g.id AND w.user_id=?) AS whitelisted_count
+     FROM games g
+     LEFT JOIN users u ON u.id = g.owner_user_id
+     LEFT JOIN profiles pr ON pr.user_id = g.owner_user_id
+     WHERE g.is_hidden=0
+     ORDER BY g.title`,
+    [req.user.uid]
   );
-  res.json(rows);
+
+  const out = games.map(g => ({
+    ...g,
+    screenshots: (() => {
+      try{
+        const a = JSON.parse(g.screenshots_json || "[]");
+        return Array.isArray(a) ? a : [];
+      }catch{
+        return [];
+      }
+    })()
+  }));
+
+  const filtered = out.filter(g =>
+    (g.playable_count || 0) > 0 ||
+    g.owner_user_id === req.user.uid ||
+    (g.whitelisted_count || 0) > 0
+  );
+  res.json({ games: filtered });
 });
 
 /* -----------------------------
@@ -59,31 +98,61 @@ gamesRouter.get("/:slug", async (req, res) => {
   const { slug } = req.params;
   if (!isValidSlug(slug)) return res.sendStatus(400);
 
-  const row = await get(
-    "SELECT slug,title,description,category,is_hidden FROM games WHERE slug=?",
+  const g = await get(
+    `SELECT g.id, g.slug, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured, g.is_hidden,
+            u.username AS owner_username, pr.display_name AS owner_display_name,
+            (SELECT v.version FROM game_versions v
+             WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved'
+             ORDER BY v.created_at DESC LIMIT 1) AS latest_version,
+            (SELECT v.entry_html FROM game_versions v
+             WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved'
+             ORDER BY v.created_at DESC LIMIT 1) AS entry_html,
+            (SELECT ROUND(AVG(r.rating),2) FROM game_reviews r WHERE r.game_id=g.id) AS avg_rating,
+            (SELECT COUNT(*) FROM game_reviews r WHERE r.game_id=g.id) AS rating_count
+     FROM games g
+     LEFT JOIN users u ON u.id = g.owner_user_id
+     LEFT JOIN profiles pr ON pr.user_id = g.owner_user_id
+     WHERE g.slug=?`,
     [slug]
   );
-  if (!row || row.is_hidden) return res.status(404).json({ error: "game_deleted" });
-  res.json(row);
+  if (!g || g.is_hidden) return res.status(404).json({ error: "game_deleted" });
+  let screenshots = [];
+  try{
+    const a = JSON.parse(g.screenshots_json || "[]");
+    screenshots = Array.isArray(a) ? a : [];
+  }catch{}
+  res.json({ game: { ...g, screenshots } });
 });
 
 /* -----------------------------
    GET /api/games/:slug/versions
 ----------------------------- */
-gamesRouter.get("/:slug/versions", async (req, res) => {
+gamesRouter.get("/:slug/versions", requireAuth, async (req, res) => {
   const { slug } = req.params;
   if (!isValidSlug(slug)) return res.sendStatus(400);
 
-  const game = await get("SELECT id, is_hidden FROM games WHERE slug=?", [slug]);
+  const game = await get("SELECT id, is_hidden, owner_user_id FROM games WHERE slug=?", [slug]);
   if (!game || game.is_hidden) return res.status(404).json({ error: "game_deleted" });
 
-  const rows = await all(
+  const isOwner = game.owner_user_id === req.user.uid;
+  const isPrivileged = req.user.role === "admin" || req.user.role === "moderator";
+  let rows = await all(
     `SELECT version, entry_html, is_published, approval_status
      FROM game_versions
      WHERE game_id=? AND approval_status='approved'
      ORDER BY created_at DESC`,
     [game.id]
   );
+
+  if (!isOwner && !isPrivileged) {
+    const wl = await all(
+      `SELECT version FROM game_version_whitelist
+       WHERE game_id=? AND user_id=?`,
+      [game.id, req.user.uid]
+    );
+    const allowed = new Set(wl.map(r => r.version));
+    rows = rows.filter(r => r.is_published === 1 || allowed.has(r.version));
+  }
 
   if (rows.length) {
     return res.json({ versions: rows });

@@ -1,10 +1,10 @@
 import express from "express";
-import { requireAuth, requireRole } from "../auth.js";
+import { requireAuth, requireAuthAllowBanned, requireRole } from "../auth.js";
 import { get, all, run } from "../db.js";
 
 export const appealsRouter = express.Router();
 
-appealsRouter.post("/create", requireAuth, async (req,res)=>{
+appealsRouter.post("/create", requireAuthAllowBanned, async (req,res)=>{
   const ban_id = Number(req.body?.ban_id);
   const message = String(req.body?.message||"").trim();
   if(!Number.isFinite(ban_id)||!message)
@@ -30,6 +30,24 @@ appealsRouter.post("/create", requireAuth, async (req,res)=>{
     [ban_id, req.user.uid, "open", message, Date.now()]
   );
   res.json({ok:true});
+});
+
+appealsRouter.get("/my-bans", requireAuthAllowBanned, async (req, res) => {
+  const now = Date.now();
+  const bans = await all(
+    `SELECT b.id, b.reason, b.created_at, b.expires_at,
+            CASE WHEN a.id IS NULL THEN 0 ELSE 1 END AS has_open_appeal
+     FROM bans b
+     LEFT JOIN ban_appeals a
+       ON a.ban_id = b.id AND a.status='open' AND a.user_id=?
+     WHERE b.target_type='user'
+       AND b.target_id=?
+       AND b.lifted_at IS NULL
+       AND (b.expires_at IS NULL OR b.expires_at > ?)
+     ORDER BY b.created_at DESC`,
+    [req.user.uid, req.user.uid, now]
+  );
+  res.json({ bans });
 });
 
 appealsRouter.get("/mod/open", requireAuth, requireRole("moderator"), async (_req,res)=>{
@@ -61,12 +79,26 @@ appealsRouter.post("/mod/decide", requireAuth, requireRole("moderator"), async (
   );
 
   if(decision==="accepted"){
-    const row = await get(`SELECT ban_id FROM ban_appeals WHERE id=?`, [id]);
+    const row = await get(
+      `SELECT b.id, b.target_type, b.target_id
+       FROM ban_appeals a
+       JOIN bans b ON b.id=a.ban_id
+       WHERE a.id=?`,
+      [id]
+    );
     if(row){
       await run(
         `UPDATE bans SET lifted_at=?, lift_reason=? WHERE id=?`,
-        [Date.now(), "Appeal accepted: "+note, row.ban_id]
+        [Date.now(), "Appeal accepted: "+note, row.id]
       );
+      if(row.target_type === "user"){
+        await run(
+          `UPDATE users
+           SET is_banned=0, ban_reason=NULL, banned_at=NULL
+           WHERE id=?`,
+          [row.target_id]
+        );
+      }
     }
   }
   res.json({ok:true});

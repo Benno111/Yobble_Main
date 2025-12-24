@@ -147,16 +147,26 @@ marketRouter.post("/buy", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "not_enough_qty" });
   }
 
+  const cost = qty * listing.price;
+  const now = Date.now();
+  await run("INSERT OR IGNORE INTO wallets(user_id,balance,updated_at) VALUES(?,?,?)", [req.user.uid, 0, now]);
+  await run("INSERT OR IGNORE INTO wallets(user_id,balance,updated_at) VALUES(?,?,?)", [listing.seller_id, 0, now]);
+
+  const buyerWallet = await get("SELECT balance FROM wallets WHERE user_id=?", [req.user.uid]);
+  if ((buyerWallet?.balance ?? 0) < cost) {
+    return res.status(400).json({ error: "insufficient_funds" });
+  }
+
   const remaining = listing.qty - qty;
   if (remaining <= 0) {
     await run(
       "UPDATE marketplace_listings SET qty=0, status='sold', updated_at=? WHERE id=?",
-      [Date.now(), listing.id]
+      [now, listing.id]
     );
   } else {
     await run(
       "UPDATE marketplace_listings SET qty=?, updated_at=? WHERE id=?",
-      [remaining, Date.now(), listing.id]
+      [remaining, now, listing.id]
     );
   }
 
@@ -165,9 +175,26 @@ marketRouter.post("/buy", requireAuth, async (req, res) => {
     await run(
       `UPDATE marketplace_auto_stock SET qty_remaining=?, updated_at=?
        WHERE seller_id=? AND item_id=?`,
-      [Math.max(remaining, 0), Date.now(), listing.seller_id, listing.item_id]
+      [Math.max(remaining, 0), now, listing.seller_id, listing.item_id]
     );
   }
+
+  await run(
+    "UPDATE wallets SET balance=balance-?, updated_at=? WHERE user_id=?",
+    [cost, now, req.user.uid]
+  );
+  await run(
+    "UPDATE wallets SET balance=balance+?, updated_at=? WHERE user_id=?",
+    [cost, now, listing.seller_id]
+  );
+  await run(
+    "INSERT INTO wallet_transactions(user_id,amount,reason,ref_type,ref_id,created_at) VALUES(?,?,?,?,?,?)",
+    [req.user.uid, -cost, "market_buy", "listing", listing.id, now]
+  );
+  await run(
+    "INSERT INTO wallet_transactions(user_id,amount,reason,ref_type,ref_id,created_at) VALUES(?,?,?,?,?,?)",
+    [listing.seller_id, cost, "market_sell", "listing", listing.id, now]
+  );
 
   await run(
     `INSERT INTO inventory(user_id,item_id,qty)

@@ -42,7 +42,7 @@ profileRouter.get("/lookup", requireAuth, async (req,res)=>{
   const q = String(req.query.q || "").trim();
   if(!q) return res.json({ users: [] });
   const users = await all(
-    `SELECT u.id,u.username,pr.display_name,pr.avatar_url,pr.status_text
+    `SELECT u.id,u.username,pr.display_name,pr.avatar_url,pr.status_text,pr.bio
      FROM users u LEFT JOIN profiles pr ON pr.user_id=u.id
      WHERE (u.username LIKE ? OR pr.display_name LIKE ?)
        AND (u.is_banned IS NULL OR u.is_banned=0)
@@ -51,4 +51,25 @@ profileRouter.get("/lookup", requireAuth, async (req,res)=>{
     [`%${q}%`, `%${q}%`]
   );
   res.json({ users });
+});
+
+profileRouter.get("/lookup-exact", requireAuth, async (req,res)=>{
+  const u = String(req.query.u || "").trim();
+  if(!u) return res.status(400).json({ error: "bad_request" });
+  const user = await get(
+    `SELECT u.id,u.username,u.role,u.is_banned,u.ban_reason,u.banned_at,u.timeout_until,u.timeout_reason,
+            pr.display_name,pr.bio,pr.avatar_url,pr.status_text,pr.updated_at
+     FROM users u LEFT JOIN profiles pr ON pr.user_id=u.id
+     WHERE LOWER(u.username)=LOWER(?)
+     LIMIT 1`,
+    [u]
+  );
+  if(!user) return res.status(404).json({ error: "not_found" });
+  if(user.is_banned){
+    return res.status(403).json({ error: "account_banned", reason: user.ban_reason || null });
+  }
+  if(user.timeout_until && user.timeout_until > Date.now()){
+    return res.status(403).json({ error: "account_timed_out", until: user.timeout_until, reason: user.timeout_reason || null });
+  }
+  res.json({ profile: user });
 });

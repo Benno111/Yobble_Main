@@ -2,15 +2,235 @@
 <html>
 <head>
   <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Appeal - Yobble</title>
   <link rel="stylesheet" href="/style.css">
+  <style>
+    :root{
+      --appeal-bg:#0a0d12;
+      --appeal-ink:#eef2ff;
+      --appeal-muted:#9aa6be;
+      --appeal-card:#131924;
+      --appeal-border:#2a3247;
+      --appeal-accent:#ffd166;
+      --appeal-accent-2:#5ad7ff;
+      --appeal-ring:rgba(90,215,255,.35);
+    }
+    body{
+      background:
+        radial-gradient(circle at 12% 15%,rgba(255,209,102,.18),transparent 40%),
+        radial-gradient(circle at 80% 10%,rgba(90,215,255,.12),transparent 45%),
+        var(--appeal-bg);
+      color:var(--appeal-ink);
+      font-family:"Space Grotesk","IBM Plex Sans","Segoe UI",sans-serif;
+      min-height:100vh;
+    }
+    main{max-width:980px;margin:0 auto;padding:36px 20px 60px}
+    .hero{
+      display:grid;
+      grid-template-columns:1.1fr .9fr;
+      gap:18px;
+      padding:20px;
+      position:relative;
+      overflow:hidden;
+    }
+    .hero::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(120deg,rgba(255,209,102,.2),transparent 45%),
+                 linear-gradient(240deg,rgba(90,215,255,.12),transparent 45%);
+      pointer-events:none;
+    }
+    .hero h1{margin:0 0 8px;font-size:36px}
+    .hero p{margin:0;color:var(--appeal-muted)}
+    .hero-art{
+      border-radius:16px;
+      border:1px solid var(--appeal-border);
+      min-height:160px;
+      background:
+        linear-gradient(130deg,rgba(255,209,102,.25),rgba(18,23,34,.55)),
+        repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 10px,transparent 10px 20px);
+      display:flex;
+      align-items:flex-end;
+      padding:14px;
+      font-weight:600;
+    }
+    .card{
+      background:var(--appeal-card);
+      border:1px solid var(--appeal-border);
+      border-radius:16px;
+      padding:16px;
+      box-shadow:0 18px 50px rgba(0,0,0,.35);
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1.2fr .8fr;
+      gap:16px;
+      margin-top:18px;
+    }
+    .pill{
+      border:1px solid var(--appeal-border);
+      border-radius:999px;
+      padding:6px 12px;
+      font-size:12px;
+      color:var(--appeal-muted);
+      background:rgba(20,26,36,.6);
+    }
+    label{font-size:12px;color:var(--appeal-muted)}
+    input,textarea{
+      width:100%;
+      border:1px solid var(--appeal-border);
+      background:#0c1118;
+      color:var(--appeal-ink);
+      padding:10px 12px;
+      border-radius:10px;
+      font-family:inherit;
+    }
+    textarea{min-height:120px;resize:vertical}
+    input:focus,textarea:focus{outline:none;box-shadow:0 0 0 2px var(--appeal-ring)}
+    .field{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+    .primary{
+      background:linear-gradient(120deg,var(--appeal-accent),#ffb84a);
+      border:none;
+      color:#201a08;
+      padding:10px 14px;
+      border-radius:12px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .ghost{
+      background:transparent;
+      border:1px solid var(--appeal-border);
+      color:var(--appeal-ink);
+      padding:10px 14px;
+      border-radius:12px;
+      text-decoration:none;
+      display:inline-block;
+    }
+    .muted{color:var(--appeal-muted);font-size:12px}
+    .status{color:var(--appeal-muted);font-size:12px;margin-top:10px;white-space:pre-wrap}
+    .list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+    .list .item{display:flex;gap:10px;align-items:flex-start}
+    .dot{
+      width:10px;height:10px;border-radius:50%;
+      background:var(--appeal-accent-2);
+      margin-top:6px;
+      box-shadow:0 0 0 4px rgba(90,215,255,.18);
+    }
+    @media (max-width: 900px){
+      .hero{grid-template-columns:1fr}
+      .grid{grid-template-columns:1fr}
+    }
+  </style>
 </head>
 <body>
+  <main>
+    <section class="card hero">
+      <div>
+        <div class="pill">Ban appeal</div>
+        <h1>Request a review.</h1>
+        <p>Submit context and a clear explanation. Appeals are reviewed by moderators.</p>
+      </div>
+      <div class="hero-art">Appeals queue</div>
+    </section>
 
-<script type="module" src="/js/pages/appeal.js"></script>
-<script type="module">
-  import { loadLayout } from "/js/layout.js";
-  loadLayout();
-</script>
+    <section class="grid">
+      <div class="card">
+        <div class="h1" style="margin:0">Submit an appeal</div>
+        <div class="muted" style="margin-top:6px">Provide the ban ID and a short message. Keep it focused and factual.</div>
+        <div class="field">
+          <label for="banId">Active ban</label>
+          <select id="banId"></select>
+          <div class="muted" id="banHelp"></div>
+        </div>
+        <div class="field">
+          <label for="message">Your message</label>
+          <textarea id="message" placeholder="Explain what happened and why you believe this should be reviewed."></textarea>
+        </div>
+        <div class="actions">
+          <button class="primary" id="submitBtn">Submit appeal</button>
+          <a class="ghost" href="/index.html">Back to home</a>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+      <div class="card">
+        <div class="h2" style="margin:0">What to include</div>
+        <div class="list">
+          <div class="item"><span class="dot"></span><div>What happened and when.</div></div>
+          <div class="item"><span class="dot"></span><div>Why the decision may be incorrect.</div></div>
+          <div class="item"><span class="dot"></span><div>Any context a moderator should know.</div></div>
+        </div>
+        <div class="muted" style="margin-top:14px">Only one open appeal is allowed per ban.</div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { mountTopbar } from "/js/layout.js";
+    import { api } from "/js/api.js";
+    import { requireAuthAllowBanned } from "/js/auth.js";
+
+    await mountTopbar("appeal");
+    await requireAuthAllowBanned();
+
+    const banId = document.getElementById("banId");
+    const banHelp = document.getElementById("banHelp");
+    const message = document.getElementById("message");
+    const status = document.getElementById("status");
+
+    async function loadBans(){
+      banId.innerHTML = "";
+      banHelp.textContent = "";
+      try{
+        const r = await api.get("/api/appeals/my-bans");
+        const bans = Array.isArray(r?.bans) ? r.bans : [];
+        if (!bans.length) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "No active bans found";
+          banId.appendChild(opt);
+          banId.disabled = true;
+          banHelp.textContent = "If you believe this is an error, contact support.";
+          return;
+        }
+        banId.disabled = false;
+        for (const b of bans) {
+          const opt = document.createElement("option");
+          opt.value = String(b.id);
+          const expires = b.expires_at ? ` · expires ${new Date(b.expires_at).toLocaleDateString()}` : " · permanent";
+          opt.textContent = `#${b.id}${expires}`;
+          banId.appendChild(opt);
+        }
+      }catch{
+        banHelp.textContent = "Unable to load bans right now.";
+      }
+    }
+
+    await loadBans();
+
+    document.getElementById("submitBtn").addEventListener("click", async () => {
+      status.textContent = "";
+      const id = Number(banId.value || 0);
+      const msg = message.value.trim();
+      if (!Number.isFinite(id) || id <= 0) {
+        status.textContent = "Select an active ban.";
+        return;
+      }
+      if (!msg) {
+        status.textContent = "Please include a short message.";
+        return;
+      }
+      try{
+        await api.post("/api/appeals/create", { ban_id: id, message: msg });
+        status.textContent = "Appeal submitted ✔";
+        message.value = "";
+        await loadBans();
+      }catch(e){
+        status.textContent = e?.data?.error ? `Failed: ${e.data.error}` : "Failed to submit appeal.";
+      }
+    });
+  </script>
 </body>
 </html>

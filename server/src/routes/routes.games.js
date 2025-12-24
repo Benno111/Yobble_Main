@@ -6,7 +6,7 @@ export const gamesRouter = express.Router();
 
 gamesRouter.get("/", requireAuth, async (_req,res)=>{
   const games = await all(
-    `SELECT g.id, g.slug, g.title, g.description, g.category, g.banner_path, g.screenshots_json,
+    `SELECT g.id, g.slug, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured,
             (SELECT v.version FROM game_versions v
              WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved'
              ORDER BY v.created_at DESC LIMIT 1) AS latest_version,
@@ -32,7 +32,7 @@ gamesRouter.get("/", requireAuth, async (_req,res)=>{
 gamesRouter.get("/:slug", requireAuth, async (req,res)=>{
   const slug = String(req.params.slug || "").trim();
   const g = await get(
-    `SELECT g.id, g.slug, g.title, g.description, g.category, g.banner_path, g.screenshots_json,
+    `SELECT g.id, g.slug, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured,
             (SELECT v.version FROM game_versions v
              WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved'
              ORDER BY v.created_at DESC LIMIT 1) AS latest_version,

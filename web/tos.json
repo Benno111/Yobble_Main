@@ -1,0 +1,130 @@
+{
+  "title": "Terms of Service",
+  "intro": "These terms govern your access to Yobble, including our games platform, marketplace, and community features.",
+  "updated": "2025-12-24",
+  "contact": "botte0games@gmail.com",
+  "meta": [
+    "Applies to web, app, and services"
+  ],
+  "highlights": [
+    {
+      "title": "Quick summary",
+      "text": "Be respectful, keep your account secure, and follow local laws. We can remove content or accounts that break these rules."
+    },
+    {
+      "title": "Age requirements",
+      "text": "You must be at least 13 years old or meet the minimum age in your country to use Yobble."
+    },
+    {
+      "title": "Marketplace clarity",
+      "text": "Digital items are licensed, not sold. Some purchases are final where allowed by law."
+    }
+  ],
+  "sections": [
+    {
+      "id": "acceptance",
+      "title": "1. Acceptance of these terms",
+      "paragraphs": [
+        "By accessing or using Yobble, you agree to these Terms of Service and our related policies. If you do not agree, do not use the service."
+      ]
+    },
+    {
+      "id": "account",
+      "title": "2. Accounts and security",
+      "subsections": [
+        {
+          "title": "2.1 Account responsibility",
+          "paragraphs": [
+            "You are responsible for your account activity. Keep your login credentials private and notify us of unauthorized use."
+          ]
+        },
+        {
+          "title": "2.2 Eligibility",
+          "paragraphs": [
+            "You must meet the minimum age requirement and have the legal capacity to accept these terms."
+          ]
+        },
+        {
+          "title": "2.3 Suspensions",
+          "paragraphs": [
+            "We may suspend or terminate accounts that violate these terms or applicable law."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "content",
+      "title": "3. User content and licenses",
+      "paragraphs": [
+        "You keep ownership of the content you upload. By submitting content, you grant Yobble a worldwide, royalty-free license to host, distribute, and display it to operate the service."
+      ],
+      "subsections": [
+        {
+          "title": "3.1 Prohibited content",
+          "bullets": [
+            "Illegal, hateful, or abusive content.",
+            "Content that infringes on intellectual property rights.",
+            "Spam, scams, or malicious code",
+            "adult content of any kind",
+            "shareing links to adult content"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "payments",
+      "title": "4. Payments and virtual items",
+      "paragraphs": [
+        "Paid features and virtual items are licensed for personal, non-transferable use unless explicitly stated otherwise."
+      ],
+      "subsections": [
+        {
+          "title": "4.1 Billing and refunds",
+          "paragraphs": [
+            "Refunds follow local law and our refund policy. Some digital purchases may be final after delivery."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rules",
+      "title": "5. Community rules",
+      "bullets": [
+        "Be respectful and avoid harassment.",
+        "Do not exploit bugs or attempt to bypass security.",
+        "Do not buy, sell, or trade accounts.",
+        "Do not manipulate ratings, reviews, or moderation systems."
+      ]
+    },
+    {
+      "id": "legal",
+      "title": "6. Legal terms",
+      "subsections": [
+        {
+          "title": "6.1 Intellectual property",
+          "paragraphs": [
+            "You are not allowed to upload stuff that you areint allowed to upload"
+          ]
+        },
+        {
+          "title": "6.2 Disclaimers",
+          "paragraphs": [
+            "Yobble is provided as-is and as-available. We do not guarantee uninterrupted or error-free service."
+          ]
+        },
+        {
+          "title": "6.3 Limitation of liability",
+          "paragraphs": [
+            "To the fullest extent permitted by law, Yobble is not liable for indirect or consequential damages."
+          ]
+        },
+        {
+          "title": "6.4 Changes",
+          "paragraphs": [
+            "We may update these terms. Material changes will be posted with a new effective date."
+          ]
+        }
+      ]
+    }
+  ]
+}

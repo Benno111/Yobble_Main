@@ -16,7 +16,10 @@ import { marketRouter } from "./market.js";
 import { walletRouter } from "./wallet.js";
 import { moderationRouter } from "./moderation.js";
 import { itemsRouter } from "./routes.items.js";
-import { statsRouter } from "./stats.js";
+import { statsRouter } from "./routes.stats.js";
+import { appealsRouter } from "./routes.appeals.js";
+import { storageRouter } from "./routes.storage.js";
+import { libraryRouter } from "./routes.library.js";
 
 export {
   authRouter,
@@ -32,5 +35,8 @@ export {
   walletRouter,
   moderationRouter,
   itemsRouter,
-  statsRouter
+  statsRouter,
+  appealsRouter,
+  storageRouter,
+  libraryRouter
 };
