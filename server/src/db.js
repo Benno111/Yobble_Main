@@ -1,6 +1,6 @@
 import sqlite3 from "sqlite3";
 
-export const db = new sqlite3.Database("benno111engene.sqlite");
+export const db = new sqlite3.Database("../save/db");
 
 /* -----------------------------
    DB helpers

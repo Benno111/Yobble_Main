@@ -38,6 +38,7 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
 const WEB_DIR = path.join(PROJECT_ROOT, "web");
 const GAME_STORAGE_DIR = path.join(PROJECT_ROOT, "game_storage");
+const TOS_PATH = path.join(PROJECT_ROOT, "/save/tos");
 
 function readCookie(req, name) {
   const header = req.headers.cookie || "";
@@ -293,6 +294,13 @@ app.get("/games/:slug/:version/assets.json", async (req, res) => {
 app.use("/games", express.static(GAME_STORAGE_DIR, {
   extensions: ["html"]
 }));
+
+app.get("/tos.json", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.sendFile(TOS_PATH, err => {
+    if (err && !res.headersSent) res.sendStatus(404);
+  });
+});
 
 /* -----------------------------
    WEB UI

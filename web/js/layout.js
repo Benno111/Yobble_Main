@@ -1,8 +1,24 @@
 import { getCurrentUser } from "./auth-client.js";
 
 export async function mountTopbar(page){
-  const res = await fetch("/partials/header.html");
-  document.body.insertAdjacentHTML("afterbegin", await res.text());
+  const token = localStorage.getItem("token");
+  const headerPromise = fetch("/partials/header.html").then(r => r.text());
+  const userPromise = getCurrentUser();
+  const walletPromise = token
+    ? fetch("/api/wallet", {
+        headers: { Authorization: "Bearer " + token }
+      })
+        .then(r => (r.ok ? r.json() : null))
+        .catch(() => null)
+    : Promise.resolve(null);
+
+  const [headerHtml, user, walletData] = await Promise.all([
+    headerPromise,
+    userPromise,
+    walletPromise
+  ]);
+
+  document.body.insertAdjacentHTML("afterbegin", headerHtml);
 
   const navToggle = document.getElementById("navToggle");
   if (navToggle) {
@@ -12,7 +28,6 @@ export async function mountTopbar(page){
     });
   }
 
-  const user = await getCurrentUser();
   if(user && (user.role==="admin"||user.role==="moderator")){
     const el=document.getElementById("adminLinks"); if(el) el.hidden=false;
   }
@@ -21,21 +36,12 @@ export async function mountTopbar(page){
     if(a.dataset.page===page) a.classList.add("active");
   });
 
-  const token = localStorage.getItem("token");
   const balanceEl = document.getElementById("walletBalance");
   if (token && balanceEl) {
-    try{
-      const r = await fetch("/api/wallet", {
-        headers: { Authorization: "Bearer " + token }
-      });
-      if (r.ok) {
-        const data = await r.json();
-        const balance = Number(data?.balance ?? 0);
-        balanceEl.textContent = `Balance ${Number.isFinite(balance) ? balance : 0}`;
-      } else {
-        balanceEl.textContent = "Balance —";
-      }
-    }catch{
+    if (walletData) {
+      const balance = Number(walletData?.balance ?? 0);
+      balanceEl.textContent = `Balance ${Number.isFinite(balance) ? balance : 0}`;
+    } else {
       balanceEl.textContent = "Balance —";
     }
   } else if (balanceEl) {

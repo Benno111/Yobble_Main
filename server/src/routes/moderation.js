@@ -11,7 +11,7 @@ const MOD_ROLES = ["admin", "mod", "moderator"];
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, "../../..");
-const TOS_PATH = path.join(PROJECT_ROOT, "web", "tos.json");
+const TOS_PATH = path.join(PROJECT_ROOT, "tos.json");
 
 /* GET /api/mod/overview (stub) */
 moderationRouter.get("/overview", requireAuth, requireRole(...MOD_ROLES), async (_req, res) => {
