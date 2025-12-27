@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marketplace - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="mkt-wrap">
+  <section class="card hero">
+    <div>
+      
+      <h1>Marketplace</h1>
+      <p>Discover listings from the community. Search by item, seller, or price range.</p>
+      <div class="hero-meta">
+        <span class="pill" id="stat-total">0 listings</span>
+        <span class="pill" id="stat-sellers">0 sellers</span>
+      </div>
+    </div>
+    <div class="hero-art">Trade floor</div>
+  </section>
+  <section class="card controls">
+    <div>
+      <label for="q">Search</label>
+      <input id="q" type="search" placeholder="Search item or seller">
+    </div>
+    <div>
+      <label for="sort">Sort</label>
+      <select id="sort">
+        <option value="new">Newest</option>
+        <option value="price-high">Price high</option>
+        <option value="price-low">Price low</option>
+      </select>
+    </div>
+    <div>
+      <label for="filter">Filter</label>
+      <select id="filter">
+        <option value="all">All listings</option>
+        <option value="mine">My listings</option>
+      </select>
+    </div>
+  </section>
+  <section class="card">
+    <div class="pill" id="live-count">0 shown</div>
+    <div id="list" class="grid" style="margin-top:16px"></div>
+    <div id="empty" class="empty" hidden>No listings found.</div>
+  </section>
+  <!-- Auto listings rendered through /api/market -->
+</main>
+<div id="buyModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="max-width:420px;width:100%">
+    <div style="font-weight:700;font-size:18px">Purchase item</div>
+    <div class="muted" id="buyMeta" style="margin-top:6px"></div>
+    <div style="margin-top:12px">
+      <label for="buyQty">Quantity</label>
+      <input id="buyQty" type="number" min="1" value="1">
+    </div>
+    <div class="row" style="margin-top:12px;justify-content:flex-end;gap:8px">
+      <button class="secondary" id="buyCancel">Cancel</button>
+      <button class="primary" id="buyConfirm">Buy</button>
+    </div>
+    <div class="small muted" id="buyStatus" style="margin-top:8px"></div>
+  </div>
+</div>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api-pages/market.js";
+await mountTopbar("market");
+const list = document.getElementById("list");
+const empty = document.getElementById("empty");
+const q = document.getElementById("q");
+const sort = document.getElementById("sort");
+const filter = document.getElementById("filter");
+const statTotal = document.getElementById("stat-total");
+const statSellers = document.getElementById("stat-sellers");
+const liveCount = document.getElementById("live-count");
+const buyModal = document.getElementById("buyModal");
+const buyMeta = document.getElementById("buyMeta");
+const buyQty = document.getElementById("buyQty");
+const buyCancel = document.getElementById("buyCancel");
+const buyConfirm = document.getElementById("buyConfirm");
+const buyStatus = document.getElementById("buyStatus");
+let activeListing = null;
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+let listings = [];
+let me = null;
+try{
+  const [r, meRes] = await Promise.all([
+    api.get("/api/market"),
+    api.get("/api/auth/me").catch(() => null)
+  ]);
+  listings = Array.isArray(r) ? r : (r.listings || []);
+  me = meRes?.user || meRes || null;
+}catch{
+  empty.hidden = false;
+  empty.textContent = "Could not load listings.";
+}
+const sellerCount = new Set(listings.map(l => l.seller_id)).size;
+statTotal.textContent = `${listings.length} listings`;
+statSellers.textContent = `${sellerCount} sellers`;
+function sortListings(arr, mode){
+  const copy = [...arr];
+  if (mode === "price-high") {
+    copy.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+  } else if (mode === "price-low") {
+    copy.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+  } else {
+    copy.sort((a, b) => Number(b.created_at || 0) - Number(a.created_at || 0));
+  }
+  return copy;
+}
+function render(){
+  const query = q.value.trim().toLowerCase();
+  const scoped = listings.filter(l => {
+    const hay = `${l.name || ""} ${l.seller_username || ""}`.toLowerCase();
+    if (query && !hay.includes(query)) return false;
+    if (filter.value === "mine" && me && l.seller_id !== me.id) return false;
+    return true;
+  });
+  const sorted = sortListings(scoped, sort.value);
+  liveCount.textContent = `${sorted.length} shown`;
+  empty.hidden = sorted.length > 0;
+  list.innerHTML = sorted.map(l => `
+    <div class="listing">
+      <div class="listing-media">
+        ${l.icon_path
+          ? `<img src="${escapeHtml(l.icon_path)}" alt="${escapeHtml(l.name || "Item")}">`
+          : `<div class="listing-fallback" aria-hidden="true">${escapeHtml((l.name || "?").slice(0, 1))}</div>`
+        }
+      </div>
+      <div class="listing-meta">Seller ${escapeHtml(l.seller_username || "unknown")}</div>
+      <div class="listing-name">${escapeHtml(l.name || "Unknown item")}</div>
+      <div class="listing-meta">Qty ${escapeHtml(l.qty ?? 0)} • ${new Date(l.created_at || Date.now()).toLocaleDateString()}</div>
+      <div class="listing-price">$${escapeHtml(l.price ?? 0)}</div>
+      <button class="primary" data-buy="${escapeHtml(l.id)}" style="margin-top:10px;width:auto">Buy</button>
+    </div>
+  `).join("");
+  document.querySelectorAll("[data-buy]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const id = Number(btn.dataset.buy);
+      activeListing = sorted.find(l => Number(l.id) === id) || null;
+      if (!activeListing) return;
+      buyMeta.textContent = `${activeListing.name || activeListing.code || "Item"} — $${activeListing.price ?? 0}`;
+      buyQty.value = "1";
+      buyStatus.textContent = "";
+      buyModal.style.display = "flex";
+    });
+  });
+}
+q.addEventListener("input", render);
+sort.addEventListener("change", render);
+filter.addEventListener("change", render);
+render();
+buyCancel.onclick = () => {
+  buyModal.style.display = "none";
+};
+buyConfirm.onclick = async () => {
+  if (!activeListing) return;
+  const qty = Number(buyQty.value || 0);
+  if (!Number.isFinite(qty) || qty <= 0) {
+    buyStatus.textContent = "Enter a valid quantity.";
+    return;
+  }
+  buyStatus.textContent = "Processing...";
+  try{
+    await api.post("/api/market/buy", { listing_id: activeListing.id, qty });
+    buyStatus.textContent = "Purchased ✔";
+    const r = await api.get("/api/market");
+    listings = Array.isArray(r) ? r : (r.listings || []);
+    render();
+    setTimeout(()=>{ buyModal.style.display = "none"; }, 600);
+  }catch(e){
+    buyStatus.textContent = e?.message ? `Failed: ${e.message}` : "Purchase failed.";
+  }
+};
+</script>
+</body>
+</html>

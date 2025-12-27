@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connect Wallet - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <section class="card hero">
+    <div>
+      
+      <h1>Connect your crypto wallet</h1>
+      <p>To access platform money tools, connect a compatible wallet like MetaMask.</p>
+    </div>
+    <div class="hero-art">Wallet sync</div>
+  </section>
+  <section class="card panel">
+    <div class="panel-header">
+      <div class="pill" id="walletStatus">Not connected</div>
+    </div>
+    <div class="status" id="walletHint"></div>
+    <div class="field">
+      <label for="walletLabel">Wallet label</label>
+      <input id="walletLabel" placeholder="e.g. Main Wallet">
+    </div>
+    <div class="actions">
+      <button class="primary" id="connectBtn" type="button">Connect wallet</button>
+      <a class="ghost" href="/money.html">Back to Money</a>
+    </div>
+  </section>
+</main>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api-pages/connect-wallet.js";
+import { requireAuth } from "/js/auth.js";
+await mountTopbar("wallet");
+const walletStatus = document.getElementById("walletStatus");
+const walletHint = document.getElementById("walletHint");
+const connectBtn = document.getElementById("connectBtn");
+const walletLabel = document.getElementById("walletLabel");
+const params = new URLSearchParams(location.search);
+const redirectTo = params.get("redirect") || "/money.html";
+function setStatus(text, hint){
+  walletStatus.textContent = text;
+  walletHint.textContent = hint || "";
+}
+async function connectWallet(){
+  const label = walletLabel.value.trim();
+  if (!label) {
+    setStatus("Add a label", "Enter a wallet label before continuing.");
+    return;
+  }
+  if (!window.ethereum) {
+    setStatus("No wallet detected", "Install MetaMask or a compatible wallet to continue.");
+    return;
+  }
+  try{
+    await requireAuth();
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    if (accounts && accounts[0]) {
+      await api.post("/api/wallet/connect", { address: accounts[0], label });
+      localStorage.setItem("wallet_connected", "true");
+      setStatus("Connected", `Wallet ${accounts[0]}`);
+      setTimeout(() => {
+        location.href = redirectTo;
+      }, 600);
+    } else {
+      setStatus("Not connected", "No wallet selected.");
+    }
+  }catch(e){
+    const msg = typeof e?.data?.error === "string" ? e.data.error : null;
+    if (msg === "address_in_use") {
+      setStatus("Wallet in use", "That wallet is already connected to another account.");
+    } else if (msg === "missing_label") {
+      setStatus("Missing label", "Add a wallet label to continue.");
+    } else if (msg === "label_too_long") {
+      setStatus("Label too long", "Keep the label under 60 characters.");
+    } else if (msg === "invalid_address") {
+      setStatus("Invalid address", "The wallet address could not be validated.");
+    } else {
+      setStatus("Connection failed", "Please approve the wallet connection request.");
+    }
+  }
+}
+connectBtn.addEventListener("click", connectWallet);
+if (window.ethereum) {
+  window.ethereum.request({ method: "eth_accounts" }).then((accounts) => {
+    if (accounts && accounts[0]) {
+      setStatus("Connected", `Wallet ${accounts[0]}`);
+    } else {
+      setStatus("Not connected", "Connect your wallet to continue.");
+    }
+  }).catch(() => {
+    setStatus("Not connected", "Connect your wallet to continue.");
+  });
+} else {
+  setStatus("No wallet detected", "Install MetaMask or a compatible wallet to continue.");
+}
+</script>
+</body>
+</html>

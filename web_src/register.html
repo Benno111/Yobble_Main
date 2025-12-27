@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - Yobble</title>
+  <link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <div class="auth-shell">
+      <section class="card auth-form">
+        <h2>Create account</h2>
+        <p class="auth-meta">Start building and share your first playable game.</p>
+        <div class="form-field">
+          <label for="u">Username</label>
+          <input id="u" autocomplete="username" placeholder="studio-name">
+        </div>
+        <div class="form-field">
+          <label for="p">Password</label>
+          <input id="p" type="password" autocomplete="new-password" placeholder="Create a strong password">
+        </div>
+        <div class="auth-actions">
+          <button class="primary" id="btn">Register</button>
+        </div>
+        <div class="auth-links">
+          <a class="ghost" href="/login.html">Back to login</a>
+        </div>
+        <p class="auth-meta">
+          By creating an account, you agree to our
+          <a href="/tos.html" style="text-decoration:underline">Terms of Service</a>.
+        </p>
+        <pre id="err" class="err"></pre>
+      </section>
+      <section class="card auth-hero">
+        <div class="auth-logo">
+          <img src="/assets/logo.svg" alt="Yobble">
+          <div>
+            <div class="pill">Creator tools</div>
+          </div>
+        </div>
+        <h1>Launch your game in a few steps.</h1>
+        <p>Upload a ZIP, manage items, and keep versions organized in one place.</p>
+        <div class="auth-feature-list">
+          <div class="auth-feature"><span class="dot"></span><div>Browser-first launches for players.</div></div>
+          <div class="auth-feature"><span class="dot"></span><div>Version history with approvals.</div></div>
+          <div class="auth-feature"><span class="dot"></span><div>Items and marketplace tools built in.</div></div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="/js/pages/register.js"></script>
+  <div class="modal" id="tosModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="tosTitle">
+      <h3 id="tosTitle">Review Terms of Service</h3>
+      <p>Before creating an account, please review the Terms of Service.</p>
+      <p><a href="/tos.html" style="text-decoration:underline" target="_blank" rel="noopener">Open Terms of Service</a></p>
+      <label class="tos-check">
+        <input type="checkbox" id="tosCheck">
+        I agree to the Terms of Service.
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="secondary" id="tosCancel">Cancel</button>
+        <button type="button" class="primary" id="tosAgree" disabled>I Agree</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

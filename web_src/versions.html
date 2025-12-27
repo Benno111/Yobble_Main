@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Versions - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+<h1>Versions & Rollback</h1>
+<div class="card" style="max-width:900px">
+  <label>Game slug</label>
+  <input id="slug" placeholder="dorfplatformer-9-2">
+  <button class="primary" id="loadBtn" style="margin-top:10px; width:auto">Load</button>
+  <div id="meta" class="muted" style="margin-top:10px"></div>
+</div>
+<h2 style="margin-top:18px">Versions</h2>
+<div id="versions" class="grid"></div>
+<h2 style="margin-top:18px">Upload History</h2>
+<div id="uploads" class="grid"></div>
+<script type="module" src="/js/pages/versions.js"></script>
+</main>
+<script type="module">
+  import { loadLayout } from "/js/layout.js";
+  loadLayout();
+</script>
+</body>
+</html>

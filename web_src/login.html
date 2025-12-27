@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Yobble</title>
+  <link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <div class="auth-shell">
+      <section class="card auth-hero">
+        <div class="auth-logo">
+          <img src="/assets/logo.svg" alt="Yobble">
+          <div>
+            <div class="pill">Welcome back</div>
+          </div>
+        </div>
+        <h1>Log in to Yobble</h1>
+        <p>Pick up where you left off: launch games, update your games, and manage your items.</p>
+        <div class="auth-feature-list">
+          <div class="auth-feature"><span class="dot"></span><div>Open games instantly in the browser.</div></div>
+          <div class="auth-feature"><span class="dot"></span><div>Upload games in minutes.</div></div>
+          <div class="auth-feature"><span class="dot"></span><div>Access inventory and the marketplace.</div></div>
+        </div>
+      </section>
+      <section class="card auth-form">
+        <h2>Login</h2>
+        <p class="auth-meta">Use your Yobble account to continue.</p>
+        <div class="form-field">
+          <label for="u">Username</label>
+          <input id="u" autocomplete="username" placeholder="yourname">
+        </div>
+        <div class="form-field">
+          <label for="p">Password</label>
+          <input id="p" type="password" autocomplete="current-password" placeholder="••••••••">
+        </div>
+        <div class="auth-actions">
+          <button class="primary" id="btn">Login</button>
+        </div>
+        <div class="auth-links">
+          <a class="ghost" href="/register.html">Create account</a>
+        </div>
+        <pre id="err" class="err"></pre>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="/js/pages/login.js"></script>
+</body>
+</html>

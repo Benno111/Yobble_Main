@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms of Service - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main id="tosContent"></main>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+await mountTopbar("tos");
+const tosContent = document.getElementById("tosContent");
+function escapeHtml(value){
+  return String(value || "").replace(/[&<>\"']/g, (ch) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;"
+  }[ch]));
+}
+function renderParagraphs(paragraphs){
+  if (!Array.isArray(paragraphs)) return "";
+  return paragraphs.map(p => `<p>${escapeHtml(p)}</p>`).join("");
+}
+function renderBullets(bullets){
+  if (!Array.isArray(bullets) || !bullets.length) return "";
+  return `<ul>${bullets.map(b => `<li>${escapeHtml(b)}</li>`).join("")}</ul>`;
+}
+function renderSubsections(subsections){
+  if (!Array.isArray(subsections)) return "";
+  return subsections.map(s => `
+    <h3>${escapeHtml(s.title || "")}</h3>
+    ${renderParagraphs(s.paragraphs)}
+    ${renderBullets(s.bullets)}
+  `).join("");
+}
+function renderTos(data){
+  const meta = Array.isArray(data.meta) ? data.meta : [];
+  const sections = Array.isArray(data.sections) ? data.sections : [];
+  const highlights = Array.isArray(data.highlights) ? data.highlights : [];
+  const updated = data.updated ? `Last updated ${escapeHtml(data.updated)}` : "Last updated";
+  const contact = data.contact ? `Contact: ${escapeHtml(data.contact)}` : "Contact";
+  const toc = sections
+    .filter(s => s && s.id && s.title)
+    .map(s => `<a href="#${escapeHtml(s.id)}">${escapeHtml(s.title)}</a>`)
+    .join("");
+  const highlightCards = highlights.map(h => `
+    <div class="card">
+      <h2>${escapeHtml(h.title || "")}</h2>
+      <p>${escapeHtml(h.text || "")}</p>
+    </div>
+  `).join("");
+  const sectionBlocks = sections.map(s => `
+    <section class="section" id="${escapeHtml(s.id || "")}">
+      <h2>${escapeHtml(s.title || "")}</h2>
+      ${renderParagraphs(s.paragraphs)}
+      ${renderBullets(s.bullets)}
+      ${renderSubsections(s.subsections)}
+    </section>
+  `).join("");
+  tosContent.innerHTML = `
+    <section class="hero">
+      <h1>${escapeHtml(data.title || "Terms of Service")}</h1>
+      <p>${escapeHtml(data.intro || "")}</p>
+      <div class="hero-meta">
+        <span class="pill accent">${updated}</span>
+        ${meta.map(m => ``).join("")}
+        <span class="pill">${contact}</span>
+      </div>
+      <div class="toc">${toc}</div>
+    </section>
+    <section class="grid">${highlightCards}</section>
+    ${sectionBlocks}
+    <section class="callout">
+      <div>
+        <strong>Questions?</strong>
+        <div class="pill" style="margin-top:8px">${escapeHtml(data.contact || "")}</div>
+      </div>
+    </section>
+  `;
+}
+try{
+  const res = await fetch("/tos.json", { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load");
+  renderTos(await res.json());
+}catch{
+  tosContent.innerHTML = `
+    <section class="section">
+      <h2>Terms unavailable</h2>
+      <p>We could not load the Terms of Service content right now. Please try again later.</p>
+    </section>
+  `;
+}
+</script>
+</body>
+</html>

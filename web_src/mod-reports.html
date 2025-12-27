@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reports - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="rep-wrap">
+  <section class="card hero">
+    <div>
+      
+      <h1>Reports</h1>
+      <p>Review incoming reports and resolve them with notes.</p>
+    </div>
+    <div class="hero-art">Priority inbox</div>
+  </section>
+  <section class="card">
+    <div id="list" class="grid"></div>
+    <div id="empty" class="empty" hidden>No reports found.</div>
+  </section>
+  <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
+    <a class="pill" href="/mod-dashboard.html">Dashboard</a>
+    <a class="pill" href="/mod-reports.html">Reports</a>
+    <a class="pill" href="/mod-appeals.html">Appeals</a>
+    <a class="pill" href="/mod-bans.html">Ban History</a>
+    <a class="pill" href="/modqueue.html">Queue</a>
+    <a class="pill" href="/moderation.html">Overview</a>
+  </section>
+</main>
+<script type="module">
+import { api } from "/js/api-pages/mod-reports.js";
+import { requireAuth } from "/js/auth.js";
+import { mountTopbar } from "/js/layout.js";
+await mountTopbar("modreports");
+const me = await requireAuth();
+if(!["admin","moderator"].includes(me.role)) throw 0;
+const isAdmin = me.role === "admin";
+const list = document.getElementById("list");
+const empty = document.getElementById("empty");
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+const r = await api.get("/api/reports/mod");
+const reports = r.reports || [];
+if(!reports.length){
+  empty.hidden = false;
+}else{
+  for(const rep of reports){
+    const d = document.createElement("div");
+    d.className = "report-card";
+    d.innerHTML = `
+      <div class="report-title">${escapeHtml(rep.target_type)}: ${escapeHtml(rep.target_ref || "unknown")}</div>
+      <div class="report-meta">Reported by ${escapeHtml(rep.username)} • ${escapeHtml(rep.category || "uncategorized")}</div>
+      <div>${escapeHtml(rep.message || "")}</div>
+      <div class="report-actions">
+        <button class="primary">Ban for</button>
+        ${rep.target_type === "game" ? `<button class="secondary" data-remove>Remove game</button>` : ``}
+        ${rep.target_type === "game" && isAdmin ? `<button class="secondary" data-unhide>Unhide game</button>` : ``}
+        <button class="secondary dismiss-btn">Dismiss</button>
+      </div>
+    `;
+    d.querySelector(".primary").onclick = async () => {
+      const type = prompt("Ban type: temp or perma? (enter temp/perma)") || "";
+      if (!type) return;
+      let duration = null;
+      if (type.toLowerCase().startsWith("t")) {
+        const hours = prompt("Duration in hours?") || "";
+        duration = Number(hours);
+        if (!Number.isFinite(duration) || duration <= 0) {
+          alert("Invalid duration.");
+          return;
+        }
+      }
+      try{
+        const r = await api.post("/api/mod/bans/create", {
+          target_type: rep.target_type,
+          target_ref: rep.target_ref,
+          duration_hours: duration,
+          reason: rep.message
+        });
+        const note = duration ? `Temp ban (${duration}h)` : "Perma ban";
+        await api.post("/api/reports/mod/resolve", { id: rep.id, note: `${note} #${r.ban_id}` });
+        d.remove();
+      }catch(e){
+        alert("Failed to ban.");
+      }
+    };
+    const removeBtn = d.querySelector("[data-remove]");
+    if (removeBtn) {
+      removeBtn.onclick = async () => {
+        if (!confirm(`Hide game ${rep.target_ref}?`)) return;
+        try{
+          await api.post("/api/mod/games/remove", { slug: rep.target_ref });
+          removeBtn.textContent = "Removed";
+          removeBtn.disabled = true;
+        }catch{
+          alert("Failed to remove game.");
+        }
+      };
+    }
+    const unhideBtn = d.querySelector("[data-unhide]");
+    if (unhideBtn) {
+      unhideBtn.onclick = async () => {
+        if (!confirm(`Unhide game ${rep.target_ref}?`)) return;
+        try{
+          await api.post("/api/mod/games/unhide", { slug: rep.target_ref });
+          unhideBtn.textContent = "Unhidden";
+          unhideBtn.disabled = true;
+        }catch{
+          alert("Failed to unhide game.");
+        }
+      };
+    }
+    const dismissBtn = d.querySelector(".dismiss-btn");
+    dismissBtn.onclick = async () => {
+      const note = prompt("Dismiss note?") || "";
+      await api.post("/api/reports/mod/dismiss", { id: rep.id, note });
+      d.remove();
+    };
+    list.appendChild(d);
+  }
+}
+</script>
+</body>
+</html>

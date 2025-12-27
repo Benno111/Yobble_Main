@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temporarily Banned - Yobble</title>
+  <link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <section class="card hero">
+      <div>
+        
+        <h1>This account is temporarily banned.</h1>
+        <p>You can log back in once the timeout expires.</p>
+        <div class="actions">
+          <a class="action primary" id="appealBtn" href="/appeal.html">Submit appeal</a>
+          <button class="action" id="logoutBtn" type="button">Logout</button>
+        </div>
+        <div class="muted" id="appealStatus" style="margin-top:12px"></div>
+        <div class="muted" id="untilText" style="margin-top:12px"></div>
+      </div>
+      <div class="hero-art">Access paused</div>
+    </section>
+  </main>
+  <script type="module">
+    import { logout } from "/js/auth.js";
+    import { api } from "/js/api-pages/temporay-banned.js";
+    const params = new URLSearchParams(location.search);
+    const until = params.get("until");
+    const el = document.getElementById("untilText");
+    const appealStatus = document.getElementById("appealStatus");
+    const appealBtn = document.getElementById("appealBtn");
+    if (until) {
+      const ts = Number(until);
+      if (Number.isFinite(ts)) {
+        el.textContent = `Timeout ends: ${new Date(ts).toLocaleString()}`;
+      }
+    }
+    const token = localStorage.getItem("token");
+    if (token) {
+      try{
+        const res = await api.get("/api/appeals/my-bans");
+        const bans = Array.isArray(res?.bans) ? res.bans : [];
+        let active = null;
+        if (until) {
+          const ts = Number(until);
+          active = bans.find(b => b.expires_at === ts) || null;
+        }
+        active = active || bans[0] || null;
+        if (active?.has_open_appeal) {
+          appealStatus.textContent = "An appeal is already open for this ban.";
+          appealBtn.classList.remove("primary");
+          appealBtn.textContent = "Appeal submitted";
+          appealBtn.setAttribute("aria-disabled", "true");
+          appealBtn.addEventListener("click", (e) => e.preventDefault());
+        }
+      }catch{
+        appealStatus.textContent = "";
+      }
+    }
+    document.getElementById("logoutBtn")?.addEventListener("click", logout);
+  </script>
+</body>
+</html>

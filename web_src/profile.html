@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="pro-wrap">
+  <section class="card hero profile-hero">
+    <div class="profile-hero-main">
+      <div class="profile-hero-head">
+        <img class="profile-avatar" id="profileAvatar" alt="">
+        <div>
+          <h1 id="profileTitle">Your account</h1>
+          <div class="profile-handle" id="profileHandle">@username</div>
+        </div>
+      </div>
+      <p id="profileStatus">Manage your identity, status, and public profile details.</p>
+      <div class="hero-meta">
+        <span class="pill" id="stat-role">Role</span>
+        <span class="pill" id="stat-updated">Updated</span>
+        <span class="pill" id="stat-id">User ID —</span>
+      </div>
+      <div class="profile-hero-actions" id="profileHeroActions" hidden></div>
+    </div>
+    <div class="hero-art"></div>
+  </section>
+  <section class="grid" id="cards"></section>
+  <section class="card empty" id="empty" hidden>Profile unavailable.</section>
+</main>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api-pages/profile.js";
+import { logout } from "/js/auth.js";
+await mountTopbar("profile");
+const cards = document.getElementById("cards");
+const empty = document.getElementById("empty");
+const statRole = document.getElementById("stat-role");
+const statUpdated = document.getElementById("stat-updated");
+const statId = document.getElementById("stat-id");
+const profileAvatar = document.getElementById("profileAvatar");
+const profileTitle = document.getElementById("profileTitle");
+const profileHandle = document.getElementById("profileHandle");
+const profileStatus = document.getElementById("profileStatus");
+const profileHeroActions = document.getElementById("profileHeroActions");
+const params = new URLSearchParams(location.search);
+const lookupUser = params.get("u");
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+let profile = null;
+try{
+  if (lookupUser) {
+    const res = await api.get(`/api/profile/lookup-exact?u=${encodeURIComponent(lookupUser)}`);
+    profile = res.profile || null;
+  } else {
+    const res = await api.get("/api/profile/me");
+    profile = res.profile || res;
+  }
+}catch(err){
+  if (lookupUser) {
+    if (err?.status === 403 && err?.data?.error === "account_banned") {
+      location.href = "/404.html?msg=" + encodeURIComponent("Account deleted.");
+      throw err;
+    }
+    if (err?.status === 403 && err?.data?.error === "account_timed_out") {
+      const until = err?.data?.until ? new Date(Number(err.data.until)).toLocaleString() : "unknown";
+      location.href = "/404.html?msg=" + encodeURIComponent(`User is temporarily banned until ${until}.`);
+      throw err;
+    }
+    if (err?.status === 404) {
+      location.href = "/404.html?msg=" + encodeURIComponent("User not found.");
+      throw err;
+    }
+  }
+  empty.hidden = false;
+  empty.textContent = "Could not load profile.";
+}
+if(profile){
+  const isSelf = !lookupUser;
+  const displayName = profile.display_name || profile.username || "Player";
+  const username = profile.username || "unknown";
+  statRole.textContent = profile.role ? `Role ${profile.role}` : "Role";
+  const updated = profile.updated_at ? new Date(profile.updated_at).toLocaleDateString() : "—";
+  statUpdated.textContent = `Updated ${updated}`;
+  if (statId) statId.textContent = `User ID ${profile.id ?? "—"}`;
+  if (profileTitle) profileTitle.textContent = displayName;
+  if (profileHandle) profileHandle.textContent = `@${username}`;
+  if (profileStatus) profileStatus.textContent = profile.status_text || "No status set yet.";
+  if (profileAvatar) {
+    profileAvatar.src = profile.avatar_url || "/assets/logo.svg";
+    profileAvatar.alt = displayName;
+  }
+  const heroActionParts = [];
+  if (isSelf) {
+    heroActionParts.push(`<button class="pill action" id="logoutBtn" type="button">Logout</button>`);
+  } else {
+    heroActionParts.push(`<a class="pill action" href="/report.html?target_type=user&target_ref=${encodeURIComponent(profile.username || "")}">Report</a>`);
+  }
+  heroActionParts.push(
+    isSelf
+      ? `
+        <div class="bio-editor">
+          <textarea class="bio-input" id="bioInput" placeholder="Add a bio to tell others who you are.">${escapeHtml(profile.bio || "")}</textarea>
+          <div class="bio-actions">
+            <span class="bio-msg" id="bioMsg"></span>
+            <button class="bio-save" id="bioSave" type="button">Save</button>
+          </div>
+        </div>
+      `
+      : `<div class="profile-bio">${escapeHtml(profile.bio || "Add a bio to tell others who you are.")}</div>`
+  );
+  if (profileHeroActions) {
+    profileHeroActions.innerHTML = heroActionParts.join("");
+    profileHeroActions.hidden = false;
+  }
+  cards.innerHTML = "";
+  if(isSelf){
+    const logoutBtn = document.getElementById("logoutBtn");
+    if(logoutBtn){
+      logoutBtn.addEventListener("click", logout);
+    }
+    const bioInput = document.getElementById("bioInput");
+    const bioSave = document.getElementById("bioSave");
+    const bioMsg = document.getElementById("bioMsg");
+    if(bioSave && bioInput && bioMsg){
+      bioSave.addEventListener("click", async () => {
+        bioMsg.textContent = "";
+        try{
+          await api("/api/profile/me", { method:"PATCH", body:{ bio: bioInput.value }});
+          bioMsg.textContent = "Saved.";
+        }catch(e){
+          bioMsg.textContent = "Save failed.";
+        }
+      });
+    }
+  }
+}else{
+  if (lookupUser) {
+    location.href = "/404.html?msg=" + encodeURIComponent("User not found.");
+  } else {
+    empty.hidden = false;
+  }
+}
+</script>
+</body>
+</html>

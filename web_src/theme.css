@@ -1,0 +1,8 @@
+:root{
+  --bg:#0f1115;--card:#161a22;--border:#222836;--text:#e7eaf0;--muted:#9aa3b2;--accent:#0e3662;
+}
+
+
+.btn.primary,.primary{background:#0c0f14;border-color:var(--border);color:#fff;font-weight:700}.btn.secondary,.secondary{background:#0c0f14;border-color:var(--border);color:#fff}.btn.danger,.danger{background:#000;border-color:#ff5d5d;color:#ff5d5d}
+input[type="radio"]{appearance:none;width:16px;height:16px;border:1px solid var(--border);border-radius:999px;background:#000;display:inline-grid;place-content:center}input[type="radio"]::before{content:"";width:8px;height:8px;border-radius:999px;transform:scale(0);transition:transform .1s ease;background:#fff}input[type="radio"]:checked::before{transform:scale(1)}
+.ribbon{font-weight:700}

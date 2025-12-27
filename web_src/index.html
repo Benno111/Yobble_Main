@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yobble</title>
+  <link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api-pages/index.js";
+await mountTopbar("");
+</script>
+<body>
+  <main>
+    <section class="card hero">
+      <div>
+        
+        <h1>Play in the browser. Upload in minutes.</h1>
+        <p>Yobble makes it simple: drop a ZIP, and share a playable link. Items can be sold using the on platform wallets built in.</p>
+        <div class="hero-meta">
+        </div>
+        <div class="hero-actions">
+          <a class="pill action" href="/play.html">Play now</a>
+          <a class="pill outline" href="/upload.html">Upload a game</a>
+          <a class="pill outline" href="/register">Create account</a>
+        </div>
+      </div>
+      <div class="hero-art">Upload a Game. Share a link.</div>
+    </section>
+    <section class="grid">
+      <div class="card feature">
+        <div class="feature-title">Upload a ZIP</div>
+        <div class="feature-meta">Add `index.html`, set a version, and publish your web game.</div>
+        <div class="pill">Upload</div>
+      </div>
+      <div class="card feature">
+        <div class="feature-title">Play in-browser</div>
+        <div class="feature-meta">Open games instantly with fast loading and version history.</div>
+        <div class="pill">Play</div>
+      </div>
+      <div class="card feature">
+        <div class="feature-title">Manage items</div>
+        <div class="feature-meta">Create item drops, review approvals, and run a simple economy.</div>
+        <div class="pill">Items</div>
+      </div>
+      </div>
+    </section>
+    <section class="card cta" style="margin-top:18px">
+      <div>
+        <div class="feature-title">Three-step flow</div>
+        <div class="feature-meta">1) Create an account. 2) Upload a ZIP. 3) Share the link.</div>
+      </div>
+      <div class="hero-actions">
+        <a class="pill action" href="/register">Start now</a>
+        <a class="pill outline" href="/games.html">Browse games</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

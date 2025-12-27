@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ban History - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="ban-wrap">
+  <section class="card hero">
+    <div>
+      
+      <h1>Ban history</h1>
+      <p>Search bans by user, game, or item code. Export results for audits.</p>
+    </div>
+    <div class="hero-art">Audit trail</div>
+  </section>
+  <section class="card controls">
+    <div>
+      <label for="q">Search</label>
+      <input id="q" placeholder="username / game slug / item code">
+    </div>
+    <div style="display:flex;gap:10px;align-items:end">
+      <button id="go" class="primary" style="height:40px;width:100%">Search</button>
+    </div>
+  </section>
+  <section class="card">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="pill">Results</div>
+      <a class="pill" href="/api/mod/export/bans">Export CSV</a>
+    </div>
+    <div id="out" class="grid" style="margin-top:16px"></div>
+    <div id="empty" class="empty" hidden>No matches.</div>
+  </section>
+  <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
+    <a class="pill" href="/mod-dashboard.html">Dashboard</a>
+    <a class="pill" href="/mod-reports.html">Reports</a>
+    <a class="pill" href="/mod-appeals.html">Appeals</a>
+    <a class="pill" href="/mod-bans.html">Ban History</a>
+    <a class="pill" href="/modqueue.html">Queue</a>
+    <a class="pill" href="/moderation.html">Overview</a>
+  </section>
+</main>
+<script type="module">
+import { api } from "/js/api-pages/mod-bans.js";
+import { requireAuth } from "/js/auth.js";
+import { mountTopbar } from "/js/layout.js";
+await mountTopbar("modbans");
+await requireAuth();
+const q = document.getElementById("q");
+const out = document.getElementById("out");
+const empty = document.getElementById("empty");
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+document.getElementById("go").onclick = async () => {
+  const r = await api.get("/api/mod/search?q=" + encodeURIComponent(q.value));
+  out.innerHTML = "";
+  const users = r.users || [];
+  const games = r.games || [];
+  const items = r.items || [];
+  if(!users.length && !games.length && !items.length){
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+  for(const u of users){
+    out.innerHTML += `<div class="ban-card"><div class="ban-title">User</div><div class="ban-meta">${escapeHtml(u.username)}</div></div>`;
+  }
+  for(const g of games){
+    out.innerHTML += `<div class="ban-card"><div class="ban-title">Game</div><div class="ban-meta">${escapeHtml(g.slug)}</div></div>`;
+  }
+  for(const i of items){
+    out.innerHTML += `<div class="ban-card"><div class="ban-title">Item</div><div class="ban-meta">${escapeHtml(i.code)}</div></div>`;
+  }
+};
+</script>
+</body>
+</html>

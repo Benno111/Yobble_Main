@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="inv-wrap">
+  <section class="card hero">
+    <div>
+      
+      <h1>Your Collection</h1>
+      <p>Track consumables, collectibles, and crafted items in one place.</p>
+      <div class="hero-meta">
+        <span class="pill" id="stat-total">0 items</span>
+        <span class="pill" id="stat-unique">0 unique</span>
+      </div>
+    </div>
+    <div class="hero-art">Loadout ready</div>
+  </section>
+  <section class="card controls">
+    <div>
+      <label for="q">Search</label>
+      <input id="q" type="search" placeholder="Search item name">
+    </div>
+    <div>
+      <label for="sort">Sort</label>
+      <select id="sort">
+        <option value="az">Name A-Z</option>
+        <option value="za">Name Z-A</option>
+        <option value="qty">Quantity</option>
+      </select>
+    </div>
+  </section>
+  <section class="card">
+    <div class="pill" id="live-count">0 shown</div>
+    <div id="list" class="grid" style="margin-top:16px"></div>
+    <div id="empty" class="empty" hidden>No items found.</div>
+  </section>
+</main>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api-pages/inventory.js";
+await mountTopbar("inventory");
+const list = document.getElementById("list");
+const empty = document.getElementById("empty");
+const q = document.getElementById("q");
+const sort = document.getElementById("sort");
+const statTotal = document.getElementById("stat-total");
+const statUnique = document.getElementById("stat-unique");
+const liveCount = document.getElementById("live-count");
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+let items = [];
+try{
+  const res = await api.get("/api/inventory");
+  items = Array.isArray(res) ? res : (res.items || []);
+}catch{
+  empty.hidden = false;
+  empty.textContent = "Could not load inventory.";
+}
+const totalCount = items.reduce((sum, i) => sum + Number(i.qty || 0), 0);
+statTotal.textContent = `${totalCount} items`;
+statUnique.textContent = `${items.length} unique`;
+function sortItems(arr, mode){
+  const copy = [...arr];
+  if (mode === "za") {
+    copy.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+  } else if (mode === "qty") {
+    copy.sort((a, b) => Number(b.qty || 0) - Number(a.qty || 0));
+  } else {
+    copy.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  }
+  return copy;
+}
+function render(){
+  const query = q.value.trim().toLowerCase();
+  const filtered = items.filter(i => (i.name || "").toLowerCase().includes(query));
+  const sorted = sortItems(filtered, sort.value);
+  liveCount.textContent = `${sorted.length} shown`;
+  empty.hidden = sorted.length > 0;
+  list.innerHTML = sorted.map((i, idx) => `
+    <div class="item-card" style="--hue:${(idx * 61) % 360}">
+      <div class="item-media">
+        ${i.icon_path
+          ? `<img src="${escapeHtml(i.icon_path)}" alt="${escapeHtml(i.name || "Item")}">`
+          : `<div class="item-fallback" aria-hidden="true">${escapeHtml((i.name || "?").slice(0, 1))}</div>`
+        }
+      </div>
+      <div class="item-name">${escapeHtml(i.name || "Unknown item")}</div>
+      <div class="item-meta">${escapeHtml(i.category || "Uncategorized")}</div>
+      <div class="item-qty">Qty ${escapeHtml(i.qty ?? 0)}</div>
+    </div>
+  `).join("");
+}
+q.addEventListener("input", render);
+sort.addEventListener("change", render);
+render();
+</script>
+</body>
+</html>

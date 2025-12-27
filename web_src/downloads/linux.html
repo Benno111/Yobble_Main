@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download for Linux</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;align-items:center}
+    .hero h1{margin:0 0 8px;font-size:32px}
+    .hero p{margin:0;color:var(--muted)}
+    .cta{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:var(--accent);color:#000;font-weight:600}
+    .stack{display:grid;gap:10px}
+    .note{color:var(--muted);font-size:12px}
+    .list{display:grid;gap:8px}
+    .list li{margin-left:18px}
+    @media (max-width: 900px){.hero{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main>
+    <div style="margin-bottom:12px">
+      <a class="cta" href="/download.html" style="background:var(--card);color:var(--text);border:1px solid var(--border);">← Back</a>
+    </div>
+    <section class="card hero">
+      <div>
+        <h1>Linux download</h1>
+        <p>Get the zip build for x64 Linux.</p>
+        <div style="margin-top:14px">
+          <a class="cta" href="/downloads/Client_linux.zip">Download .zip</a>
+        </div>
+        <p class="note" style="margin-top:8px">Tested on Ubuntu 20.04+.</p>
+      </div>
+      <div class="card">
+        <div class="stack">
+          <div class="pill">Quick start</div>
+          <ol class="list">
+            <li>Download the zip, extract the zip.</li>
+            <li>Make "launchgame.sh" executable.</li>
+            <li>Run "launchgame.sh" from your file manager.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+    <section class="grid" style="margin-top:16px">
+      <article class="card">
+        <strong>zip build</strong>
+        <p class="note">You can generate a new build with `scripts/build-zip.sh`.</p>
+      </article>
+      <article class="card">
+        <strong>Need help?</strong>
+        <p class="note">If the file won't run, check permissions or use a different distro build.</p>
+      </article>
+    </section>
+  </main>
+  <script type="module">
+    import { mountTopbar } from "/js/layout.js";
+    mountTopbar("download");
+  </script>
+</body>
+</html>

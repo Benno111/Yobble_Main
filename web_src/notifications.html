@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Notifications - Yobble</title></head>
+<body>
+<main>
+<h1>Notifications</h1>
+<button id="markAll">Mark all read</button>
+<div id="list"></div>
+</main>
+<script type="module">
+import { api } from "/js/api-pages/notifications.js";
+import { htmlEscape } from "/js/ui.js";
+const list=document.getElementById("list");
+const r=await api("/api/notifications");
+list.innerHTML=r.map(n=>`
+<div class="${n.is_read?'':'unread'}">
+<strong>${htmlEscape(n.title)}</strong>
+<div>${htmlEscape(n.body||'')}</div>
+</div>`).join("");
+document.getElementById("markAll").onclick=()=>api("/api/notifications/read-all",{method:"POST"});
+</script>
+</body>
+</html>

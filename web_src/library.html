@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Library - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="lib-wrap">
+  <section class="card hero">
+    <div>
+      
+      <h1>Your saved games</h1>
+      <p>Keep your favorites close and jump back into them anytime.</p>
+      <div class="controls" style="margin-top:14px">
+        <input id="searchInput" placeholder="Search your library">
+        <select id="sortSelect">
+          <option value="recent">Recently added</option>
+          <option value="title">Title A–Z</option>
+        </select>
+      </div>
+    </div>
+    <div class="hero-art">Quick launch</div>
+  </section>
+  <section class="grid" id="libraryGrid"></section>
+  <section class="empty" id="libraryEmpty" hidden>No games saved yet.</section>
+</main>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api-pages/library.js";
+await mountTopbar("library");
+const grid = document.getElementById("libraryGrid");
+const empty = document.getElementById("libraryEmpty");
+const searchInput = document.getElementById("searchInput");
+const sortSelect = document.getElementById("sortSelect");
+let library = [];
+function renderList(items){
+  grid.innerHTML = "";
+  if (!items.length) {
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+  for (const game of items) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <div class="game-title">${escapeHtml(game.title || "Untitled")}</div>
+      <div class="game-meta">${game.category ? escapeHtml(game.category) : "Uncategorized"}</div>
+      <div class="game-desc">${escapeHtml(game.description || "No description yet.")}</div>
+      <div class="game-actions">
+        <a class="btn primary" href="/games/${encodeURIComponent(game.slug)}">Play</a>
+        <a class="btn" href="/game.html?slug=${encodeURIComponent(game.slug)}">Details</a>
+      </div>
+    `;
+    grid.appendChild(card);
+  }
+}
+function escapeHtml(value){
+  return String(value || "").replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;"
+  }[ch]));
+}
+function applyFilters(){
+  const q = searchInput.value.trim().toLowerCase();
+  let items = library.slice();
+  if (q) {
+    items = items.filter(g =>
+      String(g.title || "").toLowerCase().includes(q) ||
+      String(g.description || "").toLowerCase().includes(q)
+    );
+  }
+  if (sortSelect.value === "title") {
+    items.sort((a, b) => String(a.title || "").localeCompare(String(b.title || "")));
+  } else {
+    items.sort((a, b) => (b.added_at || 0) - (a.added_at || 0));
+  }
+  renderList(items);
+}
+async function loadLibrary(){
+  try{
+    const res = await api.get("/api/library");
+    library = res.games || [];
+  }catch{
+    library = [];
+  }
+  applyFilters();
+}
+searchInput.addEventListener("input", applyFilters);
+sortSelect.addEventListener("change", applyFilters);
+await loadLibrary();
+</script>
+</body>
+</html>

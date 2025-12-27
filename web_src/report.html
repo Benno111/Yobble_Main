@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="rep-wrap">
+  <section class="card hero">
+    <div>
+      
+      <h1>Report abuse</h1>
+      <p>Submit a report and attach evidence so moderators can review faster.</p>
+    </div>
+    <div class="hero-art">Case intake</div>
+  </section>
+  <section class="grid">
+    <div class="panel">
+      <div class="pill">Report details</div>
+      <div>
+        <label for="target_type">Target type</label>
+        <select id="target_type">
+          <option value="user">User</option>
+          <option value="game">Game</option>
+          <option value="item">Item</option>
+          <option value="listing">Marketplace listing</option>
+          <option value="trade">Trade</option>
+        </select>
+      </div>
+      <div>
+        <label for="target_ref">Target reference (username/slug/code)</label>
+        <input id="target_ref" placeholder="e.g. benno111 or dorfplatformer-9-2">
+      </div>
+      <div>
+        <label for="category">Category</label>
+        <select id="category">
+          <option value="harassment">Harassment</option>
+          <option value="scam">Scam</option>
+          <option value="cheating">Cheating</option>
+          <option value="nsfw">NSFW</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label for="message">Message</label>
+        <textarea id="message" rows="4" placeholder="Describe what happened (include dates, IDs, screenshots)."></textarea>
+      </div>
+      <div class="actions">
+        <button id="submitBtn" class="primary">Submit report</button>
+        <span class="status" id="status"></span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="pill">Evidence</div>
+      <div class="muted">Upload evidence after submitting the report (max 10MB).</div>
+      <input id="file" type="file">
+      <div class="actions">
+        <button class="secondary" id="uploadBtn" disabled>Upload evidence</button>
+        <span class="status" id="evidenceInfo"></span>
+      </div>
+      <div class="pill">Tips</div>
+      <div class="muted">Never share passwords or secrets. Include concrete references for faster resolution.</div>
+    </div>
+  </section>
+</main>
+<script type="module">
+import { requireAuth } from "/js/auth.js";
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api-pages/report.js";
+await requireAuth();
+await mountTopbar("report");
+const params = new URLSearchParams(location.search);
+const preType = params.get("target_type");
+const preRef = params.get("target_ref") || params.get("target_id");
+const status = document.querySelector("#status");
+const submitBtn = document.querySelector("#submitBtn");
+const uploadBtn = document.querySelector("#uploadBtn");
+const evidenceInfo = document.querySelector("#evidenceInfo");
+if (preType) document.querySelector("#target_type").value = preType;
+if (preRef) document.querySelector("#target_ref").value = preRef;
+let lastReportId = null;
+submitBtn.onclick = async ()=>{
+  status.textContent = "";
+  try{
+    const r = await api.post("/api/reports/submit", {
+      target_type: document.querySelector("#target_type").value,
+      target_ref: document.querySelector("#target_ref").value,
+      category: document.querySelector("#category").value,
+      message: document.querySelector("#message").value
+    });
+    lastReportId = r.report_id || null;
+    status.textContent = lastReportId ? `Report submitted (#${lastReportId}).` : "Report submitted.";
+    uploadBtn.disabled = !lastReportId;
+    evidenceInfo.textContent = lastReportId ? "You can upload evidence now." : "Evidence requires report_id.";
+  }catch(e){
+    status.textContent = "Failed to submit report.";
+  }
+};
+uploadBtn.onclick = async ()=>{
+  status.textContent = "";
+  const f = document.querySelector("#file").files?.[0];
+  if(!f){ status.textContent = "Choose a file first."; return; }
+  if(!lastReportId){ status.textContent = "Submit a report first."; return; }
+  const fd = new FormData();
+  fd.append("report_id", String(lastReportId));
+  fd.append("file", f);
+  try{
+    await api("/api/reports/evidence", { method:"POST", body: fd });
+    status.textContent = "Evidence uploaded.";
+  }catch(e){
+    status.textContent = "Upload failed.";
+  }
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theme Preview</title>
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <section class="card hero">
+      <div>
+        
+        <h1>Core UI Elements</h1>
+        <p>Buttons, inputs, and system components using the base theme.</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#controls">Buttons + Inputs</a>
+          <a class="btn secondary" href="#lists">Lists + Cards</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="stack">
+          <div class="pill">Included</div>
+          <div class="note">Theme variables, form controls, cards, and list styles.</div>
+        </div>
+      </div>
+    </section>
+
+    <h2 id="controls">Buttons + Inputs</h2>
+    <section class="card">
+      <div class="grid">
+        <div class="form-field">
+          <label for="textInput">Text input</label>
+          <input id="textInput" placeholder="Type here">
+        </div>
+        <div class="form-field">
+          <label for="numberInput">Number input</label>
+          <input id="numberInput" type="number" value="42">
+        </div>
+        <div class="form-field">
+          <label for="selectInput">Select</label>
+          <select id="selectInput">
+            <option>Option A</option>
+            <option>Option B</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="textareaInput">Textarea</label>
+          <textarea id="textareaInput" rows="3" placeholder="Details..."></textarea>
+        </div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="row" style="gap:10px;flex-wrap:wrap">
+        <button class="btn">Default</button>
+        <button class="btn primary">Primary</button>
+        <button class="btn secondary">Secondary</button>
+        <button class="btn danger">Danger</button>
+        <button class="btn" disabled>Disabled</button>
+      </div>
+      <div style="height:14px"></div>
+      <div class="row" style="gap:12px;flex-wrap:wrap">
+        <label class="checkbox"><input type="checkbox" checked> Checkbox</label>
+        <label class="checkbox"><input type="radio" name="radio" checked> Radio A</label>
+        <label class="checkbox"><input type="radio" name="radio"> Radio B</label>
+        <input type="file">
+      </div>
+    </section>
+
+    <h2 id="lists">Lists + Cards</h2>
+    <section class="grid">
+      <article class="card">
+        <div class="pill">Card</div>
+        <h3>Card Title</h3>
+        <p class="note">Supporting copy in muted text.</p>
+        <button class="btn primary">Action</button>
+      </article>
+      <article class="card">
+        <div class="pill">Card</div>
+        <h3>Another Card</h3>
+        <p class="note">Cards inherit the theme background and borders.</p>
+        <button class="btn secondary">Secondary</button>
+      </article>
+    </section>
+
+    <section class="card" style="margin-top:16px">
+      <div class="pill">List</div>
+      <div class="list" style="margin-top:12px">
+        <div class="list-item">
+          <div>
+            <strong>List item title</strong>
+            <div class="meta">Supporting text for the list item.</div>
+          </div>
+          <button class="btn secondary" style="margin-left:auto">Manage</button>
+        </div>
+        <div class="list-item">
+          <div>
+            <strong>Another list item</strong>
+            <div class="meta">Meta data or status details.</div>
+          </div>
+          <button class="btn">Open</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

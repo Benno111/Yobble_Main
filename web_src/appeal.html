@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Appeal - Yobble</title>
+  <link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <section class="card hero">
+      <div>
+        
+        <h1>Request a review.</h1>
+        <p>Submit context and a clear explanation. Appeals are reviewed by moderators.</p>
+      </div>
+      <div class="hero-art">Appeals queue</div>
+    </section>
+    <section class="grid">
+      <div class="card">
+        <div class="h1" style="margin:0">Submit an appeal</div>
+        <div class="muted" style="margin-top:6px">Provide the ban ID and a short message. Keep it focused and factual.</div>
+        <div class="field">
+          <label for="banId">Active ban</label>
+          <select id="banId"></select>
+          <div class="muted" id="banHelp"></div>
+        </div>
+        <div class="field">
+          <label for="message">Your message</label>
+          <textarea id="message" placeholder="Explain what happened and why you believe this should be reviewed."></textarea>
+        </div>
+        <div class="actions">
+          <button class="primary" id="submitBtn">Submit appeal</button>
+          <a class="ghost" href="/index.html">Back to home</a>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+      <div class="card">
+        <div class="h2" style="margin:0">What to include</div>
+        <div class="list">
+          <div class="item"><span class="dot"></span><div>What happened and when.</div></div>
+          <div class="item"><span class="dot"></span><div>Why the decision may be incorrect.</div></div>
+          <div class="item"><span class="dot"></span><div>Any context a moderator should know.</div></div>
+        </div>
+        <div class="muted" style="margin-top:14px">Only one open appeal is allowed per ban.</div>
+      </div>
+    </section>
+  </main>
+  <script type="module">
+    import { mountTopbar } from "/js/layout.js";
+    import { api } from "/js/api-pages/appeal.js";
+    import { requireAuthAllowBanned } from "/js/auth.js";
+    await mountTopbar("appeal");
+    await requireAuthAllowBanned();
+    const banId = document.getElementById("banId");
+    const banHelp = document.getElementById("banHelp");
+    const message = document.getElementById("message");
+    const status = document.getElementById("status");
+    async function loadBans(){
+      banId.innerHTML = "";
+      banHelp.textContent = "";
+      try{
+        const r = await api.get("/api/appeals/my-bans");
+        const bans = Array.isArray(r?.bans) ? r.bans : [];
+        if (!bans.length) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "No active bans found";
+          banId.appendChild(opt);
+          banId.disabled = true;
+          banHelp.textContent = "If you believe this is an error, contact support.";
+          return;
+        }
+        banId.disabled = false;
+        for (const b of bans) {
+          const opt = document.createElement("option");
+          opt.value = String(b.id);
+          const expires = b.expires_at ? ` · expires ${new Date(b.expires_at).toLocaleDateString()}` : " · permanent";
+          opt.textContent = `#${b.id}${expires}`;
+          banId.appendChild(opt);
+        }
+      }catch{
+        banHelp.textContent = "Unable to load bans right now.";
+      }
+    }
+    await loadBans();
+    document.getElementById("submitBtn").addEventListener("click", async () => {
+      status.textContent = "";
+      const id = Number(banId.value || 0);
+      const msg = message.value.trim();
+      if (!Number.isFinite(id) || id <= 0) {
+        status.textContent = "Select an active ban.";
+        return;
+      }
+      if (!msg) {
+        status.textContent = "Please include a short message.";
+        return;
+      }
+      try{
+        await api.post("/api/appeals/create", { ban_id: id, message: msg });
+        status.textContent = "Appeal submitted ✔";
+        message.value = "";
+        await loadBans();
+      }catch(e){
+        status.textContent = e?.data?.error ? `Failed: ${e.data.error}` : "Failed to submit appeal.";
+      }
+    });
+  </script>
+</body>
+</html>

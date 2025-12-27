@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <section class="card">
+    <div class="muted"></div>Error 404</div>
+    <h1 class="title" id="errTitle">Page not found.</h1>
+    <div class="actions">
+      <a class="action primary" href="/games.html">Browse games</a>
+      <a class="action" href="/index.html">Home</a>
+    </div>
+  </section>
+</main>
+<script>
+  const params = new URLSearchParams(location.search);
+  const msg = params.get("msg");
+  if (msg) {
+    document.getElementById("errTitle").textContent = msg;
+  }
+</script>
+</body>
+</html>

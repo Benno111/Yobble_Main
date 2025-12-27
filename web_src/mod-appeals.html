@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ban Appeals - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="ap-wrap">
+  <section class="card hero">
+    <div>
+      
+      <h1>Ban Appeals</h1>
+      <p>Review and decide on ban appeals with structured notes.</p>
+    </div>
+    <div class="hero-art">Appeals queue</div>
+  </section>
+  <section class="card">
+    <div id="list" class="grid"></div>
+    <div id="empty" class="empty" hidden>No open appeals.</div>
+  </section>
+  <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
+    <a class="pill" href="/mod-dashboard.html">Dashboard</a>
+    <a class="pill" href="/mod-reports.html">Reports</a>
+    <a class="pill" href="/mod-appeals.html">Appeals</a>
+    <a class="pill" href="/mod-bans.html">Ban History</a>
+    <a class="pill" href="/modqueue.html">Queue</a>
+    <a class="pill" href="/moderation.html">Overview</a>
+  </section>
+</main>
+<script type="module">
+import { api } from "/js/api-pages/mod-appeals.js";
+import { requireAuth } from "/js/auth.js";
+import { mountTopbar } from "/js/layout.js";
+await mountTopbar("modappeals");
+const me = await requireAuth();
+if(!["admin","moderator"].includes(me.role)) throw 0;
+const list = document.getElementById("list");
+const empty = document.getElementById("empty");
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+const r = await api.get("/api/mod/appeals/open");
+const appeals = r.appeals || [];
+if(!appeals.length){
+  empty.hidden = false;
+}else{
+  for(const a of appeals){
+    const d = document.createElement("div");
+    d.className = "appeal-card";
+    d.innerHTML = `
+      <div class="appeal-title">${escapeHtml(a.username)}</div>
+      <div class="appeal-meta">Ban reason: ${escapeHtml(a.reason || "—")}</div>
+      <div>${escapeHtml(a.message || "")}</div>
+      <div class="appeal-actions">
+        <button class="primary">Accept</button>
+        <button class="secondary">Reject</button>
+      </div>
+    `;
+    d.querySelector(".primary").onclick = async ()=>{
+      const note = prompt("Decision note?") || "";
+      await api.post("/api/mod/appeals/decide", { id: a.id, decision: "accepted", note });
+      d.remove();
+    };
+    d.querySelector(".secondary").onclick = async ()=>{
+      const note = prompt("Rejection reason?") || "";
+      await api.post("/api/mod/appeals/decide", { id: a.id, decision: "rejected", note });
+      d.remove();
+    };
+    list.appendChild(d);
+  }
+}
+</script>
+</body>
+</html>

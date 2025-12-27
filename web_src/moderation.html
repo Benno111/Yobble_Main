@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moderation Overview - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="mod-wrap">
+  <section class="card hero">
+    <div>
+      
+      <h1>Appeals overview</h1>
+      <p>Quick view of open appeals across the platform.</p>
+    </div>
+    <div class="hero-art">Case review</div>
+  </section>
+  <section class="card">
+    <div id="list" class="grid"></div>
+    <div id="empty" class="empty" hidden>No open appeals.</div>
+  </section>
+  <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
+    <a class="pill" href="/mod-dashboard.html">Dashboard</a>
+    <a class="pill" href="/mod-reports.html">Reports</a>
+    <a class="pill" href="/mod-appeals.html">Appeals</a>
+    <a class="pill" href="/mod-bans.html">Ban History</a>
+    <a class="pill" href="/modqueue.html">Queue</a>
+    <a class="pill" href="/moderation.html">Overview</a>
+  </section>
+</main>
+<script type=module>
+import { api } from "./js/api-pages/moderation.js";
+import { mountTopbar } from "/js/layout.js";
+await mountTopbar("moderation");
+const list = document.getElementById("list");
+const empty = document.getElementById("empty");
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+const r = await api.get("/api/moderation/appeals?status=open");
+const appeals = r.appeals || [];
+if(!appeals.length){
+  empty.hidden = false;
+}else{
+  list.innerHTML = appeals.map(a => `
+    <div class="appeal-card">
+      <div class="appeal-title">User ${escapeHtml(a.user_id)}</div>
+      <div class="appeal-meta">Appeal</div>
+      <div>${escapeHtml(a.appeal_text || "")}</div>
+    </div>
+  `).join("");
+}
+</script>
+</body>
+</html>

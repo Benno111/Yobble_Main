@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Friends - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="fr-wrap">
+  <section class="card hero">
+    <div>
+      
+      <h1>Your circle</h1>
+      <p>See who is online, pending requests, and your trusted crew.</p>
+      <div class="hero-meta">
+        <span class="pill" id="stat-total">0 friends</span>
+        <span class="pill" id="stat-pending">0 pending</span>
+      </div>
+    </div>
+    <div class="hero-art">Party ready</div>
+  </section>
+  <section class="card controls">
+    <div>
+      <label for="q">Search</label>
+      <input id="q" type="search" placeholder="Search by username">
+    </div>
+    <div>
+      <label for="status">Status</label>
+      <select id="status">
+        <option value="all">All</option>
+        <option value="accepted">Accepted</option>
+        <option value="pending">Pending</option>
+      </select>
+    </div>
+  </section>
+  <section class="card">
+    <div class="pill" id="live-count">0 shown</div>
+    <div id="list" class="grid" style="margin-top:16px"></div>
+    <div id="empty" class="empty" hidden>No friends yet.</div>
+  </section>
+</main>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api-pages/friends.js";
+await mountTopbar("friends");
+const list = document.getElementById("list");
+const empty = document.getElementById("empty");
+const q = document.getElementById("q");
+const status = document.getElementById("status");
+const statTotal = document.getElementById("stat-total");
+const statPending = document.getElementById("stat-pending");
+const liveCount = document.getElementById("live-count");
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+let friends = [];
+try{
+  const res = await api.get("/api/friends");
+  friends = Array.isArray(res) ? res : (res.friends || []);
+}catch{
+  empty.hidden = false;
+  empty.textContent = "Could not load friends.";
+}
+const pendingCount = friends.filter(f => f.status === "pending").length;
+statTotal.textContent = `${friends.length} friends`;
+statPending.textContent = `${pendingCount} pending`;
+function render(){
+  const query = q.value.trim().toLowerCase();
+  const filtered = friends.filter(f => {
+    const name = (f.username || "").toLowerCase();
+    if (query && !name.includes(query)) return false;
+    if (status.value !== "all" && f.status !== status.value) return false;
+    return true;
+  });
+  liveCount.textContent = `${filtered.length} shown`;
+  empty.hidden = filtered.length > 0;
+  list.innerHTML = filtered.map(f => `
+    <div class="friend-card">
+      <div class="friend-name">${escapeHtml(f.username || "Unknown")}</div>
+      <div class="friend-meta">Friend ID ${escapeHtml(f.id ?? "—")}</div>
+      <div class="status">${escapeHtml(f.status || "unknown")}</div>
+    </div>
+  `).join("");
+}
+q.addEventListener("input", render);
+status.addEventListener("change", render);
+render();
+</script>
+</body>
+</html>

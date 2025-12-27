@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Play - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="play-shell">
+  <div class="play-top">
+    <div class="play-info">
+      <div class="play-title" id="title">Launching…</div>
+      <div class="play-meta" id="info">Starting…</div>
+    </div>
+    <div class="play-actions">
+      <button class="play-btn" id="refreshBtn">Refresh</button>
+      <button class="play-btn primary" id="backBtn">Back to game</button>
+    </div>
+  </div>
+  <div class="play-wrap">
+    <iframe class="fullscreen-iframe" id="fullscreenFrame" title="Fullscreen"></iframe>
+    <div class="frame-shell">
+      <iframe id="frame" class="play-frame"></iframe>
+    </div>
+  </div>
+</main>
+<script type="module" src="/js/pages/play.js"></script>
+</body>
+</html>
