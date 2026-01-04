@@ -48,11 +48,11 @@
       <div class="pill">ZIP build</div>
       <input id="zip" type="file" accept=".zip">
       <div class="actions">
-        <button id="uploadBtn" class="primary">Upload</button>
+        <button id="uploadBtn" class="primary" type="button">Upload</button>
         <span class="status" id="status"></span>
       </div>
-      <div class="progress" aria-hidden="true">
-        <span id="uploadProgress"></span>
+      <div class="progress" aria-hidden="true" id="uploadProgressWrap">
+        <div id="uploadProgress"></div>
       </div>
       <div class="pill">Notes</div>
       <div class="status">ZIP must include the entry HTML (default index.html).</div>
@@ -79,7 +79,7 @@
         <input id="item_icon" type="file" accept=".png,.jpg,.jpeg,.webp">
       </div>
       <div class="actions">
-        <button id="itemUploadBtn" class="primary">Upload item</button>
+        <button id="itemUploadBtn" class="primary" type="button">Upload item</button>
         <span class="status" id="itemStatus"></span>
       </div>
       <div class="status">Icons up to 2MB (PNG/JPG/WEBP).</div>
@@ -96,6 +96,7 @@ const status = document.getElementById("status");
 const uploadBtn = document.getElementById("uploadBtn");
 const last = document.getElementById("last");
 const uploadProgress = document.getElementById("uploadProgress");
+const uploadProgressWrap = document.getElementById("uploadProgressWrap");
 const itemUploadBtn = document.getElementById("itemUploadBtn");
 const itemStatus = document.getElementById("itemStatus");
 function slugify(v){
@@ -109,11 +110,13 @@ function slugify(v){
 uploadBtn.onclick = async () => {
   status.textContent = "";
   uploadBtn.disabled = true;
+  if (uploadProgressWrap) uploadProgressWrap.style.display = "block";
   uploadProgress.style.width = "0%";
   const zip = document.getElementById("zip").files?.[0];
   if (!zip) {
     status.textContent = "Select a ZIP file.";
     uploadBtn.disabled = false;
+    if (uploadProgressWrap) uploadProgressWrap.style.display = "none";
     return;
   }
   const fd = new FormData();
@@ -128,11 +131,13 @@ uploadBtn.onclick = async () => {
   if (!title || !version) {
     status.textContent = "Title and version are required.";
     uploadBtn.disabled = false;
+    if (uploadProgressWrap) uploadProgressWrap.style.display = "none";
     return;
   }
   if (!slug) {
     status.textContent = "Slug must include letters or numbers.";
     uploadBtn.disabled = false;
+    if (uploadProgressWrap) uploadProgressWrap.style.display = "none";
     return;
   }
   fd.append("title", title);
@@ -160,7 +165,12 @@ uploadBtn.onclick = async () => {
         status.textContent = r?.url ? `Uploaded ✔ ${r.url}` : "Uploaded ✔";
         last.textContent = r?.url ? `Latest: ${r.url}` : "Latest: uploaded.";
       } else {
-        status.textContent = "Upload failed.";
+        let msg = "Upload failed.";
+        try{
+          const r = JSON.parse(xhr.responseText || "{}");
+          if (r?.error) msg = `Upload failed: ${r.error}`;
+        }catch{}
+        status.textContent = msg;
       }
       uploadBtn.disabled = false;
     });
@@ -168,10 +178,14 @@ uploadBtn.onclick = async () => {
       status.textContent = "Upload failed.";
       uploadBtn.disabled = false;
     });
+    xhr.addEventListener("loadend", () => {
+      if (uploadProgressWrap) uploadProgressWrap.style.display = "none";
+    });
     xhr.send(fd);
   }catch(e){
     status.textContent = e?.message ? `Upload failed: ${e.message}` : "Upload failed.";
     uploadBtn.disabled = false;
+    if (uploadProgressWrap) uploadProgressWrap.style.display = "none";
   }
 };
 itemUploadBtn.onclick = async () => {

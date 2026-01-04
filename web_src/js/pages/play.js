@@ -19,6 +19,12 @@ if(!slug || !version){
   info.textContent = "Missing slug/version";
   throw new Error("missing params");
 }
+let photonConfig = null;
+try{
+  photonConfig = await api.get("/api/photon/config");
+}catch(e){
+  photonConfig = null;
+}
 // Start session
 let session_id = null;
 let started_at = null;
@@ -207,6 +213,26 @@ function buildStorageSyncScript(storageSlug, storageVersion){
     })();
   `;
 }
+function buildPhotonBootstrapScript(config){
+  return `
+    (function(){
+      if (window.__photonBootstrap) return;
+      window.__photonBootstrap = true;
+      window.__PHOTON_CONFIG = ${JSON.stringify(config || {})};
+      var s = document.createElement("script");
+      s.src = "/js/sdk/photon.js";
+      s.async = true;
+      s.onload = function(){
+        window.dispatchEvent(new CustomEvent("photon:bootstrap"));
+      };
+      s.onerror = function(){
+        window.__PHOTON_SDK_ERROR = "photon_bootstrap_failed";
+        window.dispatchEvent(new CustomEvent("photon:sdk-error"));
+      };
+      document.head.appendChild(s);
+    })();
+  `;
+}
 frame.addEventListener("load", () => {
   try{
     const doc = frame.contentDocument;
@@ -214,5 +240,10 @@ frame.addEventListener("load", () => {
     const script = doc.createElement("script");
     script.textContent = buildStorageSyncScript(slug, version);
     doc.documentElement.appendChild(script);
+    if (photonConfig?.enabled) {
+      const photonScript = doc.createElement("script");
+      photonScript.textContent = buildPhotonBootstrapScript(photonConfig);
+      doc.documentElement.appendChild(photonScript);
+    }
   }catch(e){}
 });
