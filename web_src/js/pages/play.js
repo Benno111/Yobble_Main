@@ -15,6 +15,9 @@ const refreshBtn = document.getElementById("refreshBtn");
 const fullscreenFrame = document.getElementById("fullscreenFrame");
 const backBtn = document.getElementById("backBtn");
 const playWrap = document.querySelector(".play-wrap");
+const playShell = document.querySelector(".play-shell");
+const collapseBtn = document.getElementById("collapseBtn");
+const expandBtn = document.getElementById("expandBtn");
 if(!slug || !version){
   info.textContent = "Missing slug/version";
   throw new Error("missing params");
@@ -132,6 +135,16 @@ backBtn.onclick = () => {
   }
   location.href = `/games/${slug}`;
 };
+function setCollapsed(nextCollapsed){
+  if(!playShell) return;
+  playShell.classList.toggle("is-collapsed", nextCollapsed);
+}
+if(collapseBtn){
+  collapseBtn.addEventListener("click", () => setCollapsed(true));
+}
+if(expandBtn){
+  expandBtn.addEventListener("click", () => setCollapsed(false));
+}
 if(returnTo){
   backBtn.textContent = "Back to queue";
 }
