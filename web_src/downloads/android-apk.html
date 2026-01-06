@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download Android APK</title>
+  <link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+  <style>
+    .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;align-items:center}
+    .hero h1{margin:0 0 8px;font-size:32px}
+    .hero p{margin:0;color:var(--muted)}
+    .cta{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:var(--accent);color:#000;font-weight:600}
+    .stack{display:grid;gap:10px}
+    .note{color:var(--muted);font-size:12px}
+    .list{display:grid;gap:8px}
+    .list li{margin-left:18px}
+    @media (max-width: 900px){.hero{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main>
+    <div style="margin-bottom:12px">
+      <a class="cta-link" href="/download.html" style="background:var(--card);color:var(--text);border:1px solid var(--border);">← Back</a>
+    </div>
+    <section class="card hero">
+      <div>
+        <h1>Android APK download</h1>
+        <p>Manual install for devices without the Play Store.</p>
+        <div style="margin-top:14px">
+          <a class="cta-link" href="/downloads/android-apk.apk">Download .apk</a>
+        </div>
+        <p class="note" style="margin-top:8px">Android 9+ required.</p>
+      </div>
+      <div class="card">
+        <div class="stack">
+          <div class="pill">Install steps</div>
+          <ol class="list">
+            <li>Download the APK.</li>
+            <li>Enable installs from your browser.</li>
+            <li>Open the file to install.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+    <section class="grid" style="margin-top:16px">
+      <article class="card">
+        <strong>Verify the build</strong>
+        <p class="note">Add a signature hash or verification link here.</p>
+      </article>
+      <article class="card">
+        <strong>Need help?</strong>
+        <p class="note">If you cannot install, use the Play Store listing instead.</p>
+      </article>
+    </section>
+  </main>
+  <script type="module">
+    import { mountTopbar } from "/js/layout.js";
+    mountTopbar("download");
+  </script>
+</body>
+</html>

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat Rooms</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/chat/style.css">
+  <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+</head>
+<body>
+<main class="chat-page">
+  <section class="chat-shell" id="chatRoot">
+    <aside class="chat-rooms" id="chatSidebar">
+      <div class="chat-rooms__header">
+        <div class="chat-rooms__title">Rooms</div>
+        <button type="button" class="chat-rooms__toggle" id="sidebarToggleBtn">Hide</button>
+      </div>
+      <div class="chat-rooms__list" id="channelList"></div>
+    </aside>
+
+    <section class="chat-panel">
+      <header class="chat-panel__header">
+        <div>
+          <div class="chat-panel__label" id="currentChannelLabel">#general</div>
+          <div class="chat-panel__meta" id="channelMeta">Connected</div>
+        </div>
+        <div class="chat-panel__actions">
+          <button type="button" class="chat-rooms__toggle" id="sidebarToggleBtnHeader">Rooms</button>
+          <button id="logoutBtn" class="btn btn--small">Logout</button>
+        </div>
+      </header>
+
+      <div class="chat-panel__messages" id="chatMessages"></div>
+      <div id="typingIndicator" class="chat-panel__typing"></div>
+
+      <footer class="chat-panel__composer">
+        <button class="chat-attach-btn" id="attachBtn" title="Attach file">📎</button>
+        <input id="fileInput" type="file" multiple style="display:none;">
+        <input id="chatInput" class="input-box chat-input" type="text" placeholder="Message...">
+        <button class="chat-send-btn" id="sendBtn">Send</button>
+      </footer>
+      <div id="attachmentPreview" class="chat-attachment-preview"></div>
+    </section>
+  </section>
+</main>
+
+<script type="module">
+  import { mountTopbar } from "/js/layout.js";
+  mountTopbar("uchat");
+</script>
+
+<script>
+const API = {
+  rooms: "/api/chat/rooms",
+  messages: "/api/chat/messages",
+  wsBase: function () {
+    const proto = (location.protocol === "https:") ? "wss" : "ws";
+    return proto + "://" + location.host + "/chat-ws";
+  }
+};
+
+let token = localStorage.getItem("token");
+let username = localStorage.getItem("username");
+let currentChannel = "general";
+let rooms = [];
+let ws = null;
+let oldestMessageId = null;
+let loadingHistory = false;
+let attachments = [];
+let typingTimeout = null;
+
+const chatMessages = document.getElementById("chatMessages");
+const chatInput = document.getElementById("chatInput");
+const sendBtn = document.getElementById("sendBtn");
+const attachBtn = document.getElementById("attachBtn");
+const fileInput = document.getElementById("fileInput");
+const channelList = document.getElementById("channelList");
+const currentChannelLabel = document.getElementById("currentChannelLabel");
+const typingIndicator = document.getElementById("typingIndicator");
+const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
+const sidebarToggleBtnHeader = document.getElementById("sidebarToggleBtnHeader");
+const chatRoot = document.getElementById("chatRoot");
+const attachmentPreview = document.getElementById("attachmentPreview");
+const channelMeta = document.getElementById("channelMeta");
+
+if (!token) {
+  window.location.href = "/login.html";
+}
+
+function authHeaders() {
+  return { Authorization: "Bearer " + token };
+}
+
+async function fetchRooms() {
+  const res = await fetch(API.rooms, { headers: authHeaders() });
+  if (!res.ok) return;
+  const data = await res.json();
+  rooms = Array.isArray(data.rooms) ? data.rooms : [];
+  if (!rooms.length) rooms = ["general"];
+  if (!rooms.includes(currentChannel)) currentChannel = rooms[0];
+  renderRoomList();
+  switchChannel(currentChannel);
+}
+
+function renderRoomList() {
+  channelList.innerHTML = "";
+  rooms.forEach(function (room) {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "chat-room" + (room === currentChannel ? " chat-room--active" : "");
+    row.textContent = "#" + room;
+    row.addEventListener("click", function () {
+      switchChannel(room);
+    });
+    channelList.appendChild(row);
+  });
+}
+
+function switchChannel(room) {
+  currentChannel = room;
+  currentChannelLabel.textContent = "#" + room;
+  channelMeta.textContent = "Connected";
+  oldestMessageId = null;
+  chatMessages.innerHTML = "";
+  connectWS();
+  renderRoomList();
+  loadHistory(true);
+}
+
+function connectWS() {
+  if (ws) {
+    try { ws.close(); } catch (e) {}
+  }
+  const url = API.wsBase() + "?token=" + encodeURIComponent(token) +
+    "&channel=" + encodeURIComponent(currentChannel);
+  ws = new WebSocket(url);
+
+  ws.onopen = function () {
+    channelMeta.textContent = "Live";
+  };
+
+  ws.onmessage = function (event) {
+    let data;
+    try { data = JSON.parse(event.data); } catch (e) { return; }
+    if (data.type === "chat") {
+      addMessage(data);
+    } else if (data.type === "typing") {
+      showTyping(data.user);
+    }
+  };
+
+  ws.onclose = function () {
+    channelMeta.textContent = "Reconnecting...";
+    setTimeout(connectWS, 2000);
+  };
+}
+
+function showTyping(user) {
+  if (user === username) return;
+  typingIndicator.textContent = user + " is typing...";
+  if (typingTimeout) clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(function () {
+    typingIndicator.textContent = "";
+  }, 1500);
+}
+
+async function loadHistory(initial) {
+  if (loadingHistory) return;
+  loadingHistory = true;
+  const url = new URL(API.messages, location.origin);
+  url.searchParams.set("channel", currentChannel);
+  url.searchParams.set("limit", "30");
+  if (oldestMessageId) url.searchParams.set("beforeId", String(oldestMessageId));
+
+  try {
+    const res = await fetch(url.toString(), { headers: authHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (initial) chatMessages.innerHTML = "";
+    data.messages.forEach(function (msg) {
+      prependMessage(msg);
+      if (!oldestMessageId || msg.id < oldestMessageId) oldestMessageId = msg.id;
+    });
+  } finally {
+    loadingHistory = false;
+  }
+}
+
+function createMessageElement(msg) {
+  const row = document.createElement("div");
+  row.className = "chat-msg-row";
+  row.dataset.id = msg.id;
+
+  const meta = document.createElement("div");
+  meta.className = "chat-msg-meta";
+  const userSpan = document.createElement("span");
+  userSpan.className = "chat-msg-user";
+  userSpan.textContent = msg.user || "Unknown";
+  const timeSpan = document.createElement("span");
+  timeSpan.className = "chat-msg-time";
+  timeSpan.textContent = new Date(msg.ts || Date.now()).toLocaleTimeString();
+  meta.appendChild(userSpan);
+  meta.appendChild(timeSpan);
+
+  const body = document.createElement("div");
+  body.className = "chat-msg-body";
+  body.textContent = msg.text || "";
+
+  row.appendChild(meta);
+  row.appendChild(body);
+
+  if (Array.isArray(msg.attachments) && msg.attachments.length) {
+    const list = document.createElement("div");
+    list.className = "chat-attachments";
+    msg.attachments.forEach(function (att) {
+      if (att.isImage) {
+        const img = document.createElement("img");
+        img.className = "chat-attachment-img";
+        img.src = att.url;
+        list.appendChild(img);
+      } else {
+        const link = document.createElement("a");
+        link.className = "chat-attachment-link";
+        link.href = att.downloadUrl || att.url;
+        link.textContent = att.name || "attachment";
+        link.target = "_blank";
+        list.appendChild(link);
+      }
+    });
+    row.appendChild(list);
+  }
+
+  return row;
+}
+
+function prependMessage(msg) {
+  const row = createMessageElement(msg);
+  chatMessages.insertBefore(row, chatMessages.firstChild);
+}
+
+function addMessage(msg) {
+  const row = createMessageElement(msg);
+  chatMessages.appendChild(row);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text && !attachments.length) return;
+  const form = new FormData();
+  form.append("channel", currentChannel);
+  form.append("text", text);
+  attachments.forEach(function (file) {
+    form.append("files", file);
+  });
+  const res = await fetch(API.messages, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form
+  });
+  if (res.ok) {
+    chatInput.value = "";
+    attachments = [];
+    attachmentPreview.innerHTML = "";
+  }
+}
+
+sendBtn.addEventListener("click", sendMessage);
+chatInput.addEventListener("keydown", function (e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  } else if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "typing" }));
+  }
+});
+
+attachBtn.addEventListener("click", function () {
+  fileInput.click();
+});
+
+fileInput.addEventListener("change", function () {
+  const files = Array.from(fileInput.files || []);
+  attachments = files;
+  attachmentPreview.innerHTML = "";
+  files.forEach(function (file) {
+    const chip = document.createElement("div");
+    chip.className = "chat-attachment-preview__item";
+    chip.textContent = file.name;
+    attachmentPreview.appendChild(chip);
+  });
+});
+
+chatMessages.addEventListener("scroll", function () {
+  if (chatMessages.scrollTop < 80) loadHistory(false);
+});
+
+function setSidebarCollapsed(collapsed) {
+  chatRoot.classList.toggle("chat-shell--collapsed", collapsed);
+  const label = collapsed ? "Show" : "Hide";
+  sidebarToggleBtn.textContent = label;
+  sidebarToggleBtnHeader.textContent = collapsed ? "Rooms" : "Hide Rooms";
+}
+
+sidebarToggleBtn.addEventListener("click", function () {
+  setSidebarCollapsed(!chatRoot.classList.contains("chat-shell--collapsed"));
+});
+sidebarToggleBtnHeader.addEventListener("click", function () {
+  setSidebarCollapsed(!chatRoot.classList.contains("chat-shell--collapsed"));
+});
+
+document.getElementById("logoutBtn").addEventListener("click", function () {
+  localStorage.removeItem("token");
+  localStorage.removeItem("username");
+  window.location.href = "/login.html";
+});
+
+fetchRooms();
+</script>
+</body>
+</html>

@@ -7,6 +7,16 @@ header{display:flex;gap:20px;align-items:center;padding:16px 24px;border-bottom:
 nav a{margin-right:12px;opacity:.85;display:inline-flex;align-items:center;gap:8px}
 nav a.active{color:var(--accent);opacity:1}
 .navIcon{font-size:14px;line-height:1}
+.navLabel{display:none}
+.navLabel-full{display:inline}
+@media (max-width: 1100px){
+  .navLabel-full{display:none}
+  .navLabel-abbr{display:inline}
+}
+@media (max-width: 720px){
+  .navLabel-abbr{display:none}
+  .navLabel-emoji{display:inline}
+}
 main{max-width:1240px;margin:28px auto;padding:0 20px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}

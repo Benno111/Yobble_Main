@@ -1,0 +1,24 @@
+{
+  "name": "benno111engene-server",
+  "version": "0.7.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "make-admin": "node tools/make-admin.js",
+    "make-mod": "node tools/make-mod.js"
+
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "sqlite3": "^5.1.7",
+    "multer": "^1.4.5-lts.1",
+    "ws": "^8.18.3",
+    "unzipper": "^0.12.3"
+  }
+}
