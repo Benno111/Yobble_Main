@@ -32,6 +32,14 @@ function loadRooms(configPath) {
   }
 }
 
+function saveRooms(configPath, rooms) {
+  const cleaned = rooms
+    .map(sanitizeRoom)
+    .filter(Boolean);
+  const unique = [...new Set(cleaned)];
+  fs.writeFileSync(configPath, JSON.stringify({ rooms: unique }, null, 2));
+}
+
 function isDmChannel(channel) {
   return channel.startsWith("dm:");
 }
@@ -71,6 +79,26 @@ export function createChatRouter({ projectRoot }) {
 
   router.get("/rooms", requireAuth, (req, res) => {
     res.json({ rooms: loadRooms(roomsConfigPath) });
+  });
+
+  router.post("/rooms", requireAuth, (req, res) => {
+    const name = sanitizeRoom(req.body?.name || "");
+    if (!name) return res.status(400).json({ error: "invalid_room" });
+    if (name.length > 32) return res.status(400).json({ error: "name_too_long" });
+    if (name.startsWith("dm:")) return res.status(400).json({ error: "invalid_room" });
+
+    const rooms = loadRooms(roomsConfigPath);
+    if (rooms.includes(name)) {
+      return res.status(409).json({ error: "room_exists", rooms });
+    }
+    rooms.push(name);
+    try {
+      saveRooms(roomsConfigPath, rooms);
+      return res.json({ created: name, rooms: loadRooms(roomsConfigPath) });
+    } catch (err) {
+      console.error("chat rooms save error", err);
+      return res.status(500).json({ error: "server_error" });
+    }
   });
 
   router.get("/messages", requireAuth, async (req, res) => {

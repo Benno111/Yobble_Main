@@ -56,6 +56,36 @@
   gap: 8px;
 }
 
+.chat-rooms__create {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-rooms__input {
+  flex: 1;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #0c0f14;
+  color: var(--text);
+  padding: 0 10px;
+}
+
+.chat-rooms__create-btn {
+  height: 38px;
+  border-radius: 10px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.chat-rooms__create-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .chat-room {
   border: 1px solid var(--border);
   border-radius: 10px;

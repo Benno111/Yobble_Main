@@ -10,17 +10,25 @@
 <main class="games-wrap">
   <section class="card hero">
     <div>
-      <div class="badge accent">Community Library</div>
-      <h1>Discover Games Worth Your Time</h1>
+      <div class="pill">Community Library</div>
+      <h1>Discover brave games with personality.</h1>
       <p>Browse new experiments, community favorites, and bold prototypes. Filter by category or search for a vibe.</p>
-      <div class="hero-stats">
-        <div class="stat" id="stat-total">0 games</div>
-        <div class="stat" id="stat-cats">0 categories</div>
+      <div class="hero-meta">
+        <div class="pill" id="stat-total">0 games</div>
+        <div class="pill" id="stat-cats">0 categories</div>
       </div>
     </div>
-    <div class="hero-art">Curated by the community</div>
+    <div class="card stack">
+      <strong>Featured moodboard</strong>
+      <div class="small">Tap into worlds built by the community—fast prototypes, polished gems, and everything in between.</div>
+      <div class="hero-meta">
+        <span class="pill">New drops</span>
+        <span class="pill">Experimental</span>
+        <span class="pill">Story-first</span>
+      </div>
+    </div>
   </section>
-  <section class="card controls">
+  <section class="card" id="hero-actions">
     <div>
       <label for="q">Search</label>
       <input id="q" type="search" placeholder="Search title, description, or slug">
@@ -40,8 +48,8 @@
   </section>
   <section class="card">
     <div class="section-title">
-      <h2>All Games</h2>
-      <div class="badge" id="live-count">0 shown</div>
+      <h2>All games</h2>
+      <div class="pill" id="live-count">0 shown</div>
     </div>
     <div id="list" class="grid" style="margin-top:16px"></div>
     <div id="empty" class="empty" hidden>No games match your search yet.</div>
@@ -106,12 +114,20 @@ function render(){
   const sorted = sortGames(filtered, sort.value);
   liveCount.textContent = `${sorted.length} shown`;
   empty.hidden = sorted.length > 0;
-  list.innerHTML = sorted.map((g, i) => `
-    <a class="game-card" style="--hue:${(i * 47) % 360}" href="/games/${encodeURIComponent(g.slug)}">
-      ${g.is_featured ? `<div class="ribbon">Featured</div>` : ``}
-      <div class="game-card-title">${escapeHtml(g.title || "Untitled")}</div>
+  list.innerHTML = sorted.map((g) => {
+    const meta = [
+      g.category ? `<span class="pill">${escapeHtml(g.category)}</span>` : "",
+      g.slug ? `<span class="pill">/${escapeHtml(g.slug)}</span>` : ""
+    ].filter(Boolean).join("");
+    return `
+    <a class="card stack" href="/games/${encodeURIComponent(g.slug)}">
+      ${g.is_featured ? `<span class="pill">Featured</span>` : `<span class="pill">Community Pick</span>`}
+      <strong>${escapeHtml(g.title || "Untitled")}</strong>
+      <div class="small">${escapeHtml(g.description || "No description yet. Tap to explore the build and learn more.")}</div>
+      <div class="hero-meta">${meta || `<span class="pill">Uncategorized</span>`}</div>
     </a>
-  `).join("");
+  `;
+  }).join("");
 }
 q.addEventListener("input", render);
 category.addEventListener("change", render);

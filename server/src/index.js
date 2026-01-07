@@ -4,6 +4,7 @@ import compression from "compression";
 import path from "path";
 import fs from "fs";
 import http from "http";
+import https from "https";
 import { fileURLToPath } from "url";
 
 import { initDb, get, run } from "./db.js";
@@ -77,6 +78,9 @@ const GAME_STORAGE_DIR = path.join(PROJECT_ROOT, "game_storage");
 const TOS_PATH = path.join(PROJECT_ROOT, "/save/tos");
 const ITEM_ICON_DIR = path.join(PROJECT_ROOT, "save", "item_icons");
 const TURBOWARP_EXTENSION_PATH = path.join(PROJECT_ROOT, "web_src", "turbowarp-extension.js");
+const CERT_DIR = path.join(PROJECT_ROOT, "Benno111 Chat");
+const CERT_PATH = path.join(CERT_DIR, "cert.pem");
+const KEY_PATH = path.join(CERT_DIR, "key.pem");
 
 function minifyText(text) {
   const noBlock = text.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -170,7 +174,11 @@ function listFilesRecursive(baseDir, sub = "") {
 
 const app = express();
 app.set("trust proxy", true);
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(compression());
 app.use(express.json({ limit: "12mb" }));
 
@@ -458,4 +466,18 @@ if (PORT2 && PORT2 !== PORT) {
   server2.listen(PORT2, () => {
     console.log(`Server running at http://localhost:${PORT2}`);
   });
+}
+
+const HTTPS_PORT = Number(process.env.HTTPS_PORT || 5443);
+if (fs.existsSync(CERT_PATH) && fs.existsSync(KEY_PATH)) {
+  const httpsServer = https.createServer({
+    cert: fs.readFileSync(CERT_PATH),
+    key: fs.readFileSync(KEY_PATH)
+  }, app);
+  attachChatWs(httpsServer, { projectRoot: PROJECT_ROOT });
+  httpsServer.listen(HTTPS_PORT, () => {
+    console.log(`Server running at https://localhost:${HTTPS_PORT}`);
+  });
+} else {
+  console.log("HTTPS disabled: cert.pem/key.pem not found in Benno111 Chat/");
 }

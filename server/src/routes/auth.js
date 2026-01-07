@@ -2,6 +2,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import { get, run } from "../db.js";
 import { requireAuth, requireAuthAllowBanned, signToken } from "../auth.js";
+import { buildTotpUri, generateTotpSecret, verifyTotp } from "../totp.js";
 
 export const authRouter = express.Router();
 
@@ -57,7 +58,8 @@ authRouter.post("/login", async (req, res) => {
   const user = await get(
     `SELECT id, username, password_hash, role,
             is_banned, ban_reason, banned_at,
-            timeout_until, timeout_reason
+            timeout_until, timeout_reason,
+            totp_enabled, totp_secret
      FROM users WHERE username=?`,
     [username]
   );
@@ -69,6 +71,16 @@ authRouter.post("/login", async (req, res) => {
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) {
     return res.status(401).json({ error: "invalid_login" });
+  }
+
+  if (user.totp_enabled) {
+    const totp = String(req.body?.totp || req.body?.code || "").trim();
+    if (!totp) {
+      return res.status(401).json({ error: "totp_required" });
+    }
+    if (!user.totp_secret || !verifyTotp(user.totp_secret, totp)) {
+      return res.status(401).json({ error: "invalid_totp" });
+    }
   }
 
   const now = Date.now();
@@ -174,6 +186,64 @@ authRouter.get("/me-allow-banned", requireAuthAllowBanned, async (req, res) => {
   }
 
   res.json({ user });
+});
+
+/* GET /api/auth/2fa/status */
+authRouter.get("/2fa/status", requireAuth, async (req, res) => {
+  const row = await get(
+    "SELECT totp_enabled FROM users WHERE id=?",
+    [req.user.uid]
+  );
+  res.json({ enabled: !!row?.totp_enabled });
+});
+
+/* POST /api/auth/2fa/setup */
+authRouter.post("/2fa/setup", requireAuth, async (req, res) => {
+  const row = await get("SELECT username FROM users WHERE id=?", [req.user.uid]);
+  if (!row) return res.status(404).json({ error: "user_not_found" });
+  const secret = generateTotpSecret();
+  await run(
+    "UPDATE users SET totp_secret=?, totp_enabled=0 WHERE id=?",
+    [secret, req.user.uid]
+  );
+  res.json({ secret, otpauth: buildTotpUri(row.username, secret) });
+});
+
+/* POST /api/auth/2fa/enable */
+authRouter.post("/2fa/enable", requireAuth, async (req, res) => {
+  const code = String(req.body?.code || req.body?.totp || "").trim();
+  const row = await get(
+    "SELECT totp_secret FROM users WHERE id=?",
+    [req.user.uid]
+  );
+  if (!row?.totp_secret) {
+    return res.status(400).json({ error: "totp_not_setup" });
+  }
+  if (!verifyTotp(row.totp_secret, code)) {
+    return res.status(400).json({ error: "invalid_totp" });
+  }
+  await run("UPDATE users SET totp_enabled=1 WHERE id=?", [req.user.uid]);
+  res.json({ enabled: true });
+});
+
+/* POST /api/auth/2fa/disable */
+authRouter.post("/2fa/disable", requireAuth, async (req, res) => {
+  const code = String(req.body?.code || req.body?.totp || "").trim();
+  const row = await get(
+    "SELECT totp_secret, totp_enabled FROM users WHERE id=?",
+    [req.user.uid]
+  );
+  if (!row?.totp_enabled) {
+    return res.json({ enabled: false });
+  }
+  if (!verifyTotp(row.totp_secret, code)) {
+    return res.status(400).json({ error: "invalid_totp" });
+  }
+  await run(
+    "UPDATE users SET totp_enabled=0, totp_secret=NULL WHERE id=?",
+    [req.user.uid]
+  );
+  res.json({ enabled: false });
 });
 
 /* POST /api/auth/logout

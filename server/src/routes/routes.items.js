@@ -37,9 +37,15 @@ itemsRouter.post(
       const code = safeCode(req.body.code);
       const name = String(req.body.name || "").trim();
       const description = String(req.body.description || "").trim();
+      const priceRaw = req.body.price ?? "0";
+      const priceNum = Number(priceRaw);
+      const price = Number.isFinite(priceNum) ? Math.floor(priceNum) : NaN;
 
       if (!code || !name) {
         return res.status(400).json({ ok: false, error: "missing_fields" });
+      }
+      if (!Number.isFinite(price) || price < 0) {
+        return res.status(400).json({ ok: false, error: "invalid_price" });
       }
 
       // Prevent duplicate codes
@@ -79,14 +85,15 @@ itemsRouter.post(
       ------------------------------ */
       await run(
         `INSERT INTO items
-         (code, name, description, icon_path,
+         (code, name, description, icon_path, price,
           approval_status, uploaded_by, created_at)
-         VALUES (?,?,?,?,?,?,?)`,
+         VALUES (?,?,?,?,?,?,?,?)`,
         [
           code,
           name,
           description,
           iconPath,
+          price,
           "pending",
           req.user.uid,
           Date.now()
@@ -111,7 +118,7 @@ itemsRouter.post(
 ------------------------------ */
 itemsRouter.get("/", requireAuth, async (_req, res) => {
   const items = await all(
-    `SELECT id, code, name, description, icon_path
+    `SELECT id, code, name, description, icon_path, price
      FROM items
      WHERE approval_status='approved'
      ORDER BY created_at DESC`

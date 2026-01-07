@@ -125,6 +125,41 @@
           <option value="sms">SMS</option>
         </select>
       </div>
+      <div class="form-field" style="margin-top:12px">
+        <label>Authenticator app setup</label>
+        <div id="twoFactorStatus" class="muted">Checking status...</div>
+        <div class="actions" style="margin-top:10px">
+          <button type="button" id="twoFactorSetupBtn">Set up authenticator</button>
+          <button type="button" class="danger" id="twoFactorDisableBtn" style="display:none">Disable 2FA</button>
+        </div>
+        <div id="twoFactorSetup" style="display:none; margin-top:12px">
+          <p class="small">Add this key to your authenticator app, then enter the code.</p>
+          <div class="form-field" style="margin-top:8px">
+            <label for="twoFactorSecret">Secret key</label>
+            <input id="twoFactorSecret" readonly>
+          </div>
+          <div class="form-field" style="margin-top:8px">
+            <label for="twoFactorOtpauth">OTPAuth URL</label>
+            <input id="twoFactorOtpauth" readonly>
+          </div>
+          <div class="form-field" style="margin-top:8px">
+            <label for="twoFactorCode">Verification code</label>
+            <input id="twoFactorCode" inputmode="numeric" autocomplete="one-time-code" placeholder="123456">
+          </div>
+          <div class="actions" style="margin-top:10px">
+            <button type="button" id="twoFactorVerifyBtn">Verify & Enable</button>
+          </div>
+        </div>
+        <div id="twoFactorDisable" style="display:none; margin-top:12px">
+          <div class="form-field">
+            <label for="twoFactorDisableCode">Code to disable</label>
+            <input id="twoFactorDisableCode" inputmode="numeric" autocomplete="one-time-code" placeholder="123456">
+          </div>
+          <div class="actions" style="margin-top:10px">
+            <button type="button" class="danger" id="twoFactorDisableConfirm">Confirm disable</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="card">
@@ -140,6 +175,7 @@
 
 <script type="module">
   import { mountTopbar } from "/js/layout.js";
+  import { api } from "/js/api.js";
   await mountTopbar("uprofile");
 
   const form = document.getElementById("settingsForm");
@@ -187,6 +223,97 @@
   });
 
   loadDraft();
+
+  const twoFactorStatus = document.getElementById("twoFactorStatus");
+  const twoFactorSetupBtn = document.getElementById("twoFactorSetupBtn");
+  const twoFactorDisableBtn = document.getElementById("twoFactorDisableBtn");
+  const twoFactorSetup = document.getElementById("twoFactorSetup");
+  const twoFactorSecret = document.getElementById("twoFactorSecret");
+  const twoFactorOtpauth = document.getElementById("twoFactorOtpauth");
+  const twoFactorCode = document.getElementById("twoFactorCode");
+  const twoFactorVerifyBtn = document.getElementById("twoFactorVerifyBtn");
+  const twoFactorDisable = document.getElementById("twoFactorDisable");
+  const twoFactorDisableCode = document.getElementById("twoFactorDisableCode");
+  const twoFactorDisableConfirm = document.getElementById("twoFactorDisableConfirm");
+
+  function setTwoFactorStatus(text, isError = false){
+    twoFactorStatus.textContent = text;
+    twoFactorStatus.style.color = isError ? "#b33" : "";
+  }
+
+  async function refreshTwoFactor(){
+    try{
+      const data = await api.get("/api/auth/2fa/status");
+      if (data?.enabled) {
+        setTwoFactorStatus("Enabled");
+        twoFactorSetupBtn.style.display = "none";
+        twoFactorDisableBtn.style.display = "inline-flex";
+        twoFactorDisable.style.display = "block";
+        twoFactorSetup.style.display = "none";
+      } else {
+        setTwoFactorStatus("Off");
+        twoFactorSetupBtn.style.display = "inline-flex";
+        twoFactorDisableBtn.style.display = "none";
+        twoFactorDisable.style.display = "none";
+      }
+    } catch {
+      setTwoFactorStatus("Unavailable", true);
+      twoFactorSetupBtn.disabled = true;
+      twoFactorDisableBtn.disabled = true;
+    }
+  }
+
+  twoFactorSetupBtn.addEventListener("click", async () => {
+    setTwoFactorStatus("Generating setup...", false);
+    try{
+      const data = await api.post("/api/auth/2fa/setup", {});
+      twoFactorSecret.value = data?.secret || "";
+      twoFactorOtpauth.value = data?.otpauth || "";
+      twoFactorCode.value = "";
+      twoFactorSetup.style.display = "block";
+      setTwoFactorStatus("Enter the code from your app to enable.");
+    } catch {
+      setTwoFactorStatus("Setup failed. Try again.", true);
+    }
+  });
+
+  twoFactorVerifyBtn.addEventListener("click", async () => {
+    const code = String(twoFactorCode.value || "").trim();
+    if (!code) {
+      setTwoFactorStatus("Enter a code to verify.", true);
+      return;
+    }
+    try{
+      await api.post("/api/auth/2fa/enable", { code });
+      twoFactorCode.value = "";
+      twoFactorSetup.style.display = "none";
+      await refreshTwoFactor();
+    } catch {
+      setTwoFactorStatus("Invalid code. Try again.", true);
+    }
+  });
+
+  twoFactorDisableBtn.addEventListener("click", () => {
+    twoFactorDisable.style.display = "block";
+    twoFactorDisableCode.focus();
+  });
+
+  twoFactorDisableConfirm.addEventListener("click", async () => {
+    const code = String(twoFactorDisableCode.value || "").trim();
+    if (!code) {
+      setTwoFactorStatus("Enter a code to disable.", true);
+      return;
+    }
+    try{
+      await api.post("/api/auth/2fa/disable", { code });
+      twoFactorDisableCode.value = "";
+      await refreshTwoFactor();
+    } catch {
+      setTwoFactorStatus("Disable failed. Check code.", true);
+    }
+  });
+
+  refreshTwoFactor();
 </script>
 </body>
 </html>

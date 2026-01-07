@@ -75,6 +75,10 @@
         <textarea id="item_desc" rows="4" placeholder="Short description"></textarea>
       </div>
       <div>
+        <label for="item_price">Price</label>
+        <input id="item_price" type="number" min="0" step="1" placeholder="0">
+      </div>
+      <div>
         <label for="item_icon">Icon (optional)</label>
         <input id="item_icon" type="file" accept=".png,.jpg,.jpeg,.webp">
       </div>
@@ -194,9 +198,17 @@ itemUploadBtn.onclick = async () => {
   const code = document.getElementById("item_code").value.trim();
   const name = document.getElementById("item_name").value.trim();
   const description = document.getElementById("item_desc").value.trim();
+  const priceRaw = document.getElementById("item_price").value;
+  const priceNum = Number(priceRaw);
+  const price = Number.isFinite(priceNum) ? Math.floor(priceNum) : NaN;
   const icon = document.getElementById("item_icon").files?.[0];
   if (!code || !name) {
     itemStatus.textContent = "Item code and name are required.";
+    itemUploadBtn.disabled = false;
+    return;
+  }
+  if (!Number.isFinite(price) || price < 0) {
+    itemStatus.textContent = "Price must be 0 or higher.";
     itemUploadBtn.disabled = false;
     return;
   }
@@ -204,6 +216,7 @@ itemUploadBtn.onclick = async () => {
   fd.append("code", code);
   fd.append("name", name);
   fd.append("description", description);
+  fd.append("price", String(price));
   if (icon) fd.append("icon", icon);
   try{
     const r = await api.post("/api/items/upload", fd);

@@ -7,7 +7,9 @@
   function resolveApiBase(){
     const base = (API_BASE && API_BASE !== "__API_BASE__") ? API_BASE : "";
     const stored = (window.localStorage && window.localStorage.getItem(API_BASE_STORAGE_KEY)) || "";
-    return base || stored || "";
+    const fallback = "https://photography-cage.gl.at.ply.gg:52426";
+    const raw = base || stored || fallback;
+    return raw.replace(/\/+$/, "");
   }
 
   function buildAuthHeaders(){
@@ -73,10 +75,11 @@
           {
             opcode: "accountLogin",
             blockType: Scratch.BlockType.REPORTER,
-            text: "login username [USER] password [PASS] (json)",
+            text: "login username [USER] password [PASS] otp [OTP] (json)",
             arguments: {
               USER: { type: Scratch.ArgumentType.STRING, defaultValue: "user" },
-              PASS: { type: Scratch.ArgumentType.STRING, defaultValue: "password" }
+              PASS: { type: Scratch.ArgumentType.STRING, defaultValue: "password" },
+              OTP: { type: Scratch.ArgumentType.STRING, defaultValue: "" }
             }
           },
           {
@@ -172,8 +175,11 @@
     async accountLogin(args){
       const username = String(args.USER || "").trim();
       const password = String(args.PASS || "");
+      const otp = String(args.OTP || "").trim();
       if (!username || !password) return JSON.stringify({ error: "missing_fields" });
-      const data = await postJson("/api/auth/login", { username, password });
+      const payload = { username, password };
+      if (otp) payload.totp = otp;
+      const data = await postJson("/api/auth/login", payload);
       try {
         if (data?.token) {
           window.localStorage.setItem("token", data.token);

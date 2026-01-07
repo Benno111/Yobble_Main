@@ -17,6 +17,10 @@
         <div class="chat-rooms__title">Rooms</div>
         <button type="button" class="chat-rooms__toggle" id="sidebarToggleBtn">Hide</button>
       </div>
+      <div class="chat-rooms__create">
+        <input id="newRoomInput" class="chat-rooms__input" type="text" placeholder="Create room">
+        <button type="button" class="chat-rooms__create-btn" id="createRoomBtn">Add</button>
+      </div>
       <div class="chat-rooms__list" id="channelList"></div>
     </aside>
 
@@ -84,6 +88,8 @@ const sidebarToggleBtnHeader = document.getElementById("sidebarToggleBtnHeader")
 const chatRoot = document.getElementById("chatRoot");
 const attachmentPreview = document.getElementById("attachmentPreview");
 const channelMeta = document.getElementById("channelMeta");
+const newRoomInput = document.getElementById("newRoomInput");
+const createRoomBtn = document.getElementById("createRoomBtn");
 
 if (!token) {
   window.location.href = "/login.html";
@@ -309,6 +315,35 @@ sidebarToggleBtn.addEventListener("click", function () {
 });
 sidebarToggleBtnHeader.addEventListener("click", function () {
   setSidebarCollapsed(!chatRoot.classList.contains("chat-shell--collapsed"));
+});
+
+async function createRoom() {
+  const name = (newRoomInput.value || "").trim().toLowerCase();
+  if (!name) return;
+  createRoomBtn.disabled = true;
+  try {
+    const res = await fetch(API.rooms, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    rooms = Array.isArray(data.rooms) ? data.rooms : rooms;
+    newRoomInput.value = "";
+    renderRoomList();
+    if (data.created) switchChannel(data.created);
+  } finally {
+    createRoomBtn.disabled = false;
+  }
+}
+
+createRoomBtn.addEventListener("click", createRoom);
+newRoomInput.addEventListener("keydown", function (e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    createRoom();
+  }
 });
 
 document.getElementById("logoutBtn").addEventListener("click", function () {

@@ -62,6 +62,8 @@ export async function initDb() {
   await addColumnIfMissing("users", "wallet_connected_at", "INTEGER");
   await addColumnIfMissing("users", "wallet_label", "TEXT");
   await addColumnIfMissing("users", "platform_score", "INTEGER DEFAULT 0");
+  await addColumnIfMissing("users", "totp_secret", "TEXT");
+  await addColumnIfMissing("users", "totp_enabled", "INTEGER DEFAULT 0");
 
   /* GAMES */
   await run(`CREATE TABLE IF NOT EXISTS games(
@@ -133,6 +135,7 @@ export async function initDb() {
   await addColumnIfMissing("items", "approved_at", "INTEGER");
   await addColumnIfMissing("items", "rejected_reason", "TEXT");
   await addColumnIfMissing("items", "created_at", "INTEGER");
+  await addColumnIfMissing("items", "price", "INTEGER DEFAULT 0");
 
   /* INVENTORY */
   await run(`CREATE TABLE IF NOT EXISTS inventory(

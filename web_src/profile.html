@@ -101,6 +101,7 @@ if(profile){
   }
   const heroActionParts = [];
   if (isSelf) {
+    heroActionParts.push(`<a class="pill action" href="/User-Settings.html">User settings</a>`);
     heroActionParts.push(`<button class="pill action" id="logoutBtn" type="button">Logout</button>`);
   } else {
     heroActionParts.push(`<a class="pill action" href="/report.html?target_type=user&target_ref=${encodeURIComponent(profile.username || "")}">Report</a>`);

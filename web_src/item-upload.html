@@ -11,6 +11,7 @@
 <label>Item Code</label><input id="code">
 <label>Name</label><input id="name">
 <label>Description</label><textarea id="desc"></textarea>
+<label>Price</label><input id="price" type="number" min="0" step="1" placeholder="0">
 <label>Icon</label><input type="file" id="icon">
 <button id="upload" class="primary">Submit for review</button>
 <div id="status" class="muted"></div>
@@ -23,6 +24,7 @@ upload.onclick = async ()=>{
   fd.append("code",code.value.trim());
   fd.append("name",name.value.trim());
   fd.append("description",desc.value.trim());
+  fd.append("price", price.value || "0");
   if(icon.files[0]) fd.append("icon",icon.files[0]);
   status.textContent="Uploading…";
   const r=await fetch("/api/items/upload",{
