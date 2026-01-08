@@ -1,0 +1,232 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yobble Blog</title>
+  <link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { getCurrentUser } from "/js/auth-client.js";
+
+await mountTopbar("ublog");
+
+const modSection = document.getElementById("modPostCreate");
+const modNotice = document.getElementById("modPostNotice");
+const form = document.getElementById("modPostForm");
+const token = localStorage.getItem("token");
+const featuredWrap = document.getElementById("blogFeatured");
+const latestWrap = document.getElementById("blogLatest");
+
+const user = await getCurrentUser();
+const isMod = user && (user.role === "admin" || user.role === "mod" || user.role === "moderator");
+if (isMod && modSection) modSection.hidden = false;
+
+function renderTags(tags = []) {
+  if (!tags.length) return "";
+  return tags.slice(0, 2).map((t) => `<span class="blog-tag">${t}</span>`).join("");
+}
+
+function renderFeatured(post) {
+  return `
+    <article class="blog-card">
+      ${renderTags(post.tags)}
+      <h3 style="margin:0">${post.title}</h3>
+      <p class="small">${post.summary || post.body.slice(0, 120)}...</p>
+      <div class="meta">${new Date(post.published_at || post.created_at).toLocaleDateString()} · ${Math.max(3, Math.ceil((post.body || "").length / 800))} min read</div>
+    </article>
+  `;
+}
+
+function renderLatest(post) {
+  return `
+    <article class="blog-list-item">
+      ${renderTags(post.tags)}
+      <h3 class="title">${post.title}</h3>
+      <div class="meta">${new Date(post.published_at || post.created_at).toLocaleDateString()} · ${Math.max(3, Math.ceil((post.body || "").length / 800))} min read</div>
+      <p class="small">${post.summary || post.body.slice(0, 140)}...</p>
+    </article>
+  `;
+}
+
+async function loadBlog() {
+  if (!featuredWrap || !latestWrap) return;
+  const resp = await fetch("/api/blog/posts?limit=30");
+  if (!resp.ok) return;
+  const data = await resp.json();
+  const posts = Array.isArray(data.posts) ? data.posts : [];
+  const featured = posts.filter((p) => p.featured).slice(0, 2);
+  const latest = posts.filter((p) => !p.featured).slice(0, 6);
+  featuredWrap.innerHTML = featured.length ? featured.map(renderFeatured).join("") : "<div class=\"small\">No featured posts yet.</div>";
+  latestWrap.innerHTML = latest.length ? latest.map(renderLatest).join("") : "<div class=\"small\">No posts yet.</div>";
+}
+
+if (form) {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!token) {
+      modNotice.textContent = "Login required.";
+      return;
+    }
+    const payload = {
+      title: form.title.value.trim(),
+      summary: form.summary.value.trim(),
+      body: form.body.value.trim(),
+      tags: form.tags.value.split(",").map((t) => t.trim()).filter(Boolean),
+      status: form.status.value,
+      featured: form.featured.checked
+    };
+    if (!payload.title || !payload.body) {
+      modNotice.textContent = "Title and body are required.";
+      return;
+    }
+    modNotice.textContent = "Publishing...";
+    const resp = await fetch("/api/blog/posts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) {
+      modNotice.textContent = "Failed to create post.";
+      return;
+    }
+    const data = await resp.json();
+    modNotice.textContent = `Posted: ${data.slug}`;
+    form.reset();
+    await loadBlog();
+  });
+}
+
+await loadBlog();
+</script>
+<body>
+  <main>
+    <section class="card blog-hero">
+      <div class="pill">Platform Blog</div>
+      <h1>Build smarter, ship faster, and keep your community in sync.</h1>
+      <p>News, launch notes, and deep dives from the Yobble team. Follow the tools, policies, and creator stories shaping the platform.</p>
+      <div class="hero-actions">
+        <a class="pill action" href="/register">Follow updates</a>
+        <a class="pill outline" href="/games.html">Browse games</a>
+      </div>
+      <div class="blog-stats">
+        <div class="stat">
+          <strong>18</strong>
+          <span class="small">Product notes this quarter</span>
+        </div>
+        <div class="stat">
+          <strong>42</strong>
+          <span class="small">Creator spotlights</span>
+        </div>
+        <div class="stat">
+          <strong>7m</strong>
+          <span class="small">Avg. read time per week</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="blog-layout" style="margin-top:18px">
+      <div class="blog-feature">
+        <div id="modPostCreate" class="card" hidden>
+          <div class="section-title">
+            <h2 style="margin:0">Create a blog post</h2>
+            <span class="pill">Moderators only</span>
+          </div>
+          <form id="modPostForm" class="stack">
+            <label class="form-field">
+              <span class="small">Title</span>
+              <input name="title" type="text" maxlength="140" required>
+            </label>
+            <label class="form-field">
+              <span class="small">Summary</span>
+              <input name="summary" type="text" maxlength="240" placeholder="Short intro for previews">
+            </label>
+            <label class="form-field">
+              <span class="small">Body</span>
+              <textarea name="body" rows="8" required></textarea>
+            </label>
+            <div class="grid">
+              <label class="form-field">
+                <span class="small">Tags (comma separated)</span>
+                <input name="tags" type="text" placeholder="Release Notes, Trust, Creator">
+              </label>
+              <label class="form-field">
+                <span class="small">Status</span>
+                <select name="status">
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                </select>
+              </label>
+            </div>
+            <label class="checkbox">
+              <input name="featured" type="checkbox">
+              <span class="small">Mark as featured</span>
+            </label>
+            <button class="primary" type="submit">Create post</button>
+            <div id="modPostNotice" class="small"></div>
+          </form>
+        </div>
+        <div class="card">
+          <div class="section-title">
+            <h2 style="margin:0">Featured</h2>
+            <span class="pill">This week</span>
+          </div>
+          <div id="blogFeatured" class="feature-grid"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h2 style="margin:0">Latest posts</h2>
+            <a class="pill outline" href="/download.html">Get the desktop app</a>
+          </div>
+          <div id="blogLatest" class="blog-list"></div>
+        </div>
+      </div>
+
+      <aside class="blog-aside">
+        <div class="card">
+          <div class="section-title">
+            <h2 style="margin:0">Topics</h2>
+            <span class="pill">Updated weekly</span>
+          </div>
+          <div class="actions">
+            <span class="pill">Release notes</span>
+            <span class="pill">Creator stories</span>
+            <span class="pill">Safety</span>
+            <span class="pill">Growth</span>
+            <span class="pill">Economy</span>
+            <span class="pill">Tooling</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-title">
+            <h2 style="margin:0">Reading list</h2>
+          </div>
+          <div class="blog-list">
+            <article class="blog-list-item">
+              <div class="meta">Creator handbook</div>
+              <h3 class="title">Turning playtests into launch plans</h3>
+              <div class="small">A five-step cadence for structured feedback.</div>
+            </article>
+            <article class="blog-list-item">
+              <div class="meta">Marketplace</div>
+              <h3 class="title">Pricing items with soft caps</h3>
+              <div class="small">Prevent runaway inflation while rewarding early players.</div>
+            </article>
+          </div>
+        </div>
+        <div class="blog-newsletter">
+          <strong>Get the weekly digest</strong>
+          <span class="small">Product drops, policy updates, and top creator moments.</span>
+          <input type="email" placeholder="you@yobble.com" aria-label="Email">
+          <button class="primary">Subscribe</button>
+        </div>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>

@@ -165,6 +165,23 @@ export async function initDb() {
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
+  /* BLOG */
+  await run(`CREATE TABLE IF NOT EXISTS blog_posts(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    summary TEXT,
+    body TEXT NOT NULL,
+    tags_json TEXT,
+    status TEXT DEFAULT 'draft',
+    featured INTEGER DEFAULT 0,
+    author_user_id INTEGER,
+    created_at INTEGER,
+    updated_at INTEGER,
+    published_at INTEGER,
+    FOREIGN KEY(author_user_id) REFERENCES users(id) ON DELETE SET NULL
+  )`);
+
   /* WALLETS */
   await run(`CREATE TABLE IF NOT EXISTS wallets(
     user_id INTEGER PRIMARY KEY,

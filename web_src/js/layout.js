@@ -29,6 +29,30 @@ export async function mountTopbar(page){
   document.querySelectorAll("#mainNav a").forEach(a=>{
     if(a.dataset.page===page) a.classList.add("active");
   });
+  document.querySelectorAll(".navDropdownToggle").forEach((toggle) => {
+    toggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const wrap = toggle.closest(".navDropdown");
+      const isOpen = wrap.classList.toggle("open");
+      toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      document.querySelectorAll(".navDropdown").forEach((other) => {
+        if (other !== wrap) {
+          other.classList.remove("open");
+          const btn = other.querySelector(".navDropdownToggle");
+          if (btn) btn.setAttribute("aria-expanded", "false");
+        }
+      });
+    });
+  });
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".navDropdown").forEach((wrap) => {
+      if (wrap.classList.contains("open")) {
+        wrap.classList.remove("open");
+        const btn = wrap.querySelector(".navDropdownToggle");
+        if (btn) btn.setAttribute("aria-expanded", "false");
+      }
+    });
+  });
   if (window.electron) {
     const uploadLink = document.getElementById("navUpload");
     if (uploadLink) uploadLink.style.display = "none";

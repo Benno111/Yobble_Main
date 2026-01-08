@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yobble Packager</title>
+  <link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+  <style>
+    .packager-shell{display:grid;gap:16px;min-height:70vh}
+    .packager-frame{border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden;min-height:70vh}
+    .packager-frame iframe{width:100%;height:100%;border:0;display:block;background:#0c0f14}
+  </style>
+</head>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+await mountTopbar("upackager");
+
+const frame = document.getElementById("packagerFrame");
+if (frame) frame.src = "https://packager.turbowarp.org/";
+</script>
+<body>
+  <main>
+    <section class="card hero" style="grid-template-columns:1.1fr .9fr">
+      <div>
+        <h1>TurboWarp Packager</h1>
+        <p>Package SB3 projects into desktop or web builds with the official TurboWarp packager, right from the platform.</p>
+        <div class="hero-actions">
+          <a class="pill action" href="/upload.html">Upload build</a>
+          <a class="pill outline" href="/ide/">Open IDE</a>
+        </div>
+      </div>
+      <div class="hero-art">Package and ship</div>
+    </section>
+
+    <section class="packager-shell" style="margin-top:18px">
+      <div class="packager-frame">
+        <iframe id="packagerFrame" title="TurboWarp Packager"></iframe>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

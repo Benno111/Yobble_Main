@@ -8,6 +8,7 @@ import { reviewsRouter } from "./routes.reviews.js";
 import { profileRouter } from "./routes.profile.js";
 import { reportsRouter } from "./routes.reports.js";
 import { gameHostingRouter } from "./routes.gamehosting.js";
+import { blogRouter } from "./routes.blog.js";
 
 // Optional / existing routers (uncomment when files exist)
 import { friendsRouter } from "./friends.js";
@@ -33,6 +34,7 @@ export {
   profileRouter,
   reportsRouter,
   gameHostingRouter,
+  blogRouter,
   friendsRouter,
   inventoryRouter,
   marketRouter,

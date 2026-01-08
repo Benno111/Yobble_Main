@@ -9,17 +9,61 @@
     <span class="navToggleBar"></span>
   </button>
   <nav id="mainNav">
-    <a href="/games.html" data-page="ugames"><span class="navIcon" aria-hidden="true">🎮</span><span class="navLabel navLabel-full">Games</span><span class="navLabel navLabel-abbr">G</span><span class="navLabel navLabel-emoji">🎮</span></a>
-    <a href="/friends.html" data-page="ufriends"><span class="navIcon" aria-hidden="true">🤝</span><span class="navLabel navLabel-full">Friends</span><span class="navLabel navLabel-abbr">F</span><span class="navLabel navLabel-emoji">🤝</span></a>
-    <a href="/inventory.html" data-page="uinventory"><span class="navIcon" aria-hidden="true">🎒</span><span class="navLabel navLabel-full">Inventory</span><span class="navLabel navLabel-abbr">I</span><span class="navLabel navLabel-emoji">🎒</span></a>
-    <a href="/market.html" data-page="umarket"><span class="navIcon" aria-hidden="true">🛒</span><span class="navLabel navLabel-full">Marketplace</span><span class="navLabel navLabel-abbr">M</span><span class="navLabel navLabel-emoji">🛒</span></a>
-    <a href="/library.html" data-page="ulibrary"><span class="navIcon" aria-hidden="true">📚</span><span class="navLabel navLabel-full">Library</span><span class="navLabel navLabel-abbr">L</span><span class="navLabel navLabel-emoji">📚</span></a>
-    <a href="/chat/" data-page="uchat"><span class="navIcon" aria-hidden="true">💬</span><span class="navLabel navLabel-full">Chat</span><span class="navLabel navLabel-abbr">C</span><span class="navLabel navLabel-emoji">💬</span></a>
-    <a href="/profile.html" data-page="uprofile"><span class="navIcon" aria-hidden="true">👤</span><span class="navLabel navLabel-full">Profile</span><span class="navLabel navLabel-abbr">P</span><span class="navLabel navLabel-emoji">👤</span></a>
-    <a href="/download.html" id="Download"><span class="navIcon" aria-hidden="true">⬇️</span><span class="navLabel navLabel-full">Download</span><span class="navLabel navLabel-abbr">D</span><span class="navLabel navLabel-emoji">⬇️</span></a>
-    <a href="/upload.html" data-page="uupload"><span class="navIcon" aria-hidden="true">⤴️</span><span class="navLabel navLabel-full">Upload</span><span class="navLabel navLabel-abbr">U</span><span class="navLabel navLabel-emoji">⤴️</span></a>
-    <a href="/money.html"><span class="navIcon" aria-hidden="true">💳</span><span class="navLabel navLabel-full">Get Balance</span><span class="navLabel navLabel-abbr">B</span><span class="navLabel navLabel-emoji">💳</span></a>
-    <a href="/tos.html" data-page="utos"><span class="navIcon" aria-hidden="true">📜</span><span class="navLabel navLabel-full">Terms</span><span class="navLabel navLabel-abbr">T</span><span class="navLabel navLabel-emoji">📜</span></a>
+    <div class="navDropdown">
+      <button class="navDropdownToggle" type="button" aria-expanded="false">
+        <span class="navIcon" aria-hidden="true">🎮</span>
+        <span class="navLabel navLabel-full">Play</span>
+        <span class="navLabel navLabel-abbr">Play</span>
+        <span class="navLabel navLabel-emoji">🎮</span>
+        <span class="navDropdownArrow" aria-hidden="true">▾</span>
+      </button>
+      <div class="navDropdownMenu" role="menu">
+        <a href="/games.html" data-page="ugames" role="menuitem">Games</a>
+        <a href="/library.html" data-page="ulibrary" role="menuitem">Library</a>
+      </div>
+    </div>
+    <div class="navDropdown">
+      <button class="navDropdownToggle" type="button" aria-expanded="false">
+        <span class="navIcon" aria-hidden="true">💬</span>
+        <span class="navLabel navLabel-full">Social</span>
+        <span class="navLabel navLabel-abbr">Social</span>
+        <span class="navLabel navLabel-emoji">💬</span>
+        <span class="navDropdownArrow" aria-hidden="true">▾</span>
+      </button>
+      <div class="navDropdownMenu" role="menu">
+        <a href="/friends.html" data-page="ufriends" role="menuitem">Friends</a>
+        <a href="/chat/" data-page="uchat" role="menuitem">Chat</a>
+        <a href="/profile.html" data-page="uprofile" role="menuitem">Profile</a>
+      </div>
+    </div>
+    <div class="navDropdown">
+      <button class="navDropdownToggle" type="button" aria-expanded="false">
+        <span class="navIcon" aria-hidden="true">🛒</span>
+        <span class="navLabel navLabel-full">Economy</span>
+        <span class="navLabel navLabel-abbr">Eco</span>
+        <span class="navLabel navLabel-emoji">🛒</span>
+        <span class="navDropdownArrow" aria-hidden="true">▾</span>
+      </button>
+      <div class="navDropdownMenu" role="menu">
+        <a href="/market.html" data-page="umarket" role="menuitem">Marketplace</a>
+        <a href="/inventory.html" data-page="uinventory" role="menuitem">Inventory</a>
+        <a href="/money.html" role="menuitem">Get Balance</a>
+      </div>
+    </div>
+    <div class="navDropdown">
+      <button class="navDropdownToggle" type="button" aria-expanded="false">
+        <span class="navIcon" aria-hidden="true">⤴️</span>
+        <span class="navLabel navLabel-full">Create</span>
+        <span class="navLabel navLabel-abbr">Create</span>
+        <span class="navLabel navLabel-emoji">⤴️</span>
+        <span class="navDropdownArrow" aria-hidden="true">▾</span>
+      </button>
+      <div class="navDropdownMenu" role="menu">
+        <a href="/upload.html" data-page="uupload" role="menuitem">Upload</a>
+        <a href="/download.html" id="Download" role="menuitem">Download</a>
+        <a href="/ide/" role="menuitem">IDE</a>
+      </div>
+    </div>
     <span id="adminLinks" hidden>
       <a href="/modqueue.html"><span class="navIcon" aria-hidden="true">🛡️</span><span class="navLabel navLabel-full">Moderation</span><span class="navLabel navLabel-abbr">M</span><span class="navLabel navLabel-emoji">🛡️</span></a>
     </span>

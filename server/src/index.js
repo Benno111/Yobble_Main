@@ -19,6 +19,7 @@ import {
   profileRouter,
   reportsRouter,
   gameHostingRouter,
+  blogRouter,
   friendsRouter,
   inventoryRouter,
   marketRouter,
@@ -44,6 +45,7 @@ const routerImports = [
   ["profileRouter", profileRouter],
   ["reportsRouter", reportsRouter],
   ["gameHostingRouter", gameHostingRouter],
+  ["blogRouter", blogRouter],
   ["friendsRouter", friendsRouter],
   ["inventoryRouter", inventoryRouter],
   ["marketRouter", marketRouter],
@@ -117,7 +119,9 @@ function minifyWebAssets(sourceDir, targetDir) {
         continue;
       }
       const ext = path.extname(entry.name).toLowerCase();
-      if (ext === ".html" || ext === ".css" || ext === ".js") {
+      const relPath = path.join(rel, entry.name).replace(/\\/g, "/");
+      const shouldBypassMinify = relPath.startsWith("js/pentapod/") || relPath.startsWith("ide/ui/");
+      if ((ext === ".html" || ext === ".css" || ext === ".js") && !shouldBypassMinify) {
         const raw = fs.readFileSync(srcPath, "utf8");
         const min = minifyText(raw);
         fs.writeFileSync(dstPath, min + "\n");
@@ -285,6 +289,7 @@ app.use("/api/reviews", reviewsRouter);
 app.use("/api/profile", profileRouter);
 app.use("/api/reports", reportsRouter);
 app.use("/api/gamehosting", gameHostingRouter);
+app.use("/api/blog", blogRouter);
 
 app.use("/api/friends", friendsRouter);
 app.use("/api/inventory", inventoryRouter);
@@ -428,6 +433,7 @@ app.get("/tos.json", (req, res) => {
 /* -----------------------------
    WEB UI
 ----------------------------- */
+app.use("/web_src/ide/ui", express.static(path.join(WEB_SOURCE_DIR, "ide", "ui")));
 app.use("/", express.static(WEB_DIR, { extensions: ["html"] }));
 
 app.get("/favicon.ico", (req, res) => {
