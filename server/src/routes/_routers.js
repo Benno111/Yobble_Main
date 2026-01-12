@@ -25,6 +25,7 @@ import { photonRouter } from "./photon.js";
 import { sdkRouter } from "./sdk.js";
 import { customLevelsRouter } from "./custom-levels.js";
 import { createChatRouter } from "./chat.js";
+import { gameEditorRouter } from "./gameeditor.js";
 
 export {
   authRouter,
@@ -48,5 +49,6 @@ export {
   photonRouter,
   sdkRouter,
   customLevelsRouter,
-  createChatRouter
+  createChatRouter,
+  gameEditorRouter
 };

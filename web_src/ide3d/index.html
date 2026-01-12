@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yobble 3D Studio</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;600&display=swap");
+
+    :root{
+      --bg-ink:#0b0f14;
+      --bg-deep:#111826;
+      --bg-panel:#141c2b;
+      --bg-soft:#192335;
+      --bg-glass:rgba(20,28,43,0.72);
+      --stroke:rgba(148,163,184,0.18);
+      --stroke-strong:rgba(148,163,184,0.28);
+      --text:#e2e8f0;
+      --muted:#94a3b8;
+      --accent:#f97316;
+      --accent-2:#38bdf8;
+      --accent-3:#22c55e;
+      --danger:#f43f5e;
+      --shadow:0 18px 45px rgba(5,10,20,0.45);
+      --radius-lg:22px;
+      --radius-md:14px;
+      --radius-sm:10px;
+      --grid-size:36px;
+    }
+
+    *{box-sizing:border-box;}
+    html,body{height:100%;}
+    body{
+      margin:0;
+      font-family:"Space Grotesk",system-ui,-apple-system,sans-serif;
+      color:var(--text);
+      background:radial-gradient(circle at top,rgba(56,189,248,0.15),transparent 45%),
+        radial-gradient(circle at 20% 20%,rgba(249,115,22,0.18),transparent 45%),
+        linear-gradient(160deg,var(--bg-ink),var(--bg-deep));
+      overflow:hidden;
+    }
+
+    .page{
+      display:grid;
+      grid-template-columns:280px minmax(0,1fr) 320px;
+      grid-template-rows:72px minmax(0,1fr) 190px;
+      height:100vh;
+      gap:16px;
+      padding:18px;
+    }
+
+    header{
+      grid-column:1/-1;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:14px 22px;
+      border-radius:var(--radius-lg);
+      background:linear-gradient(120deg,rgba(15,23,42,0.95),rgba(20,28,43,0.92));
+      border:1px solid var(--stroke-strong);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(14px);
+    }
+
+    .brand{
+      display:flex;
+      gap:14px;
+      align-items:center;
+      font-weight:600;
+      letter-spacing:0.6px;
+    }
+
+    .brand-badge{
+      width:42px;
+      height:42px;
+      border-radius:14px;
+      display:grid;
+      place-items:center;
+      background:radial-gradient(circle at top,rgba(56,189,248,0.35),transparent 60%),
+        linear-gradient(140deg,#111827,#0f172a);
+      border:1px solid rgba(148,163,184,0.2);
+      color:var(--accent-2);
+      font-size:20px;
+    }
+
+    .command-bar{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      background:rgba(15,23,42,0.75);
+      border:1px solid var(--stroke);
+      border-radius:999px;
+      padding:8px 14px;
+      min-width:280px;
+    }
+
+    .command-bar input{
+      border:none;
+      background:transparent;
+      color:var(--text);
+      font-size:14px;
+      width:180px;
+      outline:none;
+    }
+
+    .header-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .mobile-actions{
+      display:none;
+      align-items:center;
+      gap:8px;
+    }
+
+    .icon-btn{
+      width:38px;
+      height:38px;
+      border-radius:12px;
+      border:1px solid var(--stroke);
+      background:rgba(15,23,42,0.65);
+      color:var(--text);
+      display:grid;
+      place-items:center;
+      font-size:18px;
+      cursor:pointer;
+    }
+
+    .pill{
+      border:1px solid var(--stroke);
+      background:rgba(15,23,42,0.6);
+      color:var(--text);
+      border-radius:999px;
+      padding:6px 14px;
+      font-size:12px;
+      letter-spacing:0.4px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .sidebar,
+    .inspector,
+    .console,
+    .viewport,
+    .assets{
+      background:var(--bg-glass);
+      border:1px solid var(--stroke);
+      border-radius:var(--radius-lg);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(16px);
+    }
+
+    .sidebar{
+      grid-row:2/4;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .sidebar::after{
+      content:"";
+      position:absolute;
+      inset:auto -40% -40% -40%;
+      height:220px;
+      background:radial-gradient(circle,rgba(249,115,22,0.18),transparent 60%);
+      pointer-events:none;
+    }
+
+    .panel-title{
+      font-size:13px;
+      text-transform:uppercase;
+      letter-spacing:1.2px;
+      color:var(--muted);
+    }
+
+    .tool-grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+    }
+
+    .tool-button{
+      border:1px solid var(--stroke);
+      background:rgba(15,23,42,0.65);
+      border-radius:12px;
+      padding:12px 8px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:6px;
+      font-size:12px;
+      color:var(--muted);
+      transition:transform 0.2s ease,border-color 0.2s ease,background 0.2s ease;
+    }
+
+    .tool-button span{
+      font-size:18px;
+      color:var(--text);
+    }
+
+    .tool-button.active{
+      border-color:rgba(56,189,248,0.6);
+      background:rgba(14,116,144,0.35);
+      color:var(--text);
+      transform:translateY(-2px);
+    }
+
+    .tree-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .tree-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid transparent;
+      background:rgba(15,23,42,0.45);
+    }
+
+    .tree-item.active{
+      border-color:rgba(249,115,22,0.5);
+      color:var(--text);
+    }
+
+    .tree-dot{
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background:var(--accent-3);
+    }
+
+    .viewport{
+      grid-column:2/3;
+      grid-row:2/3;
+      padding:16px;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .viewport canvas{
+      position:absolute;
+      inset:18px;
+      width:calc(100% - 36px);
+      height:calc(100% - 36px);
+      border-radius:var(--radius-md);
+      background:#0b0f14;
+      display:block;
+    }
+
+    .viewport-grid{
+      position:absolute;
+      inset:18px;
+      border-radius:var(--radius-md);
+      background:
+        linear-gradient(transparent,transparent),
+        repeating-linear-gradient(0deg,rgba(148,163,184,0.12),rgba(148,163,184,0.12) 1px,transparent 1px,transparent var(--grid-size)),
+        repeating-linear-gradient(90deg,rgba(148,163,184,0.1),rgba(148,163,184,0.1) 1px,transparent 1px,transparent var(--grid-size));
+      border:1px solid rgba(148,163,184,0.2);
+      overflow:hidden;
+    }
+
+    .viewport-grid::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:radial-gradient(circle at 70% 30%,rgba(56,189,248,0.2),transparent 55%),
+        radial-gradient(circle at 30% 60%,rgba(249,115,22,0.2),transparent 55%);
+    }
+
+    .viewport-overlay{
+      position:absolute;
+      inset:36px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      pointer-events:none;
+    }
+
+    .viewport-stats{
+      display:flex;
+      gap:10px;
+      font-family:"Space Mono",monospace;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .viewport-stats span{
+      padding:6px 10px;
+      border-radius:10px;
+      background:rgba(15,23,42,0.65);
+      border:1px solid var(--stroke);
+    }
+
+    .viewport-callout{
+      background:rgba(15,23,42,0.75);
+      border:1px solid rgba(56,189,248,0.4);
+      border-radius:12px;
+      padding:12px 14px;
+      max-width:280px;
+      font-size:13px;
+      line-height:1.4;
+    }
+
+    .viewport-callout strong{color:var(--accent-2);}
+
+    .inspector{
+      grid-column:3/4;
+      grid-row:2/3;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+
+    .inspector .section{
+      background:rgba(15,23,42,0.55);
+      border-radius:12px;
+      padding:12px;
+      border:1px solid var(--stroke);
+    }
+
+    .inspector label{
+      font-size:12px;
+      color:var(--muted);
+      display:block;
+      margin-bottom:6px;
+    }
+
+    .inspector input[type="range"],
+    .inspector input[type="text"],
+    .inspector select{
+      width:100%;
+      border:1px solid var(--stroke);
+      background:rgba(15,23,42,0.6);
+      color:var(--text);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:13px;
+    }
+
+    .chip-row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .chip{
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(34,197,94,0.15);
+      border:1px solid rgba(34,197,94,0.4);
+      font-size:11px;
+      color:var(--accent-3);
+    }
+
+    .assets{
+      grid-column:2/4;
+      grid-row:3/4;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .asset-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+      gap:12px;
+    }
+
+    .asset-card{
+      background:rgba(15,23,42,0.6);
+      border:1px solid var(--stroke);
+      border-radius:12px;
+      padding:12px;
+      font-size:12px;
+      color:var(--muted);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .asset-preview{
+      height:70px;
+      border-radius:10px;
+      border:1px dashed rgba(148,163,184,0.3);
+      display:grid;
+      place-items:center;
+      color:var(--accent-2);
+      font-size:20px;
+    }
+
+    .console{
+      grid-column:1/2;
+      grid-row:3/4;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .console-log{
+      background:rgba(15,23,42,0.6);
+      border:1px solid var(--stroke);
+      border-radius:12px;
+      padding:10px;
+      font-family:"Space Mono",monospace;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.5;
+      height:110px;
+      overflow:auto;
+    }
+
+    .console-log span{color:var(--accent-2);}
+
+    .footer-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .action{
+      border:1px solid transparent;
+      border-radius:10px;
+      padding:8px 12px;
+      font-size:12px;
+      cursor:pointer;
+      color:var(--text);
+      background:rgba(15,23,42,0.7);
+      transition:transform 0.2s ease,border-color 0.2s ease;
+    }
+
+    .action.primary{
+      border-color:rgba(56,189,248,0.6);
+      background:linear-gradient(120deg,rgba(56,189,248,0.35),rgba(14,116,144,0.35));
+    }
+
+    .action.warn{
+      border-color:rgba(244,63,94,0.5);
+      background:rgba(244,63,94,0.1);
+    }
+
+    @media (max-width: 1100px){
+      .page{
+        grid-template-columns:220px minmax(0,1fr);
+        grid-template-rows:72px minmax(0,1fr) 220px 220px;
+      }
+      .inspector{
+        grid-column:1/2;
+        grid-row:3/4;
+      }
+      .assets{
+        grid-column:2/3;
+        grid-row:3/4;
+      }
+      .console{
+        grid-column:1/3;
+        grid-row:4/5;
+      }
+    }
+
+    @media (max-width: 760px){
+      body{overflow:auto;}
+      .page{
+        grid-template-columns:1fr;
+        grid-template-rows:auto;
+        height:auto;
+        padding:14px;
+      }
+      header{
+        position:sticky;
+        top:0;
+        z-index:5;
+        flex-wrap:wrap;
+      }
+      .sidebar,.viewport,.inspector,.assets,.console{
+        grid-column:1/-1;
+        min-height:260px;
+      }
+      .viewport{min-height:320px;order:1;}
+      .inspector{order:2;}
+      .sidebar{order:3;}
+      .assets{order:4;}
+      .console{order:5;}
+      .command-bar{display:none;}
+      .header-actions{display:none;}
+      .mobile-actions{display:flex;}
+      .tool-button{padding:14px 10px;}
+      .action{padding:10px 14px;}
+    }
+
+    @keyframes floatIn{
+      from{transform:translateY(12px);opacity:0;}
+      to{transform:translateY(0);opacity:1;}
+    }
+
+    .sidebar,.viewport,.inspector,.assets,.console{
+      animation:floatIn 0.6s ease forwards;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="brand">
+        <div class="brand-badge">⬢</div>
+        <div>
+          <div>Yobble 3D Studio</div>
+          <div style="font-size:12px;color:var(--muted);">Realtime world builder</div>
+        </div>
+      </div>
+      <div class="command-bar" role="search">
+        <span style="color:var(--accent-2);font-size:14px;">⌘</span>
+        <input type="text" value="Search nodes, scripts, materials" aria-label="Search" />
+      </div>
+      <div class="mobile-actions" aria-label="Quick actions">
+        <button class="icon-btn" id="quickPlay" title="Play">▶</button>
+        <button class="icon-btn" title="Add">+</button>
+        <button class="icon-btn" title="Assets">▦</button>
+      </div>
+      <div class="header-actions">
+        <div class="pill">Preview: 60 FPS</div>
+        <div class="pill">Branch: arena-level</div>
+      </div>
+    </header>
+
+    <aside class="sidebar">
+      <div>
+        <div class="panel-title">Toolbelt</div>
+        <div class="tool-grid" aria-label="Toolbelt">
+          <div class="tool-button active"><span>✦</span>Move</div>
+          <div class="tool-button"><span>⤧</span>Scale</div>
+          <div class="tool-button"><span>⟳</span>Rotate</div>
+          <div class="tool-button"><span>✚</span>Draw</div>
+          <div class="tool-button"><span>⌥</span>Light</div>
+          <div class="tool-button"><span>⚡</span>Logic</div>
+        </div>
+      </div>
+      <div>
+        <div class="panel-title">Scene Graph</div>
+        <div class="tree-list">
+          <div class="tree-item active"><span class="tree-dot"></span>Arena_Core</div>
+          <div class="tree-item"><span class="tree-dot" style="background:var(--accent-2);"></span>Player_Rig</div>
+          <div class="tree-item"><span class="tree-dot" style="background:var(--accent);"></span>Neon_Skybox</div>
+          <div class="tree-item"><span class="tree-dot"></span>VFX_Emitters</div>
+        </div>
+      </div>
+      <div>
+        <div class="panel-title">Sim Mode</div>
+        <div class="chip-row">
+          <div class="chip">Physics Live</div>
+          <div class="chip">Navmesh Ready</div>
+          <div class="chip">Audio 3D</div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="viewport" aria-label="3D viewport">
+      <canvas id="viewportCanvas" aria-hidden="true"></canvas>
+      <div class="viewport-grid"></div>
+      <div class="viewport-overlay">
+        <div class="viewport-stats">
+          <span>GPU: 2.1ms</span>
+          <span>CPU: 3.6ms</span>
+          <span>Draw: 392</span>
+        </div>
+        <div class="viewport-callout">
+          <strong>Realtime Bake</strong><br>
+          Light probes updated 12s ago. Tap Play to enter live sim.
+        </div>
+      </div>
+    </section>
+
+    <aside class="inspector">
+      <div class="panel-title">Inspector</div>
+      <div class="section">
+        <label>Project Name</label>
+        <input id="projectName" type="text" value="Yobble 3D Project" />
+      </div>
+      <div class="section">
+        <label>Selected Entity</label>
+        <input type="text" value="Arena_Core" />
+      </div>
+      <div class="section">
+        <label>Material</label>
+        <select>
+          <option>Chrome Neon</option>
+          <option>Carbon Matte</option>
+          <option>Glass Volumetric</option>
+        </select>
+      </div>
+      <div class="section">
+        <label>Emission</label>
+        <input type="range" value="65" />
+      </div>
+      <div class="section">
+        <label>Physics Preset</label>
+        <select>
+          <option>Rigid Body</option>
+          <option>Soft Body</option>
+          <option>Trigger Volume</option>
+        </select>
+      </div>
+      <div class="section">
+        <label>Collision Layers</label>
+        <div class="chip-row">
+          <div class="chip" style="background:rgba(56,189,248,0.12);border-color:rgba(56,189,248,0.35);color:var(--accent-2);">Player</div>
+          <div class="chip" style="background:rgba(249,115,22,0.12);border-color:rgba(249,115,22,0.35);color:var(--accent);">World</div>
+          <div class="chip" style="background:rgba(148,163,184,0.12);border-color:rgba(148,163,184,0.35);color:var(--muted);">FX</div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="console">
+      <div class="panel-title">Build Console</div>
+      <div class="console-log" id="consoleLog">
+        <div><span>[Shader]</span> Compiling reflective_pass.glsl...</div>
+        <div><span>[Asset]</span> Streaming "arena-kit/trim_03"</div>
+        <div><span>[Audio]</span> 3D mixdown: ambient_fog_loop.wav</div>
+        <div><span>[OK]</span> Runtime ready - press Play.</div>
+      </div>
+      <div class="footer-actions">
+        <button class="action primary" id="btnPlay">Play</button>
+        <button class="action" id="btnBake">Bake Lighting</button>
+        <button class="action" id="btnBuild">Build Web</button>
+        <button class="action warn" id="btnPurge">Purge Cache</button>
+      </div>
+    </section>
+
+    <section class="assets">
+      <div class="panel-title">Asset Dock</div>
+      <div class="asset-grid">
+        <div class="asset-card">
+          <div class="asset-preview">⬡</div>
+          Arena Kit v4
+          <span style="color:var(--accent-2);">12 meshes • 3 materials</span>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview">⧉</div>
+          Player Rig
+          <span style="color:var(--accent);">4 anim clips</span>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview">✹</div>
+          VFX Volumes
+          <span style="color:var(--accent-3);">8 emitters</span>
+        </div>
+        <div class="asset-card">
+          <div class="asset-preview">◈</div>
+          HDRI Skies
+          <span style="color:var(--muted);">6 profiles</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const log = document.getElementById("consoleLog");
+    const logs = [
+      "[Hot Reload] Scene synced in 0.6s",
+      "[Shader] Linked bloom_pipeline.glsl",
+      "[Physics] Sleeping bodies: 24",
+      "[GPU] Occlusion pass 1.8ms"
+    ];
+    let idx = 0;
+    setInterval(() => {
+      const entry = document.createElement("div");
+      entry.innerHTML = `<span>${logs[idx].split(" ")[0]}</span> ${logs[idx].slice(logs[idx].indexOf(" ") + 1)}`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+      idx = (idx + 1) % logs.length;
+    }, 4500);
+  </script>
+  <script type="module" src="/ide3d/editor.js"></script>
+</body>
+</html>

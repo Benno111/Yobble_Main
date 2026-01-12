@@ -52,6 +52,11 @@
     <div class="stat-meta">Manage the JSON-driven TOS from the editor page.</div>
     <a class="pill" href="/mod-tos.html">Open TOS editor →</a>
   </section>
+  <section class="card">
+    <div class="stat-title">Server update</div>
+    <div class="stat-meta">Pull latest build, overwrite files, then restart the server.</div>
+    <button class="pill" id="mod-update-btn" type="button">Run update</button>
+  </section>
   <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
     <a class="pill" href="/mod-dashboard.html">Dashboard</a>
     <a class="pill" href="/mod-reports.html">Reports</a>
@@ -78,6 +83,22 @@ document.getElementById("appeals").textContent = s.openAppeals ?? 0;
 document.getElementById("recent").textContent = `24h ${s.created24h} • 7d ${s.created7d}`;
 document.getElementById("stat-open").textContent = `${s.openAppeals ?? 0} open appeals`;
 document.getElementById("stat-activity").textContent = `${s.created24h ?? 0} bans 24h`;
+
+const updateBtn = document.getElementById("mod-update-btn");
+updateBtn.addEventListener("click", async () => {
+  if (!confirm("Run server update? This will restart the server.")) return;
+  updateBtn.disabled = true;
+  updateBtn.textContent = "Updating...";
+  try {
+    await api.post("/api/mod/update", {});
+    updateBtn.textContent = "Update started";
+  } catch (err) {
+    console.error(err);
+    alert("Update failed.");
+    updateBtn.textContent = "Run update";
+    updateBtn.disabled = false;
+  }
+});
 </script>
 </body>
 </html>

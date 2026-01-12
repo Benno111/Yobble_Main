@@ -1,7 +1,10 @@
 import express from "express";
 import fs from "fs/promises";
+import fsSync from "fs";
+import https from "https";
 import path from "path";
 import { fileURLToPath } from "url";
+import unzipper from "unzipper";
 import { requireAuth, requireRole } from "../auth.js";
 import { all, get, run } from "../db.js";
 
@@ -12,6 +15,81 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, "../../..");
 const TOS_PATH = path.join(PROJECT_ROOT, "tos.json");
+const UPDATE_ZIP_URL = "https://github.com/Benno111/Yobble_Main/archive/refs/heads/main.zip";
+
+function readCookie(req, name) {
+  const header = req.headers.cookie || "";
+  if (!header) return null;
+  const entries = header.split(";").map((part) => part.trim());
+  for (const entry of entries) {
+    if (!entry) continue;
+    const idx = entry.indexOf("=");
+    if (idx === -1) continue;
+    const key = entry.slice(0, idx);
+    if (key !== name) continue;
+    return decodeURIComponent(entry.slice(idx + 1));
+  }
+  return null;
+}
+
+function downloadZip(url, destPath) {
+  return new Promise((resolve, reject) => {
+    const request = https.get(url, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume();
+        return resolve(downloadZip(res.headers.location, destPath));
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error(`download_failed:${res.statusCode}`));
+      }
+      const fileStream = fsSync.createWriteStream(destPath);
+      res.pipe(fileStream);
+      fileStream.on("finish", () => fileStream.close(resolve));
+      fileStream.on("error", reject);
+    });
+    request.on("error", reject);
+  });
+}
+
+async function extractZip(zipPath, extractDir) {
+  await fs.mkdir(extractDir, { recursive: true });
+  await new Promise((resolve, reject) => {
+    fsSync.createReadStream(zipPath)
+      .pipe(unzipper.Extract({ path: extractDir }))
+      .on("close", resolve)
+      .on("error", reject);
+  });
+  const entries = await fs.readdir(extractDir, { withFileTypes: true });
+  const rootDir = entries.find((entry) => entry.isDirectory());
+  if (!rootDir) {
+    throw new Error("extracted_root_missing");
+  }
+  return path.join(extractDir, rootDir.name);
+}
+
+async function copyRecursive(src, dest) {
+  const stat = await fs.lstat(src);
+  if (stat.isDirectory()) {
+    await fs.mkdir(dest, { recursive: true });
+    const entries = await fs.readdir(src, { withFileTypes: true });
+    for (const entry of entries) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+      if (entry.isDirectory()) {
+        await copyRecursive(srcPath, destPath);
+      } else if (entry.isFile()) {
+        await fs.mkdir(path.dirname(destPath), { recursive: true });
+        await fs.copyFile(srcPath, destPath);
+      }
+    }
+    return;
+  }
+  if (stat.isFile()) {
+    await fs.mkdir(path.dirname(dest), { recursive: true });
+    await fs.copyFile(src, dest);
+  }
+}
 
 /* GET /api/mod/overview (stub) */
 moderationRouter.get("/overview", requireAuth, requireRole(...MOD_ROLES), async (_req, res) => {
@@ -409,4 +487,22 @@ moderationRouter.post("/games/feature", requireAuth, requireRole(...MOD_ROLES), 
 
   await run("UPDATE games SET is_featured=? WHERE id=?", [featured, g.id]);
   res.json({ ok: true });
+});
+
+/* POST /api/mod/update */
+moderationRouter.post("/update", requireAuth, requireRole(...MOD_ROLES), async (req, res) => {
+  const tempDir = path.join(PROJECT_ROOT, "temp", `mod-update-${Date.now()}`);
+  const zipPath = path.join(tempDir, "update.zip");
+  try {
+    await fs.mkdir(tempDir, { recursive: true });
+    await downloadZip(UPDATE_ZIP_URL, zipPath);
+    const extractedRoot = await extractZip(zipPath, tempDir);
+    await copyRecursive(extractedRoot, PROJECT_ROOT);
+
+    res.json({ ok: true });
+    setTimeout(() => process.exit(0), 500);
+  } catch (err) {
+    console.error("mod update failed:", err);
+    res.status(500).json({ error: "update_failed" });
+  }
 });

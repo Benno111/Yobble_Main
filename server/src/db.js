@@ -372,6 +372,16 @@ export async function initDb() {
     UNIQUE(user_id, slug, version, key)
   )`);
 
+  /* GAME EDITOR PROJECTS */
+  await run(`CREATE TABLE IF NOT EXISTS game_editor_projects(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    data TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`);
+
   /* GAME VERSION WHITELIST */
   await run(`CREATE TABLE IF NOT EXISTS game_version_whitelist(
     id INTEGER PRIMARY KEY AUTOINCREMENT,

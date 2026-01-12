@@ -33,7 +33,8 @@ import {
   photonRouter,
   sdkRouter,
   customLevelsRouter,
-  createChatRouter
+  createChatRouter,
+  gameEditorRouter
 } from "./routes/_routers.js";
 import { attachChatWs } from "./routes/chat.js";
 
@@ -59,7 +60,8 @@ const routerImports = [
   ["photonRouter", photonRouter],
   ["sdkRouter", sdkRouter],
   ["customLevelsRouter", customLevelsRouter],
-  ["createChatRouter", createChatRouter]
+  ["createChatRouter", createChatRouter],
+  ["gameEditorRouter", gameEditorRouter]
 ];
 console.log("[Routers]", routerImports.map(([name, ref]) => `${name}:${ref ? "ok" : "missing"}`).join(" | "));
 
@@ -303,6 +305,7 @@ app.use("/api/storage", storageRouter);
 app.use("/api/library", libraryRouter);
 app.use("/api/photon", photonRouter);
 app.use("/api/chat", createChatRouter({ projectRoot: PROJECT_ROOT }));
+app.use("/api/gameeditor", gameEditorRouter);
 app.use("/sdk", cors({
   origin: "*",
   methods: ["GET", "POST", "OPTIONS"],
