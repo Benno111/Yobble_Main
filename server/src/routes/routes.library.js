@@ -6,7 +6,7 @@ export const libraryRouter = express.Router();
 
 libraryRouter.get("/", requireAuth, async (req,res)=>{
   const rows = await all(
-    `SELECT g.slug, g.title, g.description, g.category, ul.added_at
+    `SELECT g.project, g.title, g.description, g.category, ul.added_at
      FROM user_library ul
      JOIN games g ON g.id=ul.game_id
      WHERE ul.user_id=?
@@ -17,9 +17,9 @@ libraryRouter.get("/", requireAuth, async (req,res)=>{
 });
 
 libraryRouter.post("/add", requireAuth, async (req,res)=>{
-  const slug = String(req.body?.slug || "").trim();
-  if(!slug) return res.status(400).json({ error:"missing_slug" });
-  const g = await get("SELECT id FROM games WHERE slug=? AND is_hidden=0", [slug]);
+  const project = String(req.body?.project || "").trim();
+  if(!project) return res.status(400).json({ error:"missing_project" });
+  const g = await get("SELECT id FROM games WHERE project=? AND is_hidden=0", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   await run(
@@ -30,9 +30,9 @@ libraryRouter.post("/add", requireAuth, async (req,res)=>{
 });
 
 libraryRouter.post("/remove", requireAuth, async (req,res)=>{
-  const slug = String(req.body?.slug || "").trim();
-  if(!slug) return res.status(400).json({ error:"missing_slug" });
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const project = String(req.body?.project || "").trim();
+  if(!project) return res.status(400).json({ error:"missing_project" });
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   await run(`DELETE FROM user_library WHERE user_id=? AND game_id=?`, [req.user.uid, g.id]);
@@ -40,9 +40,9 @@ libraryRouter.post("/remove", requireAuth, async (req,res)=>{
 });
 
 libraryRouter.get("/has", requireAuth, async (req,res)=>{
-  const slug = String(req.query?.slug || "").trim();
-  if(!slug) return res.status(400).json({ error:"missing_slug" });
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const project = String(req.query?.project || "").trim();
+  if(!project) return res.status(400).json({ error:"missing_project" });
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if(!g) return res.json({ in_library:false });
 
   const row = await get(`SELECT 1 AS ok FROM user_library WHERE user_id=? AND game_id=?`, [req.user.uid, g.id]);

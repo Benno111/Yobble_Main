@@ -7,7 +7,7 @@ function gameCard(g){
   d.className = "card";
   d.innerHTML = `
     ${g.is_featured ? `<div class="ribbon">Featured</div>` : ""}
-    <h3><a href="/games/${g.slug}">${g.title}</a></h3>
+    <h3><a href="/games/${g.project}">${g.title}</a></h3>
   `;
   return d;
 }

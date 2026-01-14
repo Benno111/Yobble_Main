@@ -7,7 +7,7 @@ export const blogRouter = express.Router();
 const BLOG_ROLES = ["admin", "mod", "moderator"];
 const MAX_LIMIT = 100;
 
-function slugify(input) {
+function projectify(input) {
   return String(input || "")
     .toLowerCase()
     .trim()
@@ -17,14 +17,14 @@ function slugify(input) {
     .slice(0, 80) || "post";
 }
 
-async function ensureUniqueSlug(baseSlug) {
-  let slug = baseSlug;
+async function ensureUniqueproject(baseproject) {
+  let project = baseproject;
   let attempt = 2;
-  while (await get(`SELECT id FROM blog_posts WHERE slug=?`, [slug])) {
-    slug = `${baseSlug}-${attempt}`;
+  while (await get(`SELECT id FROM blog_posts WHERE project=?`, [project])) {
+    project = `${baseproject}-${attempt}`;
     attempt += 1;
   }
-  return slug;
+  return project;
 }
 
 function normalizeTags(tags) {
@@ -40,7 +40,7 @@ function mapPost(row) {
   return {
     id: row.id,
     title: row.title,
-    slug: row.slug,
+    project: row.project,
     summary: row.summary,
     body: row.body,
     tags: row.tags_json ? JSON.parse(row.tags_json) : [],
@@ -89,14 +89,14 @@ blogRouter.get("/posts", async (req, res) => {
   res.json({ posts: rows.map(mapPost) });
 });
 
-blogRouter.get("/posts/:slug", async (req, res) => {
-  const slug = String(req.params.slug || "").trim();
+blogRouter.get("/posts/:project", async (req, res) => {
+  const project = String(req.params.project || "").trim();
   const row = await get(
     `SELECT p.*, u.username AS author
      FROM blog_posts p
      LEFT JOIN users u ON u.id=p.author_user_id
-     WHERE p.slug=? OR p.id=?`,
-    [slug, Number(slug) || 0]
+     WHERE p.project=? OR p.id=?`,
+    [project, Number(project) || 0]
   );
   if (!row) return res.status(404).json({ error: "not_found" });
   if (row.status !== "published") {
@@ -117,18 +117,18 @@ blogRouter.post("/posts", requireAuth, requireRole(...BLOG_ROLES), async (req, r
   if (!title || !body) {
     return res.status(400).json({ error: "missing_fields" });
   }
-  const baseSlug = slugify(req.body?.slug || title);
-  const slug = await ensureUniqueSlug(baseSlug);
+  const baseproject = projectify(req.body?.project || title);
+  const project = await ensureUniqueproject(baseproject);
   const tags = normalizeTags(req.body?.tags);
   const now = Date.now();
   const publishedAt = status === "published" ? now : null;
 
   const result = await run(
-    `INSERT INTO blog_posts(title, slug, summary, body, tags_json, status, featured, author_user_id, created_at, updated_at, published_at)
+    `INSERT INTO blog_posts(title, project, summary, body, tags_json, status, featured, author_user_id, created_at, updated_at, published_at)
      VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
     [
       title,
-      slug,
+      project,
       summary,
       body,
       JSON.stringify(tags),
@@ -141,7 +141,7 @@ blogRouter.post("/posts", requireAuth, requireRole(...BLOG_ROLES), async (req, r
     ]
   );
 
-  res.json({ ok: true, id: result.lastID, slug });
+  res.json({ ok: true, id: result.lastID, project });
 });
 
 blogRouter.put("/posts/:id", requireAuth, requireRole(...BLOG_ROLES), async (req, res) => {

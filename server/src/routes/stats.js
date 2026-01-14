@@ -7,7 +7,7 @@ export const statsRouter = express.Router();
 /* GET /api/stats/me */
 statsRouter.get("/me", requireAuth, async (req, res) => {
   const rows = await all(
-    `SELECT g.slug, g.title, p.playtime_ms, p.sessions, p.last_played
+    `SELECT g.project, g.title, p.playtime_ms, p.sessions, p.last_played
      FROM game_playtime p
      JOIN games g ON g.id = p.game_id
      WHERE p.user_id=?
@@ -17,13 +17,13 @@ statsRouter.get("/me", requireAuth, async (req, res) => {
   res.json(rows);
 });
 
-/* POST /api/stats/ping { slug, ms }  (simple playtime bump) */
+/* POST /api/stats/ping { project, ms }  (simple playtime bump) */
 statsRouter.post("/ping", requireAuth, async (req, res) => {
-  const { slug, ms } = req.body || {};
+  const { project, ms } = req.body || {};
   const add = Number(ms || 0);
-  if (!slug || !Number.isFinite(add) || add <= 0) return res.status(400).json({ error: "bad_request" });
+  if (!project || !Number.isFinite(add) || add <= 0) return res.status(400).json({ error: "bad_request" });
 
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if (!g) return res.status(404).json({ error: "game_not_found" });
 
   const now = Date.now();

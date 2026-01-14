@@ -5,16 +5,16 @@ import { nowMs } from "../util.js";
 
 export const storageRouter = express.Router();
 
-storageRouter.get("/:slug/:version", requireAuth, async (req, res) => {
-  const slug = String(req.params.slug || "").trim();
+storageRouter.get("/:project/:version", requireAuth, async (req, res) => {
+  const project = String(req.params.project || "").trim();
   const version = String(req.params.version || "").trim();
-  if (!slug || !version) return res.status(400).json({ error: "bad_request" });
+  if (!project || !version) return res.status(400).json({ error: "bad_request" });
 
   const rows = await all(
     `SELECT key, value
      FROM game_kv
-     WHERE user_id=? AND slug=? AND version=?`,
-    [req.user.uid, slug, version]
+     WHERE user_id=? AND project=? AND version=?`,
+    [req.user.uid, project, version]
   );
   const data = {};
   for (const row of rows) {
@@ -23,44 +23,44 @@ storageRouter.get("/:slug/:version", requireAuth, async (req, res) => {
   res.json({ data });
 });
 
-storageRouter.post("/:slug/:version", requireAuth, async (req, res) => {
-  const slug = String(req.params.slug || "").trim();
+storageRouter.post("/:project/:version", requireAuth, async (req, res) => {
+  const project = String(req.params.project || "").trim();
   const version = String(req.params.version || "").trim();
   const key = String(req.body?.key || "");
   const value = req.body?.value ?? null;
-  if (!slug || !version || !key) return res.status(400).json({ error: "bad_request" });
+  if (!project || !version || !key) return res.status(400).json({ error: "bad_request" });
 
   await run(
-    `INSERT INTO game_kv (user_id, slug, version, key, value, updated_at)
+    `INSERT INTO game_kv (user_id, project, version, key, value, updated_at)
      VALUES (?,?,?,?,?,?)
-     ON CONFLICT(user_id, slug, version, key)
+     ON CONFLICT(user_id, project, version, key)
      DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`,
-    [req.user.uid, slug, version, key, String(value), nowMs()]
+    [req.user.uid, project, version, key, String(value), nowMs()]
   );
   res.json({ ok: true });
 });
 
-storageRouter.delete("/:slug/:version", requireAuth, async (req, res) => {
-  const slug = String(req.params.slug || "").trim();
+storageRouter.delete("/:project/:version", requireAuth, async (req, res) => {
+  const project = String(req.params.project || "").trim();
   const version = String(req.params.version || "").trim();
-  if (!slug || !version) return res.status(400).json({ error: "bad_request" });
+  if (!project || !version) return res.status(400).json({ error: "bad_request" });
 
   await run(
-    `DELETE FROM game_kv WHERE user_id=? AND slug=? AND version=?`,
-    [req.user.uid, slug, version]
+    `DELETE FROM game_kv WHERE user_id=? AND project=? AND version=?`,
+    [req.user.uid, project, version]
   );
   res.json({ ok: true });
 });
 
-storageRouter.delete("/:slug/:version/:key", requireAuth, async (req, res) => {
-  const slug = String(req.params.slug || "").trim();
+storageRouter.delete("/:project/:version/:key", requireAuth, async (req, res) => {
+  const project = String(req.params.project || "").trim();
   const version = String(req.params.version || "").trim();
   const key = String(req.params.key || "");
-  if (!slug || !version || !key) return res.status(400).json({ error: "bad_request" });
+  if (!project || !version || !key) return res.status(400).json({ error: "bad_request" });
 
   await run(
-    `DELETE FROM game_kv WHERE user_id=? AND slug=? AND version=? AND key=?`,
-    [req.user.uid, slug, version, key]
+    `DELETE FROM game_kv WHERE user_id=? AND project=? AND version=? AND key=?`,
+    [req.user.uid, project, version, key]
   );
   res.json({ ok: true });
 });

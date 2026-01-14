@@ -17,17 +17,17 @@ function safeName(name){
 }
 
 mediaRouter.post("/banner", requireAuth, requireRole("moderator"), upload.single("file"), async (req,res)=>{
-  const slug = String(req.body?.slug || "").trim();
-  if(!slug || !req.file) return res.status(400).json({ error:"missing_fields" });
+  const project = String(req.body?.project || "").trim();
+  if(!project || !req.file) return res.status(400).json({ error:"missing_fields" });
 
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const SERVER_DIR = path.resolve(process.cwd());
   const PROJECT_ROOT = path.resolve(SERVER_DIR, "..");
   const GAME_STORAGE_DIR = path.join(PROJECT_ROOT, "game_storage");
 
-  const mediaDir = path.join(GAME_STORAGE_DIR, slug, "media");
+  const mediaDir = path.join(GAME_STORAGE_DIR, project, "media");
   fs.mkdirSync(mediaDir, { recursive:true });
 
   const ext = path.extname(req.file.originalname || ".png") || ".png";
@@ -35,24 +35,24 @@ mediaRouter.post("/banner", requireAuth, requireRole("moderator"), upload.single
   const out = path.join(mediaDir, filename);
   fs.writeFileSync(out, req.file.buffer);
 
-  const url = `/games/${slug}/media/${filename}`;
+  const url = `/games/${project}/media/${filename}`;
   await run("UPDATE games SET banner_path=? WHERE id=?", [url, g.id]);
 
   res.json({ ok:true, url });
 });
 
 mediaRouter.post("/screenshot", requireAuth, requireRole("moderator"), upload.single("file"), async (req,res)=>{
-  const slug = String(req.body?.slug || "").trim();
-  if(!slug || !req.file) return res.status(400).json({ error:"missing_fields" });
+  const project = String(req.body?.project || "").trim();
+  if(!project || !req.file) return res.status(400).json({ error:"missing_fields" });
 
-  const g = await get("SELECT id, screenshots_json FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id, screenshots_json FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const SERVER_DIR = path.resolve(process.cwd());
   const PROJECT_ROOT = path.resolve(SERVER_DIR, "..");
   const GAME_STORAGE_DIR = path.join(PROJECT_ROOT, "game_storage");
 
-  const mediaDir = path.join(GAME_STORAGE_DIR, slug, "media");
+  const mediaDir = path.join(GAME_STORAGE_DIR, project, "media");
   fs.mkdirSync(mediaDir, { recursive:true });
 
   const ext = path.extname(req.file.originalname || ".png") || ".png";
@@ -60,7 +60,7 @@ mediaRouter.post("/screenshot", requireAuth, requireRole("moderator"), upload.si
   const out = path.join(mediaDir, filename);
   fs.writeFileSync(out, req.file.buffer);
 
-  const url = `/games/${slug}/media/${filename}`;
+  const url = `/games/${project}/media/${filename}`;
   let arr = [];
   try{ arr = JSON.parse(g.screenshots_json || "[]"); }catch{}
   if(!Array.isArray(arr)) arr = [];

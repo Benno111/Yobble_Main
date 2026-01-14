@@ -17,18 +17,18 @@ fs.mkdirSync(LEVEL_DB_DIR, { recursive: true });
 const dbCache = new Map();
 const dbInitCache = new Map();
 
-function getLevelDb(slug) {
-  const safeSlug = String(slug || "").replace(/[^a-z0-9-_]+/gi, "");
-  const dbPath = path.join(LEVEL_DB_DIR, `${safeSlug}.sqlite`);
+function getLevelDb(project) {
+  const safeproject = String(project || "").replace(/[^a-z0-9-_]+/gi, "");
+  const dbPath = path.join(LEVEL_DB_DIR, `${safeproject}.sqlite`);
   if (dbCache.has(dbPath)) return dbCache.get(dbPath);
   const db = new sqlite3.Database(dbPath);
   dbCache.set(dbPath, db);
   return db;
 }
 
-function getLevelDbKey(slug) {
-  const safeSlug = String(slug || "").replace(/[^a-z0-9-_]+/gi, "");
-  return path.join(LEVEL_DB_DIR, `${safeSlug}.sqlite`);
+function getLevelDbKey(project) {
+  const safeproject = String(project || "").replace(/[^a-z0-9-_]+/gi, "");
+  return path.join(LEVEL_DB_DIR, `${safeproject}.sqlite`);
 }
 
 async function ensureLevelTable(db, dbKey) {
@@ -87,8 +87,8 @@ function clampDifficulty(v) {
   return i;
 }
 
-async function requireGame(slug) {
-  const g = await get("SELECT id, owner_user_id FROM games WHERE slug=?", [slug]);
+async function requireGame(project) {
+  const g = await get("SELECT id, owner_user_id FROM games WHERE project=?", [project]);
   return g;
 }
 
@@ -96,25 +96,25 @@ function isPrivileged(user) {
   return user?.role === "admin" || user?.role === "moderator";
 }
 
-customLevelsRouter.post("/:slug/upload", requireAuth, async (req, res) => {
-  const slug = String(req.params.slug || "").trim();
+customLevelsRouter.post("/:project/upload", requireAuth, async (req, res) => {
+  const project = String(req.params.project || "").trim();
   const title = String(req.body?.title || "").trim();
   const version = String(req.body?.version || "").trim();
   const description = String(req.body?.description || "").trim();
   const raw_data = String(req.body?.raw_data || "");
 
-  if (!slug || !title || !version || !raw_data) {
+  if (!project || !title || !version || !raw_data) {
     return res.status(400).json({ error: "missing_fields" });
   }
   if (raw_data.length > 10 * 1024 * 1024) {
     return res.status(413).json({ error: "payload_too_large" });
   }
 
-  const game = await requireGame(slug);
+  const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
 
-  const db = getLevelDb(slug);
-  await ensureLevelTable(db, getLevelDbKey(slug));
+  const db = getLevelDb(project);
+  await ensureLevelTable(db, getLevelDbKey(project));
   const now = Date.now();
   const existing = await dbGet(
     db,
@@ -152,15 +152,15 @@ customLevelsRouter.post("/:slug/upload", requireAuth, async (req, res) => {
   res.json({ ok: true, id: result.lastID, replaced: false });
 });
 
-customLevelsRouter.put("/:slug/update/:id", requireAuth, async (req, res) => {
-  const slug = String(req.params.slug || "").trim();
+customLevelsRouter.put("/:project/update/:id", requireAuth, async (req, res) => {
+  const project = String(req.params.project || "").trim();
   const id = Number(req.params.id);
   const title = String(req.body?.title || "").trim();
   const version = String(req.body?.version || "").trim();
   const description = String(req.body?.description || "").trim();
   const raw_data = String(req.body?.raw_data || "");
 
-  if (!slug || !Number.isFinite(id)) {
+  if (!project || !Number.isFinite(id)) {
     return res.status(400).json({ error: "missing_fields" });
   }
   if (!title || !version || !raw_data) {
@@ -170,11 +170,11 @@ customLevelsRouter.put("/:slug/update/:id", requireAuth, async (req, res) => {
     return res.status(413).json({ error: "payload_too_large" });
   }
 
-  const game = await requireGame(slug);
+  const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
 
-  const db = getLevelDb(slug);
-  await ensureLevelTable(db, getLevelDbKey(slug));
+  const db = getLevelDb(project);
+  await ensureLevelTable(db, getLevelDbKey(project));
   const existing = await dbGet(db, "SELECT * FROM levels WHERE id=?", [id]);
   if (!existing) return res.status(404).json({ error: "level_not_found" });
 
@@ -199,15 +199,15 @@ customLevelsRouter.put("/:slug/update/:id", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-customLevelsRouter.post("/:slug/difficulty/:id", requireAuth, async (req, res) => {
-  const slug = String(req.params.slug || "").trim();
+customLevelsRouter.post("/:project/difficulty/:id", requireAuth, async (req, res) => {
+  const project = String(req.params.project || "").trim();
   const id = Number(req.params.id);
   const difficulty = clampDifficulty(req.body?.difficulty);
-  if (!slug || !Number.isFinite(id) || difficulty == null) {
+  if (!project || !Number.isFinite(id) || difficulty == null) {
     return res.status(400).json({ error: "missing_fields" });
   }
 
-  const game = await requireGame(slug);
+  const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
 
   const isOwner = game.owner_user_id === req.user.uid;
@@ -215,8 +215,8 @@ customLevelsRouter.post("/:slug/difficulty/:id", requireAuth, async (req, res) =
     return res.status(403).json({ error: "forbidden" });
   }
 
-  const db = getLevelDb(slug);
-  await ensureLevelTable(db, getLevelDbKey(slug));
+  const db = getLevelDb(project);
+  await ensureLevelTable(db, getLevelDbKey(project));
   const existing = await dbGet(db, "SELECT * FROM levels WHERE id=?", [id]);
   if (!existing) return res.status(404).json({ error: "level_not_found" });
 
@@ -244,18 +244,18 @@ customLevelsRouter.post("/:slug/difficulty/:id", requireAuth, async (req, res) =
   res.json({ ok: true, awarded: delta });
 });
 
-customLevelsRouter.get("/:slug/download/:id", async (req, res) => {
-  const slug = String(req.params.slug || "").trim();
+customLevelsRouter.get("/:project/download/:id", async (req, res) => {
+  const project = String(req.params.project || "").trim();
   const id = Number(req.params.id);
-  if (!slug || !Number.isFinite(id)) {
+  if (!project || !Number.isFinite(id)) {
     return res.status(400).json({ error: "missing_fields" });
   }
 
-  const game = await requireGame(slug);
+  const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
 
-  const db = getLevelDb(slug);
-  await ensureLevelTable(db, getLevelDbKey(slug));
+  const db = getLevelDb(project);
+  await ensureLevelTable(db, getLevelDbKey(project));
   const row = await dbGet(
     db,
     `SELECT id, title, version, description, raw_data, uploader_username, created_at, updated_at, difficulty
@@ -266,18 +266,18 @@ customLevelsRouter.get("/:slug/download/:id", async (req, res) => {
   res.json({ level: row });
 });
 
-customLevelsRouter.delete("/:slug/delete/:id", requireAuth, async (req, res) => {
-  const slug = String(req.params.slug || "").trim();
+customLevelsRouter.delete("/:project/delete/:id", requireAuth, async (req, res) => {
+  const project = String(req.params.project || "").trim();
   const id = Number(req.params.id);
-  if (!slug || !Number.isFinite(id)) {
+  if (!project || !Number.isFinite(id)) {
     return res.status(400).json({ error: "missing_fields" });
   }
 
-  const game = await requireGame(slug);
+  const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
 
-  const db = getLevelDb(slug);
-  await ensureLevelTable(db, getLevelDbKey(slug));
+  const db = getLevelDb(project);
+  await ensureLevelTable(db, getLevelDbKey(project));
   const existing = await dbGet(db, "SELECT * FROM levels WHERE id=?", [id]);
   if (!existing) return res.status(404).json({ error: "level_not_found" });
 
@@ -290,15 +290,15 @@ customLevelsRouter.delete("/:slug/delete/:id", requireAuth, async (req, res) => 
   res.json({ ok: true });
 });
 
-customLevelsRouter.get("/:slug/list", async (req, res) => {
-  const slug = String(req.params.slug || "").trim();
-  if (!slug) return res.status(400).json({ error: "missing_slug" });
+customLevelsRouter.get("/:project/list", async (req, res) => {
+  const project = String(req.params.project || "").trim();
+  if (!project) return res.status(400).json({ error: "missing_project" });
 
-  const game = await requireGame(slug);
+  const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
 
-  const db = getLevelDb(slug);
-  await ensureLevelTable(db, getLevelDbKey(slug));
+  const db = getLevelDb(project);
+  await ensureLevelTable(db, getLevelDbKey(project));
   const rows = await dbAll(
     db,
     `SELECT id, title, version, description, uploader_username, created_at, updated_at, difficulty
@@ -309,18 +309,18 @@ customLevelsRouter.get("/:slug/list", async (req, res) => {
   res.json({ levels: rows });
 });
 
-customLevelsRouter.get("/:slug/search", async (req, res) => {
-  const slug = String(req.params.slug || "").trim();
+customLevelsRouter.get("/:project/search", async (req, res) => {
+  const project = String(req.params.project || "").trim();
   const q = String(req.query?.q || "").trim();
   const creator = String(req.query?.creator || "").trim();
   const difficulty = clampDifficulty(req.query?.difficulty);
-  if (!slug) return res.status(400).json({ error: "missing_slug" });
+  if (!project) return res.status(400).json({ error: "missing_project" });
 
-  const game = await requireGame(slug);
+  const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
 
-  const db = getLevelDb(slug);
-  await ensureLevelTable(db, getLevelDbKey(slug));
+  const db = getLevelDb(project);
+  await ensureLevelTable(db, getLevelDbKey(project));
   const where = [];
   const params = [];
   if (q) {

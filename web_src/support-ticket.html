@@ -1,0 +1,326 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Support Ticket - Yobble</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .ticket-detail-header {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .ticket-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .ticket-meta-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 15px;
+      font-size: 14px;
+      color: #666;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-status-open { background: #e3f2fd; color: #1976d2; }
+    .badge-status-awaiting_user { background: #fff3e0; color: #f57c00; }
+    .badge-status-closed { background: #f5f5f5; color: #666; }
+    .badge-priority-low { background: #f1f8e9; color: #689f38; }
+    .badge-priority-medium { background: #fff9c4; color: #f57f17; }
+    .badge-priority-high { background: #ffe0b2; color: #e64a19; }
+    .badge-priority-urgent { background: #ffcdd2; color: #c62828; }
+    .messages-container {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .message {
+      border-left: 3px solid #e0e0e0;
+      padding: 15px;
+      margin-bottom: 15px;
+      background: #fafafa;
+      border-radius: 4px;
+    }
+    .message.staff-reply {
+      border-left-color: #4CAF50;
+      background: #f1f8f4;
+    }
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .message-author {
+      font-weight: 600;
+      color: #333;
+    }
+    .message-author.staff {
+      color: #4CAF50;
+    }
+    .message-date {
+      color: #888;
+    }
+    .message-body {
+      color: #333;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .reply-box {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .reply-box textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: #666;
+      text-decoration: none;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .back-link:hover {
+      color: #333;
+    }
+    .closed-notice {
+      background: #fff3e0;
+      border: 1px solid #f57c00;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 20px;
+      color: #e65100;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div id="topbar"></div>
+  <div class="container">
+    <a href="/support" class="back-link">← Back to all tickets</a>
+    
+    <div class="ticket-detail-header" id="ticketHeader">
+      <div style="font-size: 12px; color: #888; font-family: monospace;" id="ticketNumber"></div>
+      <div class="ticket-title" id="ticketSubject"></div>
+      <div id="ticketBadges"></div>
+      <div class="ticket-meta-row" id="ticketMeta"></div>
+    </div>
+
+    <div id="closedNotice"></div>
+
+    <div class="messages-container">
+      <h3>Messages</h3>
+      <div class="hr"></div>
+      <div id="messagesList"></div>
+    </div>
+
+    <div class="reply-box" id="replyBox">
+      <h3>Reply</h3>
+      <div class="hr"></div>
+      <textarea id="replyText" placeholder="Type your message here..."></textarea>
+      <div class="action-buttons">
+        <button class="primary" id="sendReplyBtn">Send Reply</button>
+        <button class="secondary" id="closeTicketBtn">Close Ticket</button>
+      </div>
+      <div id="replyError" style="color: red; margin-top: 10px;"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { API, getToken } from "/js/api.js";
+    import { loadLayout } from "/js/layout.js";
+    
+    loadLayout();
+
+    const ticketId = window.location.pathname.split("/").pop();
+    let ticket = null;
+    let messages = [];
+
+    async function loadTicket() {
+      try {
+        const res = await fetch(`${API}/support/tickets/${ticketId}`, {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        });
+        
+        if (!res.ok) {
+          if (res.status === 404) {
+            document.querySelector(".container").innerHTML = "<h2>Ticket not found</h2>";
+          } else if (res.status === 403) {
+            document.querySelector(".container").innerHTML = "<h2>Access denied</h2>";
+          }
+          return;
+        }
+        
+        const data = await res.json();
+        ticket = data.ticket;
+        messages = data.messages || [];
+        
+        renderTicket();
+        renderMessages();
+      } catch (err) {
+        console.error("Failed to load ticket:", err);
+      }
+    }
+
+    function renderTicket() {
+      document.getElementById("ticketNumber").textContent = ticket.ticket_number;
+      document.getElementById("ticketSubject").textContent = ticket.subject;
+      
+      document.getElementById("ticketBadges").innerHTML = `
+        <div style="display: flex; gap: 8px; margin-top: 10px;">
+          <span class="badge badge-status-${ticket.status}">${ticket.status.replace("_", " ")}</span>
+          <span class="badge badge-priority-${ticket.priority}">${ticket.priority}</span>
+          <span class="badge" style="background: #e8eaf6; color: #3f51b5;">${ticket.category.replace("_", " ")}</span>
+        </div>
+      `;
+      
+      const created = new Date(ticket.created_at).toLocaleString();
+      const updated = ticket.updated_at ? new Date(ticket.updated_at).toLocaleString() : created;
+      
+      document.getElementById("ticketMeta").innerHTML = `
+        <span>📅 Created: ${created}</span>
+        <span>🕒 Updated: ${updated}</span>
+        ${ticket.assigned_to_name ? `<span>👤 Assigned to: ${ticket.assigned_to_name}</span>` : ""}
+      `;
+
+      // Show closed notice
+      if (ticket.status === "closed") {
+        document.getElementById("closedNotice").innerHTML = `
+          <div class="closed-notice">
+            ⚠️ This ticket is closed. Staff replies can reopen it.
+          </div>
+        `;
+        document.getElementById("replyBox").style.display = "none";
+      }
+    }
+
+    function renderMessages() {
+      const container = document.getElementById("messagesList");
+      
+      if (messages.length === 0) {
+        container.innerHTML = "<p class='muted'>No messages yet.</p>";
+        return;
+      }
+      
+      container.innerHTML = messages.map(msg => {
+        const date = new Date(msg.created_at).toLocaleString();
+        const isStaff = msg.is_staff_reply === 1;
+        const roleLabel = msg.role === "admin" ? " (Admin)" : msg.role === "moderator" ? " (Mod)" : "";
+        
+        return `
+          <div class="message ${isStaff ? 'staff-reply' : ''}">
+            <div class="message-header">
+              <span class="message-author ${isStaff ? 'staff' : ''}">${escapeHtml(msg.username)}${roleLabel}</span>
+              <span class="message-date">${date}</span>
+            </div>
+            <div class="message-body">${escapeHtml(msg.message)}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Send reply
+    document.getElementById("sendReplyBtn").onclick = async () => {
+      const message = document.getElementById("replyText").value.trim();
+      const errorDiv = document.getElementById("replyError");
+      
+      errorDiv.textContent = "";
+      
+      if (!message) {
+        errorDiv.textContent = "Please enter a message";
+        return;
+      }
+      
+      try {
+        const res = await fetch(`${API}/support/tickets/${ticketId}/messages`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`
+          },
+          body: JSON.stringify({ message })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok) {
+          document.getElementById("replyText").value = "";
+          await loadTicket(); // Reload to show new message
+        } else {
+          errorDiv.textContent = data.error || "Failed to send message";
+        }
+      } catch (err) {
+        errorDiv.textContent = "Network error. Please try again.";
+      }
+    };
+
+    // Close ticket
+    document.getElementById("closeTicketBtn").onclick = async () => {
+      if (!confirm("Are you sure you want to close this ticket?")) return;
+      
+      try {
+        const res = await fetch(`${API}/support/tickets/${ticketId}/status`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`
+          },
+          body: JSON.stringify({ status: "closed" })
+        });
+        
+        if (res.ok) {
+          await loadTicket(); // Reload to show closed status
+        } else {
+          alert("Failed to close ticket");
+        }
+      } catch (err) {
+        alert("Network error. Please try again.");
+      }
+    };
+
+    // Initial load
+    loadTicket();
+  </script>
+  <script type="module">
+    import { loadLayout } from "/js/layout.js";
+    loadLayout();
+  </script>
+</body>
+</html>

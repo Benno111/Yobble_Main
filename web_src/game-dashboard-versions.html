@@ -13,7 +13,7 @@
       <h1 id="gameTitle">Loading…</h1>
       <p id="gameDesc" class="muted">Fetching game data.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-        <span class="pill" id="gameSlug">Slug —</span>
+        <span class="pill" id="gameproject">project —</span>
         <select id="dashboardPage" style="min-width:220px">
           <option value="versions">Versions</option>
           <option value="uploads">Uploads</option>
@@ -46,10 +46,10 @@ import { mountTopbar } from "/js/layout.js";
 import { api } from "/js/api-pages/game-dashboard.js";
 await mountTopbar("games");
 const params = new URLSearchParams(location.search);
-const slug = params.get("slug") || "";
+const project = params.get("project") || "";
 const gameTitle = document.getElementById("gameTitle");
 const gameDesc = document.getElementById("gameDesc");
-const gameSlug = document.getElementById("gameSlug");
+const gameproject = document.getElementById("gameproject");
 const dashboardPage = document.getElementById("dashboardPage");
 const latestVersion = document.getElementById("latestVersion");
 const publishedVersion = document.getElementById("publishedVersion");
@@ -68,17 +68,17 @@ function formatDate(ms){
   if (!ms) return "—";
   return new Date(ms).toLocaleString();
 }
-if(!slug){
-  gameTitle.textContent = "Missing slug";
-  gameDesc.textContent = "Provide ?slug= in the URL.";
+if(!project){
+  gameTitle.textContent = "Missing project";
+  gameDesc.textContent = "Provide ?project= in the URL.";
 }else{
   try{
-    const res = await api.get("/api/gamehosting/versions?slug=" + encodeURIComponent(slug));
+    const res = await api.get("/api/gamehosting/versions?project=" + encodeURIComponent(project));
     const g = res.game || {};
     const versions = res.versions || [];
     gameTitle.textContent = g.title || "Untitled";
     gameDesc.textContent = g.description || "No description yet.";
-    gameSlug.textContent = `Slug ${g.slug || slug}`;
+    gameproject.textContent = `project ${g.project || project}`;
     dashboardPage.value = "versions";
     const latest = versions[0]?.version || "—";
     const published = versions.find(v => v.is_published)?.version || "—";
@@ -147,7 +147,7 @@ if(!slug){
         btn.addEventListener("click", async () => {
           const v = btn.getAttribute("data-publish");
           try{
-            await api.post("/api/gamehosting/publish-owner", { slug, version: v, published: true });
+            await api.post("/api/gamehosting/publish-owner", { project, version: v, published: true });
             location.reload();
           }catch{
             btn.textContent = "Failed";
@@ -157,7 +157,7 @@ if(!slug){
       root.querySelectorAll("[data-unpublish]").forEach(btn => {
         btn.addEventListener("click", async () => {
           try{
-            await api.post("/api/gamehosting/publish-owner", { slug, published: false });
+            await api.post("/api/gamehosting/publish-owner", { project, published: false });
             location.reload();
           }catch{
             btn.textContent = "Failed";
@@ -168,12 +168,12 @@ if(!slug){
         btn.addEventListener("click", async () => {
           const v = btn.getAttribute("data-whitelist");
           try{
-            const res = await api.get(`/api/gamehosting/whitelist?slug=${encodeURIComponent(slug)}&version=${encodeURIComponent(v)}`);
+            const res = await api.get(`/api/gamehosting/whitelist?project=${encodeURIComponent(project)}&version=${encodeURIComponent(v)}`);
             const current = (res.usernames || []).join(", ");
             const input = prompt("Whitelist usernames (comma separated):", current);
             if (input === null) return;
             const usernames = input.split(",").map(u => u.trim()).filter(Boolean);
-            await api.post("/api/gamehosting/whitelist", { slug, version: v, usernames });
+            await api.post("/api/gamehosting/whitelist", { project, version: v, usernames });
             btn.textContent = "Saved";
             setTimeout(() => { btn.textContent = "Whitelist"; }, 1000);
           }catch{
@@ -186,7 +186,7 @@ if(!slug){
           const v = btn.getAttribute("data-delete");
           if (!confirm(`Delete version ${v}? This cannot be undone.`)) return;
           try{
-            await api.post("/api/gamehosting/version/delete", { slug, version: v });
+            await api.post("/api/gamehosting/version/delete", { project, version: v });
             location.reload();
           }catch{
             btn.textContent = "Failed";
@@ -197,7 +197,7 @@ if(!slug){
         btn.addEventListener("click", async () => {
           const v = btn.getAttribute("data-resubmit");
           try{
-            await api.post("/api/gamehosting/version/resubmit", { slug, version: v });
+            await api.post("/api/gamehosting/version/resubmit", { project, version: v });
             location.reload();
           }catch{
             btn.textContent = "Failed";
@@ -213,8 +213,8 @@ if(!slug){
           msg.textContent = "";
           bar.style.width = "0%";
           const fd = new FormData(uploadForm);
-          fd.set("slug", slug);
-          fd.set("title", g.title || slug);
+          fd.set("project", project);
+          fd.set("title", g.title || project);
           fd.set("entry_html", fd.get("entry_html") || "index.html");
           try{
             const xhr = new XMLHttpRequest();
@@ -250,7 +250,7 @@ if(!slug){
     }
   }catch{
     gameTitle.textContent = "Dashboard unavailable";
-    gameDesc.textContent = "Could not load game data. Check your access and slug.";
+    gameDesc.textContent = "Could not load game data. Check your access and project.";
     root.innerHTML = `<div class="empty">No data available.</div>`;
   }
 }
@@ -263,7 +263,7 @@ dashboardPage.addEventListener("change", () => {
       : value === "levels"
         ? "/game-dashboard-levels.html"
         : "/game-dashboard-versions.html";
-  const next = slug ? `${target}?slug=${encodeURIComponent(slug)}` : target;
+  const next = project ? `${target}?project=${encodeURIComponent(project)}` : target;
   location.href = next;
 });
 </script>

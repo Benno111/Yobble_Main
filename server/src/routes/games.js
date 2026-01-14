@@ -12,7 +12,7 @@ const GAME_STORAGE_DIR = path.join(PROJECT_ROOT, "game_storage");
 /* -----------------------------
    Helpers
 ----------------------------- */
-function isValidSlug(v) {
+function isValidproject(v) {
   return /^[a-z0-9\-]+$/i.test(v);
 }
 function isValidVersion(v) {
@@ -48,7 +48,7 @@ function listFilesRecursive(baseDir, sub = "") {
 ----------------------------- */
 gamesRouter.get("/", requireAuth, async (req, res) => {
   const games = await all(
-    `SELECT g.id, g.slug, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured,
+    `SELECT g.id, g.project, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured,
             g.owner_user_id,
             u.username AS owner_username, pr.display_name AS owner_display_name,
             (SELECT v.version FROM game_versions v
@@ -92,14 +92,14 @@ gamesRouter.get("/", requireAuth, async (req, res) => {
 });
 
 /* -----------------------------
-   GET /api/games/:slug
+   GET /api/games/:project
 ----------------------------- */
-gamesRouter.get("/:slug", async (req, res) => {
-  const { slug } = req.params;
-  if (!isValidSlug(slug)) return res.sendStatus(400);
+gamesRouter.get("/:project", async (req, res) => {
+  const { project } = req.params;
+  if (!isValidproject(project)) return res.sendStatus(400);
 
   const g = await get(
-    `SELECT g.id, g.slug, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured, g.is_hidden,
+    `SELECT g.id, g.project, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured, g.is_hidden,
             u.username AS owner_username, pr.display_name AS owner_display_name,
             (SELECT v.version FROM game_versions v
              WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved'
@@ -112,8 +112,8 @@ gamesRouter.get("/:slug", async (req, res) => {
      FROM games g
      LEFT JOIN users u ON u.id = g.owner_user_id
      LEFT JOIN profiles pr ON pr.user_id = g.owner_user_id
-     WHERE g.slug=?`,
-    [slug]
+     WHERE g.project=?`,
+    [project]
   );
   if (!g || g.is_hidden) return res.status(404).json({ error: "game_deleted" });
   let screenshots = [];
@@ -125,13 +125,13 @@ gamesRouter.get("/:slug", async (req, res) => {
 });
 
 /* -----------------------------
-   GET /api/games/:slug/versions
+   GET /api/games/:project/versions
 ----------------------------- */
-gamesRouter.get("/:slug/versions", requireAuth, async (req, res) => {
-  const { slug } = req.params;
-  if (!isValidSlug(slug)) return res.sendStatus(400);
+gamesRouter.get("/:project/versions", requireAuth, async (req, res) => {
+  const { project } = req.params;
+  if (!isValidproject(project)) return res.sendStatus(400);
 
-  const game = await get("SELECT id, is_hidden, owner_user_id FROM games WHERE slug=?", [slug]);
+  const game = await get("SELECT id, is_hidden, owner_user_id FROM games WHERE project=?", [project]);
   if (!game || game.is_hidden) return res.status(404).json({ error: "game_deleted" });
 
   const isOwner = game.owner_user_id === req.user.uid;
@@ -158,7 +158,7 @@ gamesRouter.get("/:slug/versions", requireAuth, async (req, res) => {
     return res.json({ versions: rows });
   }
 
-  const dir = path.join(GAME_STORAGE_DIR, slug);
+  const dir = path.join(GAME_STORAGE_DIR, project);
   if (!fs.existsSync(dir)) return res.json({ versions: [] });
 
   const versions = fs.readdirSync(dir, { withFileTypes: true })
@@ -170,15 +170,15 @@ gamesRouter.get("/:slug/versions", requireAuth, async (req, res) => {
 });
 
 /* -----------------------------
-   GET /api/games/:slug/:version/assets.json
+   GET /api/games/:project/:version/assets.json
 ----------------------------- */
-gamesRouter.get("/:slug/:version/assets.json", async (req, res) => {
-  const { slug, version } = req.params;
-  if (!isValidSlug(slug) || !isValidVersion(version)) {
+gamesRouter.get("/:project/:version/assets.json", async (req, res) => {
+  const { project, version } = req.params;
+  if (!isValidproject(project) || !isValidVersion(version)) {
     return res.sendStatus(400);
   }
 
-  const dir = path.join(GAME_STORAGE_DIR, slug, version);
+  const dir = path.join(GAME_STORAGE_DIR, project, version);
   if (!fs.existsSync(dir)) return res.sendStatus(404);
 
   res.setHeader("Cache-Control", "public, max-age=60");

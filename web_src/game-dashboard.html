@@ -17,9 +17,9 @@
 </main>
 <script>
 const params = new URLSearchParams(location.search);
-const slug = params.get("slug");
-const next = slug
-  ? `/game-dashboard-versions.html?slug=${encodeURIComponent(slug)}`
+const project = params.get("project");
+const next = project
+  ? `/game-dashboard-versions.html?project=${encodeURIComponent(project)}`
   : "/game-dashboard-versions.html";
 location.replace(next);
 </script>

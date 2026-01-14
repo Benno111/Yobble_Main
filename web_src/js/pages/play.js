@@ -2,7 +2,7 @@ import { api } from "../api-pages/play.js";
 import { requireAuth } from "../auth.js";
 await requireAuth();
 const q = new URLSearchParams(location.search);
-const slug = q.get("slug") || "";
+const project = q.get("project") || "";
 const version = q.get("version") || "";
 const entry = q.get("entry") || "index.html";
 const token = q.get("launch_token") || "";
@@ -18,8 +18,8 @@ const playWrap = document.querySelector(".play-wrap");
 const playShell = document.querySelector(".play-shell");
 const collapseBtn = document.getElementById("collapseBtn");
 const expandBtn = document.getElementById("expandBtn");
-if(!slug || !version){
-  info.textContent = "Missing slug/version";
+if(!project || !version){
+  info.textContent = "Missing project/version";
   throw new Error("missing params");
 }
 let photonConfig = null;
@@ -32,13 +32,13 @@ try{
 let session_id = null;
 let started_at = null;
 try{
-  const s = await api.post("/api/stats/" + encodeURIComponent(slug) + "/session/start", {});
+  const s = await api.post("/api/stats/" + encodeURIComponent(project) + "/session/start", {});
   session_id = s.session_id;
   started_at = s.started_at;
 }catch(e){
   // ignore
 }
-titleEl.textContent = slug;
+titleEl.textContent = project;
 info.textContent = `Version ${version}`;
 if (authToken) {
   document.cookie = `auth_token=${encodeURIComponent(authToken)}; path=/games; max-age=300; SameSite=Lax`;
@@ -47,7 +47,7 @@ if (authToken) {
 const params = new URLSearchParams();
 if (token) params.set("launch_token", token);
 const qs = params.toString();
-const gameUrl = `/games/${slug}/${version}/${entry}${qs ? `?${qs}` : ""}`;
+const gameUrl = `/games/${project}/${version}/${entry}${qs ? `?${qs}` : ""}`;
 frame.src = gameUrl;
 refreshBtn.onclick = () => {
   frame.src = gameUrl;
@@ -133,7 +133,7 @@ backBtn.onclick = () => {
     location.href = returnTo;
     return;
   }
-  location.href = `/games/${slug}`;
+  location.href = `/games/${project}`;
 };
 function setCollapsed(nextCollapsed){
   if(!playShell) return;
@@ -151,19 +151,19 @@ if(returnTo){
 async function end(){
   if(!session_id) return;
   try{
-    await api.post("/api/stats/" + encodeURIComponent(slug) + "/session/end", { session_id, started_at });
+    await api.post("/api/stats/" + encodeURIComponent(project) + "/session/end", { session_id, started_at });
     session_id = null;
   }catch(e){}
 }
 window.addEventListener("beforeunload", end);
-function buildStorageSyncScript(storageSlug, storageVersion){
+function buildStorageSyncScript(storageproject, storageVersion){
   return `
     (function(){
       if (window.__yobbleStorageSync) return;
       window.__yobbleStorageSync = true;
-      const slug = ${JSON.stringify(storageSlug)};
+      const project = ${JSON.stringify(storageproject)};
       const version = ${JSON.stringify(storageVersion)};
-      const base = \`/api/storage/\${encodeURIComponent(slug)}/\${encodeURIComponent(version)}\`;
+      const base = \`/api/storage/\${encodeURIComponent(project)}/\${encodeURIComponent(version)}\`;
       const token = localStorage.getItem("token");
       const authHeader = token ? { Authorization: \`Bearer \${token}\` } : {};
       const ls = window.localStorage;
@@ -251,7 +251,7 @@ frame.addEventListener("load", () => {
     const doc = frame.contentDocument;
     if (!doc) return;
     const script = doc.createElement("script");
-    script.textContent = buildStorageSyncScript(slug, version);
+    script.textContent = buildStorageSyncScript(project, version);
     doc.documentElement.appendChild(script);
     if (photonConfig?.enabled) {
       const photonScript = doc.createElement("script");

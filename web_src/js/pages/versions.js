@@ -1,7 +1,7 @@
 import { api } from "../api-pages/versions.js";
 import { requireAuth } from "../auth.js";
 const me = await requireAuth();
-const slugInput = document.getElementById("slug");
+const projectInput = document.getElementById("project");
 const loadBtn = document.getElementById("loadBtn");
 const meta = document.getElementById("meta");
 const versions = document.getElementById("versions");
@@ -13,13 +13,13 @@ function card(html){
   return d;
 }
 async function load(){
-  const slug = slugInput.value.trim();
-  if(!slug) return;
+  const project = projectInput.value.trim();
+  if(!project) return;
   meta.textContent = "Loading…";
   versions.innerHTML = "";
   uploads.innerHTML = "";
-  const r = await api.get("/api/gamehosting/versions?slug=" + encodeURIComponent(slug));
-  meta.textContent = `${r.game.title} — ${r.game.slug} (${r.game.category || "uncategorized"})`;
+  const r = await api.get("/api/gamehosting/versions?project=" + encodeURIComponent(project));
+  meta.textContent = `${r.game.title} — ${r.game.project} (${r.game.category || "uncategorized"})`;
   for(const v of (r.versions || [])){
     const isPublished = v.is_published === 1 || v.is_published === true;
     const canPublish = (me.role === "admin" || me.role === "moderator") && v.approval_status === "approved";
@@ -33,7 +33,7 @@ async function load(){
     const btn = d.querySelector("button");
     if(btn){
       btn.onclick = async ()=>{
-        await api.post("/api/gamehosting/publish", { slug, version: btn.dataset.v });
+        await api.post("/api/gamehosting/publish", { project, version: btn.dataset.v });
         await load();
       };
     }

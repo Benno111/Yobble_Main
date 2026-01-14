@@ -1,6 +1,14 @@
 import sqlite3 from "sqlite3";
 
+/* -----------------------------
+   DB connection
+------------------------------ */
 export const db = new sqlite3.Database("../save/db");
+
+/* IMPORTANT: enable foreign keys */
+db.serialize(() => {
+  db.run("PRAGMA foreign_keys = ON");
+});
 
 /* -----------------------------
    DB helpers
@@ -26,6 +34,63 @@ export function all(sql, params = []) {
 }
 
 /* -----------------------------
+   Object key helpers (API-level)
+------------------------------ */
+
+const DEFAULT_KEY_MAP = {
+  slug: "project"
+};
+
+export function renameKeys(obj, keyMap = {}) {
+  if (!obj) return obj;
+  const map = { ...DEFAULT_KEY_MAP, ...keyMap };
+  const out = {};
+  for (const [key, value] of Object.entries(obj)) {
+    out[map[key] ?? key] = value;
+  }
+  return out;
+}
+
+export function renameKeysBulk(rows, keyMap = {}) {
+  if (!Array.isArray(rows)) return rows;
+  return rows.map(r => renameKeys(r, keyMap));
+}
+
+export function remapKeys(obj, rules = {}) {
+  if (!obj) return obj;
+
+  const out = {};
+  const mergedRules = {
+    slug: "project",
+    ...rules
+  };
+
+  for (const [key, value] of Object.entries(obj)) {
+    const rule = mergedRules[key];
+
+    if (!rule) {
+      out[key] = value;
+      continue;
+    }
+
+    if (typeof rule === "string") {
+      out[rule] = value;
+      continue;
+    }
+
+    if (typeof rule === "function") {
+      const res = rule(value, obj);
+      if (Array.isArray(res)) {
+        const [newKey, newValue] = res;
+        out[newKey] = newValue;
+      }
+    }
+  }
+
+  return out;
+}
+
+/* -----------------------------
    Schema migration helpers
 ------------------------------ */
 async function getColumns(table) {
@@ -38,6 +103,26 @@ async function addColumnIfMissing(table, column, typeSql) {
   if (!cols.includes(column)) {
     console.log(`[DB] add column ${table}.${column}`);
     await run(`ALTER TABLE ${table} ADD COLUMN ${column} ${typeSql}`);
+  }
+}
+
+async function renameColumnIfExists(table, from, to) {
+  const cols = await getColumns(table);
+  if (cols.includes(from) && !cols.includes(to)) {
+    console.log(`[DB] rename column ${table}.${from} -> ${to}`);
+    await run(`ALTER TABLE ${table} RENAME COLUMN ${from} TO ${to}`);
+  }
+}
+
+async function copyColumnData(table, from, to) {
+  const cols = await getColumns(table);
+  if (cols.includes(from) && cols.includes(to)) {
+    console.log(`[DB] migrate data ${table}.${from} -> ${to}`);
+    await run(`
+      UPDATE ${table}
+      SET ${to} = ${from}
+      WHERE ${to} IS NULL AND ${from} IS NOT NULL
+    `);
   }
 }
 
@@ -68,11 +153,16 @@ export async function initDb() {
   /* GAMES */
   await run(`CREATE TABLE IF NOT EXISTS games(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    slug TEXT UNIQUE NOT NULL,
+    project TEXT UNIQUE,
     title TEXT NOT NULL,
     description TEXT,
     is_hidden INTEGER DEFAULT 0
   )`);
+
+  /* 🔁 slug → project migration */
+  await copyColumnData("games", "slug", "project");
+  await renameColumnIfExists("games", "slug", "project");
+
   await addColumnIfMissing("games", "is_featured", "INTEGER DEFAULT 0");
   await addColumnIfMissing("games", "owner_user_id", "INTEGER");
   await addColumnIfMissing("games", "category", "TEXT");
@@ -90,306 +180,6 @@ export async function initDb() {
     is_published INTEGER NOT NULL DEFAULT 0,
     UNIQUE(game_id, version),
     FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE
-  )`);
-  await addColumnIfMissing("game_versions", "approval_status", "TEXT DEFAULT 'pending'");
-  await addColumnIfMissing("game_versions", "approved_by", "INTEGER");
-  await addColumnIfMissing("game_versions", "approved_at", "INTEGER");
-  await addColumnIfMissing("game_versions", "rejected_reason", "TEXT");
-
-  /* UPLOAD HISTORY */
-  await run(`CREATE TABLE IF NOT EXISTS game_uploads(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    uploader_user_id INTEGER NOT NULL,
-    game_id INTEGER NOT NULL,
-    version TEXT NOT NULL,
-    storage_path TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY(uploader_user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE
-  )`);
-  await run(
-    `UPDATE games
-     SET owner_user_id = (
-       SELECT uploader_user_id
-       FROM game_uploads gu
-       WHERE gu.game_id = games.id
-       ORDER BY gu.created_at ASC
-       LIMIT 1
-     )
-     WHERE owner_user_id IS NULL`
-  );
-
-  /* ITEMS */
-  await run(`CREATE TABLE IF NOT EXISTS items(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    code TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL
-  )`);
-
-  /* ---- Item moderation & metadata ---- */
-  await addColumnIfMissing("items", "description", "TEXT");
-  await addColumnIfMissing("items", "icon_path", "TEXT");
-  await addColumnIfMissing("items", "approval_status", "TEXT DEFAULT 'pending'");
-  await addColumnIfMissing("items", "uploaded_by", "INTEGER");
-  await addColumnIfMissing("items", "approved_by", "INTEGER");
-  await addColumnIfMissing("items", "approved_at", "INTEGER");
-  await addColumnIfMissing("items", "rejected_reason", "TEXT");
-  await addColumnIfMissing("items", "created_at", "INTEGER");
-  await addColumnIfMissing("items", "price", "INTEGER DEFAULT 0");
-
-  /* INVENTORY */
-  await run(`CREATE TABLE IF NOT EXISTS inventory(
-    user_id INTEGER NOT NULL,
-    item_id INTEGER NOT NULL,
-    qty INTEGER NOT NULL,
-    UNIQUE(user_id, item_id)
-  )`);
-
-  /* FRIENDS */
-  await run(`CREATE TABLE IF NOT EXISTS friends(
-    user_id INTEGER NOT NULL,
-    friend_id INTEGER NOT NULL,
-    status TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    UNIQUE(user_id, friend_id)
-  )`);
-
-  /* PROFILES */
-  await run(`CREATE TABLE IF NOT EXISTS profiles(
-    user_id INTEGER PRIMARY KEY,
-    display_name TEXT,
-    bio TEXT,
-    avatar_url TEXT,
-    status_text TEXT,
-    updated_at INTEGER,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-  )`);
-
-  /* BLOG */
-  await run(`CREATE TABLE IF NOT EXISTS blog_posts(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    slug TEXT UNIQUE NOT NULL,
-    summary TEXT,
-    body TEXT NOT NULL,
-    tags_json TEXT,
-    status TEXT DEFAULT 'draft',
-    featured INTEGER DEFAULT 0,
-    author_user_id INTEGER,
-    created_at INTEGER,
-    updated_at INTEGER,
-    published_at INTEGER,
-    FOREIGN KEY(author_user_id) REFERENCES users(id) ON DELETE SET NULL
-  )`);
-
-  /* WALLETS */
-  await run(`CREATE TABLE IF NOT EXISTS wallets(
-    user_id INTEGER PRIMARY KEY,
-    balance INTEGER NOT NULL DEFAULT 0,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-  )`);
-  await run(`CREATE TABLE IF NOT EXISTS wallet_transactions(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    amount INTEGER NOT NULL,
-    reason TEXT NOT NULL,
-    ref_type TEXT,
-    ref_id INTEGER,
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-  )`);
-
-  /* CHAT */
-  await run(`CREATE TABLE IF NOT EXISTS chat_messages(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    channel TEXT NOT NULL,
-    user TEXT NOT NULL,
-    text TEXT NOT NULL,
-    ts INTEGER NOT NULL,
-    deleted INTEGER DEFAULT 0
-  )`);
-  await run(`CREATE TABLE IF NOT EXISTS chat_attachments(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    message_id INTEGER NOT NULL,
-    stored_name TEXT NOT NULL,
-    original_name TEXT NOT NULL,
-    mime TEXT NOT NULL,
-    size INTEGER NOT NULL,
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY(message_id) REFERENCES chat_messages(id) ON DELETE CASCADE
-  )`);
-
-  /* MARKETPLACE */
-  await run(`CREATE TABLE IF NOT EXISTS marketplace(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    seller_id INTEGER NOT NULL,
-    item_id INTEGER NOT NULL,
-    qty INTEGER NOT NULL,
-    price INTEGER NOT NULL,
-    created_at INTEGER NOT NULL
-  )`);
-  await run(`CREATE TABLE IF NOT EXISTS marketplace_listings(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    seller_user_id INTEGER NOT NULL,
-    item_id INTEGER NOT NULL,
-    qty INTEGER NOT NULL,
-    price_each INTEGER NOT NULL,
-    status TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY(seller_user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE
-  )`);
-
-  /* AUTO MARKET STOCK */
-  await run(`CREATE TABLE IF NOT EXISTS marketplace_auto_stock(
-    seller_id INTEGER NOT NULL,
-    item_id INTEGER NOT NULL,
-    qty_remaining INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    UNIQUE(seller_id, item_id)
-  )`);
-
-  /* LAUNCHER TOKENS */
-  await run(`CREATE TABLE IF NOT EXISTS launcher_tokens(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    token TEXT UNIQUE NOT NULL,
-    user_id INTEGER NOT NULL,
-    game_slug TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL,
-    used_at INTEGER,
-    used_by TEXT,
-    ip_hint TEXT,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-  )`);
-
-  /* REVIEWS */
-  await run(`CREATE TABLE IF NOT EXISTS game_reviews(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    game_id INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
-    rating INTEGER NOT NULL,
-    comment TEXT,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    UNIQUE(game_id, user_id),
-    FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-  )`);
-
-  /* PLAYTIME */
-  await run(`CREATE TABLE IF NOT EXISTS game_playtime(
-    user_id INTEGER NOT NULL,
-    game_id INTEGER NOT NULL,
-    playtime_ms INTEGER NOT NULL DEFAULT 0,
-    sessions INTEGER NOT NULL DEFAULT 0,
-    last_played INTEGER,
-    UNIQUE(user_id, game_id),
-    FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-  )`);
-
-  /* STATS */
-  await run(`CREATE TABLE IF NOT EXISTS stats(
-    user_id INTEGER PRIMARY KEY,
-    playtime_seconds INTEGER NOT NULL DEFAULT 0,
-    matches_played INTEGER NOT NULL DEFAULT 0,
-    wins INTEGER NOT NULL DEFAULT 0,
-    updated_at INTEGER,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-  )`);
-
-  /* LIBRARY */
-  await run(`CREATE TABLE IF NOT EXISTS user_library(
-    user_id INTEGER NOT NULL,
-    game_id INTEGER NOT NULL,
-    added_at INTEGER NOT NULL,
-    UNIQUE(user_id, game_id),
-    FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-  )`);
-
-  /* REPORTS */
-  await run(`CREATE TABLE IF NOT EXISTS reports(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    reporter_id INTEGER NOT NULL,
-    target_type TEXT NOT NULL,
-    target_ref TEXT,
-    category TEXT,
-    message TEXT,
-    status TEXT DEFAULT 'open',
-    created_at INTEGER NOT NULL,
-    resolved_by INTEGER,
-    resolved_at INTEGER,
-    resolution_note TEXT,
-    FOREIGN KEY(reporter_id) REFERENCES users(id) ON DELETE CASCADE
-  )`);
-  await run(`CREATE TABLE IF NOT EXISTS report_evidence(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    report_id INTEGER NOT NULL,
-    filename TEXT NOT NULL,
-    stored_path TEXT NOT NULL,
-    uploaded_at INTEGER NOT NULL,
-    FOREIGN KEY(report_id) REFERENCES reports(id) ON DELETE CASCADE
-  )`);
-
-  /* BANS + APPEALS */
-  await run(`CREATE TABLE IF NOT EXISTS bans(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    target_type TEXT NOT NULL,
-    target_id INTEGER NOT NULL,
-    reason TEXT,
-    created_at INTEGER NOT NULL,
-    expires_at INTEGER,
-    lifted_at INTEGER,
-    lift_reason TEXT
-  )`);
-  await run(`CREATE TABLE IF NOT EXISTS ban_appeals(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ban_id INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
-    status TEXT NOT NULL,
-    message TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    decided_by INTEGER,
-    decided_at INTEGER,
-    decision_note TEXT,
-    FOREIGN KEY(ban_id) REFERENCES bans(id) ON DELETE CASCADE,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-  )`);
-
-  /* GAME STORAGE */
-  await run(`CREATE TABLE IF NOT EXISTS game_kv(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    slug TEXT NOT NULL,
-    version TEXT NOT NULL,
-    key TEXT NOT NULL,
-    value TEXT,
-    updated_at INTEGER NOT NULL,
-    UNIQUE(user_id, slug, version, key)
-  )`);
-
-  /* GAME EDITOR PROJECTS */
-  await run(`CREATE TABLE IF NOT EXISTS game_editor_projects(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    data TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
-  )`);
-
-  /* GAME VERSION WHITELIST */
-  await run(`CREATE TABLE IF NOT EXISTS game_version_whitelist(
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    game_id INTEGER NOT NULL,
-    version TEXT NOT NULL,
-    user_id INTEGER NOT NULL,
-    added_at INTEGER NOT NULL,
-    UNIQUE(game_id, version, user_id)
   )`);
 
   console.log("[DB] schema ready");

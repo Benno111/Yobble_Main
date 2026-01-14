@@ -317,11 +317,11 @@ app.use("/api/games/custom-lvl", customLevelsRouter);
 /* -----------------------------
    GAME LANDING PAGE
 ----------------------------- */
-app.get("/games/:slug", (req, res, next) => {
+app.get("/games/:project", (req, res, next) => {
   if (req.path.split("/").length !== 3) return next();
   (async () => {
     try {
-      const row = await get("SELECT is_hidden FROM games WHERE slug=?", [req.params.slug]);
+      const row = await get("SELECT is_hidden FROM games WHERE project=?", [req.params.project]);
       if (!row || row.is_hidden) {
         return res.redirect("/404.html?msg=" + encodeURIComponent("Game not found."));
       }
@@ -335,11 +335,11 @@ app.get("/games/:slug", (req, res, next) => {
 /* -----------------------------
    RAW GAME FILES
 ----------------------------- */
-app.use("/games/:slug", async (req, res, next) => {
-  const slug = String(req.params.slug || "").trim();
-  if (!slug) return res.sendStatus(404);
+app.use("/games/:project", async (req, res, next) => {
+  const project = String(req.params.project || "").trim();
+  if (!project) return res.sendStatus(404);
   try {
-    const row = await get("SELECT is_hidden FROM games WHERE slug=?", [slug]);
+    const row = await get("SELECT is_hidden FROM games WHERE project=?", [project]);
     if (!row || row.is_hidden) return res.sendStatus(404);
   } catch {
     return res.sendStatus(500);
@@ -347,13 +347,13 @@ app.use("/games/:slug", async (req, res, next) => {
   next();
 });
 
-app.use("/games/:slug/:version", async (req, res, next) => {
-  const slug = String(req.params.slug || "").trim();
+app.use("/games/:project/:version", async (req, res, next) => {
+  const project = String(req.params.project || "").trim();
   const version = String(req.params.version || "").trim();
-  if (!slug || !version) return res.sendStatus(404);
+  if (!project || !version) return res.sendStatus(404);
 
   try {
-    const g = await get("SELECT id, owner_user_id FROM games WHERE slug=? AND is_hidden=0", [slug]);
+    const g = await get("SELECT id, owner_user_id FROM games WHERE project=? AND is_hidden=0", [project]);
     if (!g) return res.sendStatus(404);
 
     const v = await get(
@@ -397,18 +397,18 @@ app.use("/games/:slug/:version", async (req, res, next) => {
   }
 });
 
-app.get("/games/:slug/:version/assets.json", async (req, res) => {
-  const { slug, version } = req.params;
-  if (!slug || !version) return res.sendStatus(400);
+app.get("/games/:project/:version/assets.json", async (req, res) => {
+  const { project, version } = req.params;
+  if (!project || !version) return res.sendStatus(400);
 
   try {
-    const row = await get("SELECT is_hidden FROM games WHERE slug=?", [slug]);
+    const row = await get("SELECT is_hidden FROM games WHERE project=?", [project]);
     if (!row || row.is_hidden) return res.sendStatus(404);
   } catch {
     return res.sendStatus(500);
   }
 
-  const dir = path.join(GAME_STORAGE_DIR, slug, version);
+  const dir = path.join(GAME_STORAGE_DIR, project, version);
   if (!fs.existsSync(dir)) return res.sendStatus(404);
 
   res.setHeader("Cache-Control", "public, max-age=60");

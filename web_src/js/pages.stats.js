@@ -9,7 +9,7 @@ list.innerHTML = (r.stats || []).map(s => `
   <div class="item">
     <div style="flex:1">
       <div style="font-weight:900">${htmlEscape(s.title)}</div>
-      <div class="small">${htmlEscape(s.slug)}</div>
+      <div class="small">${htmlEscape(s.project)}</div>
       <div class="muted small">Playtime: ${s.playtime_seconds}s • Matches: ${s.matches_played} • Wins: ${s.wins}</div>
     </div>
   </div>
