@@ -95,7 +95,7 @@ if (form) {
       return;
     }
     const data = await resp.json();
-    modNotice.textContent = `Posted: ${data.slug}`;
+    modNotice.textContent = `Posted: ${data.project}`;
     form.reset();
     await loadBlog();
   });

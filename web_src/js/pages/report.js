@@ -21,7 +21,7 @@ setContent(`
           </select>
         </div>
         <div style="grid-column: span 6">
-          <label class="small">Target reference (username/slug/code)</label>
+          <label class="small">Target reference (username/project/code)</label>
           <input id="target_ref" placeholder="e.g. benno111 or dorfplatformer-9-2">
         </div>
         <div style="grid-column: span 12">
@@ -57,7 +57,7 @@ setContent(`
       <div class="h2">Privacy + tips</div>
       <div class="list">
         <div class="item"><b>Don’t share passwords</b><div class="small">Never include passwords or secret tokens in your report.</div></div>
-        <div class="item"><b>Use clear references</b><div class="small">Username, game slug, item code, trade ID, listing ID.</div></div>
+        <div class="item"><b>Use clear references</b><div class="small">Username, game project, item code, trade ID, listing ID.</div></div>
         <div class="item"><b>Attach evidence</b><div class="small">Screenshots or logs help moderators resolve faster.</div></div>
       </div>
     </div>

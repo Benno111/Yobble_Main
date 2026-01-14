@@ -6,7 +6,7 @@ const resetBtn = $("resetBtn");
 const status = $("status");
 const progress = document.querySelector(".progress");
 const bar = progress.firstElementChild;
-function slugify(s){
+function projectify(s){
   return String(s||"")
     .toLowerCase()
     .trim()
@@ -15,8 +15,8 @@ function slugify(s){
     .slice(0,80);
 }
 $("title").addEventListener("input", ()=>{
-  if(!$("slug").value.trim()){
-    $("slug").value = slugify($("title").value);
+  if(!$("project").value.trim()){
+    $("project").value = projectify($("title").value);
   }
 });
 uploadBtn.onclick = async ()=>{
@@ -24,11 +24,11 @@ uploadBtn.onclick = async ()=>{
   const file = $("file").files[0];
   if(!file){ status.textContent = "No ZIP selected"; return; }
   const title = $("title").value.trim();
-  const slug = $("slug").value.trim();
+  const project = $("project").value.trim();
   const version = $("version").value.trim();
   const entry_html = ($("entry_html").value.trim() || "index.html");
-  if(!title || !slug || !version){
-    status.textContent = "Title, slug, version required.";
+  if(!title || !project || !version){
+    status.textContent = "Title, project, version required.";
     return;
   }
   progress.style.display = "block";
@@ -36,7 +36,7 @@ uploadBtn.onclick = async ()=>{
   const form = new FormData();
   form.append("zip", file);
   form.append("title", title);
-  form.append("slug", slug);
+  form.append("project", project);
   form.append("version", version);
   form.append("entry_html", entry_html);
   form.append("category", $("category").value);
@@ -70,7 +70,7 @@ uploadBtn.onclick = async ()=>{
   });
 };
 resetBtn.onclick = ()=>{
-  ["title","slug","version","entry_html","description"].forEach(id=>$(id).value="");
+  ["title","project","version","entry_html","description"].forEach(id=>$(id).value="");
   $("category").value="platformer";
   $("file").value="";
   progress.style.display="none";

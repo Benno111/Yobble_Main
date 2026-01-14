@@ -19,7 +19,7 @@
   <section class="card controls">
     <div>
       <label for="q">Search</label>
-      <input id="q" placeholder="username / game slug / item code">
+      <input id="q" placeholder="username / game project / item code">
     </div>
     <div style="display:flex;gap:10px;align-items:end">
       <button id="go" class="primary" style="height:40px;width:100%">Search</button>
@@ -75,7 +75,7 @@ document.getElementById("go").onclick = async () => {
     out.innerHTML += `<div class="ban-card"><div class="ban-title">User</div><div class="ban-meta">${escapeHtml(u.username)}</div></div>`;
   }
   for(const g of games){
-    out.innerHTML += `<div class="ban-card"><div class="ban-title">Game</div><div class="ban-meta">${escapeHtml(g.slug)}</div></div>`;
+    out.innerHTML += `<div class="ban-card"><div class="ban-title">Game</div><div class="ban-meta">${escapeHtml(g.project)}</div></div>`;
   }
   for(const i of items){
     out.innerHTML += `<div class="ban-card"><div class="ban-title">Item</div><div class="ban-meta">${escapeHtml(i.code)}</div></div>`;

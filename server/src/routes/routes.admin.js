@@ -61,21 +61,21 @@ adminRouter.post("/give_item", async (req,res)=>{
 });
 
 adminRouter.post("/create_game", async (req,res)=>{
-  const slug = String(req.body?.slug || "").trim();
+  const project = String(req.body?.project || "").trim();
   const title = String(req.body?.title || "").trim();
   const description = String(req.body?.description || "").trim();
   const owner_user_id = Number(req.body?.owner_user_id) || req.user.uid;
-  if(!slug || !title) return res.status(400).json({ error:"missing_fields" });
+  if(!project || !title) return res.status(400).json({ error:"missing_fields" });
 
   try{
     const r = await run(
-      `INSERT INTO games(slug,title,description,created_at,owner_user_id) VALUES(?,?,?,?,?)`,
-      [slug, title, description || null, nowMs(), owner_user_id]
+      `INSERT INTO games(project,title,description,created_at,owner_user_id) VALUES(?,?,?,?,?)`,
+      [project, title, description || null, nowMs(), owner_user_id]
     );
     res.json({ ok:true, game_id: r.lastID });
   }catch(e){
     const msg = String(e?.message||"");
-    if(msg.includes("UNIQUE")) return res.status(409).json({ error:"slug_taken" });
+    if(msg.includes("UNIQUE")) return res.status(409).json({ error:"project_taken" });
     console.error(e);
     res.status(500).json({ error:"server_error" });
   }

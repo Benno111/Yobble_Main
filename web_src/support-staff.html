@@ -1,0 +1,362 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Support Management - Yobble</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-number {
+      font-size: 32px;
+      font-weight: 700;
+      color: #4CAF50;
+    }
+    .stat-label {
+      font-size: 14px;
+      color: #666;
+      margin-top: 5px;
+    }
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .filter-bar select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .ticket-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    .ticket-table th {
+      background: #f5f5f5;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    .ticket-table td {
+      padding: 12px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .ticket-table tr:hover {
+      background: #fafafa;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-status-open { background: #e3f2fd; color: #1976d2; }
+    .badge-status-awaiting_user { background: #fff3e0; color: #f57c00; }
+    .badge-status-closed { background: #f5f5f5; color: #666; }
+    .badge-priority-low { background: #f1f8e9; color: #689f38; }
+    .badge-priority-medium { background: #fff9c4; color: #f57f17; }
+    .badge-priority-high { background: #ffe0b2; color: #e64a19; }
+    .badge-priority-urgent { background: #ffcdd2; color: #c62828; }
+    .action-btn {
+      padding: 4px 8px;
+      font-size: 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #4CAF50;
+      color: white;
+    }
+    .action-btn:hover {
+      background: #45a049;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+    }
+  </style>
+</head>
+<body>
+  <div id="topbar"></div>
+  <div class="container">
+    <div class="card">
+      <h1 class="h1">Support Management</h1>
+      <p class="muted">Staff dashboard for managing support tickets</p>
+      <div class="hr"></div>
+
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-number" id="statOpen">0</div>
+          <div class="stat-label">Open Tickets</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="statClosed">0</div>
+          <div class="stat-label">Closed Tickets</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="statAvgResponse">0h</div>
+          <div class="stat-label">Avg Response Time</div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <select id="filterStatus">
+          <option value="all">All Status</option>
+          <option value="open" selected>Open</option>
+          <option value="awaiting_user">Awaiting User</option>
+          <option value="closed">Closed</option>
+        </select>
+        <select id="filterCategory">
+          <option value="all">All Categories</option>
+          <option value="technical">Technical</option>
+          <option value="billing">Billing</option>
+          <option value="account">Account</option>
+          <option value="bug_report">Bug Report</option>
+          <option value="feature_request">Feature Request</option>
+          <option value="general">General</option>
+        </select>
+        <select id="filterPriority">
+          <option value="all">All Priorities</option>
+          <option value="urgent">Urgent</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <select id="filterAssigned">
+          <option value="all">All Assignments</option>
+          <option value="me">Assigned to Me</option>
+          <option value="unassigned">Unassigned</option>
+        </select>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table class="ticket-table">
+          <thead>
+            <tr>
+              <th>Ticket #</th>
+              <th>Subject</th>
+              <th>User</th>
+              <th>Status</th>
+              <th>Priority</th>
+              <th>Category</th>
+              <th>Messages</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ticketsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assign Modal -->
+  <div class="modal" id="assignModal">
+    <div class="modal-content">
+      <h2>Assign Ticket</h2>
+      <div class="hr"></div>
+      <p class="muted">Assign ticket <span id="assignTicketNumber"></span> to:</p>
+      <select id="assignUserId" style="width: 100%; margin: 15px 0;">
+        <option value="">Unassigned</option>
+        <option value="self">Assign to Me</option>
+      </select>
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="secondary" id="cancelAssignBtn">Cancel</button>
+        <button class="primary" id="confirmAssignBtn">Assign</button>
+      </div>
+      <div id="assignError" style="color: red; margin-top: 10px;"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { API, getToken, getUser } from "/js/api.js";
+    import { loadLayout } from "/js/layout.js";
+    
+    loadLayout();
+
+    let tickets = [];
+    let currentUser = null;
+    let selectedTicketId = null;
+
+    async function checkAuth() {
+      currentUser = await getUser();
+      if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "moderator")) {
+        window.location.href = "/";
+        return false;
+      }
+      return true;
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API}/support/stats`, {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        });
+        const data = await res.json();
+        
+        document.getElementById("statOpen").textContent = data.total_open || 0;
+        document.getElementById("statClosed").textContent = data.total_closed || 0;
+        
+        const avgHours = Math.round((data.avg_response_time_ms || 0) / 1000 / 60 / 60);
+        document.getElementById("statAvgResponse").textContent = avgHours + "h";
+      } catch (err) {
+        console.error("Failed to load stats:", err);
+      }
+    }
+
+    async function loadTickets() {
+      const status = document.getElementById("filterStatus").value;
+      const category = document.getElementById("filterCategory").value;
+      const priority = document.getElementById("filterPriority").value;
+      const assigned = document.getElementById("filterAssigned").value;
+      
+      try {
+        const params = new URLSearchParams();
+        if (status !== "all") params.append("status", status);
+        if (category !== "all") params.append("category", category);
+        if (priority !== "all") params.append("priority", priority);
+        if (assigned !== "all") params.append("assigned", assigned);
+        
+        const res = await fetch(`${API}/support/staff/tickets?${params}`, {
+          headers: { Authorization: `Bearer ${getToken()}` }
+        });
+        
+        const data = await res.json();
+        tickets = data.tickets || [];
+        renderTickets();
+      } catch (err) {
+        console.error("Failed to load tickets:", err);
+      }
+    }
+
+    function renderTickets() {
+      const tbody = document.getElementById("ticketsTableBody");
+      
+      if (tickets.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='9' style='text-align: center; padding: 40px;'>No tickets found</td></tr>";
+        return;
+      }
+      
+      tbody.innerHTML = tickets.map(ticket => {
+        const date = new Date(ticket.created_at).toLocaleDateString();
+        
+        return `
+          <tr>
+            <td style="font-family: monospace; font-size: 11px;">${ticket.ticket_number}</td>
+            <td><a href="/support/ticket/${ticket.id}" style="color: #1976d2;">${escapeHtml(ticket.subject)}</a></td>
+            <td>${escapeHtml(ticket.user_name)}</td>
+            <td><span class="badge badge-status-${ticket.status}">${ticket.status.replace("_", " ")}</span></td>
+            <td><span class="badge badge-priority-${ticket.priority}">${ticket.priority}</span></td>
+            <td style="font-size: 12px;">${ticket.category.replace("_", " ")}</td>
+            <td style="text-align: center;">${ticket.message_count}</td>
+            <td style="font-size: 12px;">${date}</td>
+            <td>
+              <button class="action-btn" onclick="assignTicket(${ticket.id}, '${ticket.ticket_number}')">Assign</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    window.assignTicket = (ticketId, ticketNumber) => {
+      selectedTicketId = ticketId;
+      document.getElementById("assignTicketNumber").textContent = ticketNumber;
+      document.getElementById("assignModal").classList.add("active");
+    };
+
+    document.getElementById("cancelAssignBtn").onclick = () => {
+      document.getElementById("assignModal").classList.remove("active");
+      selectedTicketId = null;
+    };
+
+    document.getElementById("confirmAssignBtn").onclick = async () => {
+      const userId = document.getElementById("assignUserId").value;
+      const errorDiv = document.getElementById("assignError");
+      errorDiv.textContent = "";
+      
+      const assignToUserId = userId === "self" ? currentUser.uid : (userId || null);
+      
+      try {
+        const res = await fetch(`${API}/support/staff/tickets/${selectedTicketId}/assign`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`
+          },
+          body: JSON.stringify({ user_id: assignToUserId })
+        });
+        
+        if (res.ok) {
+          document.getElementById("assignModal").classList.remove("active");
+          await loadTickets();
+        } else {
+          const data = await res.json();
+          errorDiv.textContent = data.error || "Failed to assign ticket";
+        }
+      } catch (err) {
+        errorDiv.textContent = "Network error. Please try again.";
+      }
+    };
+
+    // Filters
+    document.getElementById("filterStatus").onchange = loadTickets;
+    document.getElementById("filterCategory").onchange = loadTickets;
+    document.getElementById("filterPriority").onchange = loadTickets;
+    document.getElementById("filterAssigned").onchange = loadTickets;
+
+    // Initial load
+    (async () => {
+      if (await checkAuth()) {
+        await loadStats();
+        await loadTickets();
+      }
+    })();
+  </script>
+  <script type="module">
+    import { loadLayout } from "/js/layout.js";
+    loadLayout();
+  </script>
+</body>
+</html>

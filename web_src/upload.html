@@ -24,8 +24,8 @@
         <input id="title" placeholder="Game title">
       </div>
       <div>
-        <label for="slug">Slug</label>
-        <input id="slug" placeholder="game-slug (optional)">
+        <label for="project">project</label>
+        <input id="project" placeholder="game-project (optional)">
       </div>
       <div>
         <label for="version">Version</label>
@@ -103,7 +103,7 @@ const uploadProgress = document.getElementById("uploadProgress");
 const uploadProgressWrap = document.getElementById("uploadProgressWrap");
 const itemUploadBtn = document.getElementById("itemUploadBtn");
 const itemStatus = document.getElementById("itemStatus");
-function slugify(v){
+function projectify(v){
   return String(v || "")
     .toLowerCase()
     .trim()
@@ -126,8 +126,8 @@ uploadBtn.onclick = async () => {
   const fd = new FormData();
   fd.append("zip", zip);
   const title = document.getElementById("title").value.trim();
-  const slugInput = document.getElementById("slug").value.trim();
-  const slug = slugInput || slugify(title);
+  const projectInput = document.getElementById("project").value.trim();
+  const project = projectInput || projectify(title);
   const version = document.getElementById("version").value.trim();
   const entry = document.getElementById("entry").value.trim() || "index.html";
   const category = document.getElementById("category").value.trim();
@@ -138,14 +138,14 @@ uploadBtn.onclick = async () => {
     if (uploadProgressWrap) uploadProgressWrap.style.display = "none";
     return;
   }
-  if (!slug) {
-    status.textContent = "Slug must include letters or numbers.";
+  if (!project) {
+    status.textContent = "project must include letters or numbers.";
     uploadBtn.disabled = false;
     if (uploadProgressWrap) uploadProgressWrap.style.display = "none";
     return;
   }
   fd.append("title", title);
-  fd.append("slug", slug);
+  fd.append("project", project);
   fd.append("version", version);
   fd.append("entry_html", entry);
   fd.append("category", category);

@@ -7,7 +7,7 @@ export const statsRouter = express.Router();
 /* GET /api/stats/me */
 statsRouter.get("/me", requireAuth, async (req, res) => {
   const rows = await all(
-    `SELECT g.slug, g.title, p.playtime_ms, p.sessions, p.last_played
+    `SELECT g.project, g.title, p.playtime_ms, p.sessions, p.last_played
      FROM game_playtime p
      JOIN games g ON g.id = p.game_id
      WHERE p.user_id=?
@@ -17,13 +17,13 @@ statsRouter.get("/me", requireAuth, async (req, res) => {
   res.json(rows);
 });
 
-/* POST /api/stats/ping { slug, ms }  (simple playtime bump) */
+/* POST /api/stats/ping { project, ms }  (simple playtime bump) */
 statsRouter.post("/ping", requireAuth, async (req, res) => {
-  const { slug, ms } = req.body || {};
+  const { project, ms } = req.body || {};
   const add = Number(ms || 0);
-  if (!slug || !Number.isFinite(add) || add <= 0) return res.status(400).json({ error: "bad_request" });
+  if (!project || !Number.isFinite(add) || add <= 0) return res.status(400).json({ error: "bad_request" });
 
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if (!g) return res.status(404).json({ error: "game_not_found" });
 
   const now = Date.now();
@@ -41,9 +41,9 @@ statsRouter.post("/ping", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-statsRouter.get("/:slug/me", requireAuth, async (req,res)=>{
-  const slug = String(req.params.slug || "").trim();
-  const g = await get("SELECT id FROM games WHERE slug=? AND is_hidden=0", [slug]);
+statsRouter.get("/:project/me", requireAuth, async (req,res)=>{
+  const project = String(req.params.project || "").trim();
+  const g = await get("SELECT id FROM games WHERE project=? AND is_hidden=0", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const row = await get(
@@ -56,9 +56,9 @@ statsRouter.get("/:slug/me", requireAuth, async (req,res)=>{
 });
 
 // Start session: returns session_id + started_at
-statsRouter.post("/:slug/session/start", requireAuth, async (req,res)=>{
-  const slug = String(req.params.slug || "").trim();
-  const g = await get("SELECT id FROM games WHERE slug=? AND is_hidden=0", [slug]);
+statsRouter.post("/:project/session/start", requireAuth, async (req,res)=>{
+  const project = String(req.params.project || "").trim();
+  const g = await get("SELECT id FROM games WHERE project=? AND is_hidden=0", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const started_at = Date.now();
@@ -68,8 +68,8 @@ statsRouter.post("/:slug/session/start", requireAuth, async (req,res)=>{
 });
 
 // End session: adds elapsed time
-statsRouter.post("/:slug/session/end", requireAuth, async (req,res)=>{
-  const slug = String(req.params.slug || "").trim();
+statsRouter.post("/:project/session/end", requireAuth, async (req,res)=>{
+  const project = String(req.params.project || "").trim();
   const session_id = String(req.body?.session_id || "").trim();
   const started_at = Number(req.body?.started_at);
   const ended_at = Date.now();
@@ -78,7 +78,7 @@ statsRouter.post("/:slug/session/end", requireAuth, async (req,res)=>{
     return res.status(400).json({ error:"missing_fields" });
   }
 
-  const g = await get("SELECT id FROM games WHERE slug=? AND is_hidden=0", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=? AND is_hidden=0", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const delta = Math.max(0, Math.min(ended_at - started_at, 24*60*60*1000));

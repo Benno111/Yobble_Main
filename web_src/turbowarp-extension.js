@@ -93,17 +93,17 @@
           {
             opcode: "customLevelsList",
             blockType: Scratch.BlockType.REPORTER,
-            text: "custom levels list for game [SLUG] (json)",
+            text: "custom levels list for game [project] (json)",
             arguments: {
-              SLUG: { type: Scratch.ArgumentType.STRING, defaultValue: "game-slug" }
+              project: { type: Scratch.ArgumentType.STRING, defaultValue: "game-project" }
             }
           },
           {
             opcode: "customLevelsSearch",
             blockType: Scratch.BlockType.REPORTER,
-            text: "custom levels search game [SLUG] query [Q] creator [CREATOR] difficulty [DIFF] (json)",
+            text: "custom levels search game [project] query [Q] creator [CREATOR] difficulty [DIFF] (json)",
             arguments: {
-              SLUG: { type: Scratch.ArgumentType.STRING, defaultValue: "game-slug" },
+              project: { type: Scratch.ArgumentType.STRING, defaultValue: "game-project" },
               Q: { type: Scratch.ArgumentType.STRING, defaultValue: "" },
               CREATOR: { type: Scratch.ArgumentType.STRING, defaultValue: "" },
               DIFF: { type: Scratch.ArgumentType.STRING, defaultValue: "" }
@@ -112,27 +112,27 @@
           {
             opcode: "customLevelDownload",
             blockType: Scratch.BlockType.REPORTER,
-            text: "custom level download game [SLUG] id [ID] (json)",
+            text: "custom level download game [project] id [ID] (json)",
             arguments: {
-              SLUG: { type: Scratch.ArgumentType.STRING, defaultValue: "game-slug" },
+              project: { type: Scratch.ArgumentType.STRING, defaultValue: "game-project" },
               ID: { type: Scratch.ArgumentType.NUMBER, defaultValue: 1 }
             }
           },
           {
             opcode: "customLevelDelete",
             blockType: Scratch.BlockType.COMMAND,
-            text: "custom level delete game [SLUG] id [ID]",
+            text: "custom level delete game [project] id [ID]",
             arguments: {
-              SLUG: { type: Scratch.ArgumentType.STRING, defaultValue: "game-slug" },
+              project: { type: Scratch.ArgumentType.STRING, defaultValue: "game-project" },
               ID: { type: Scratch.ArgumentType.NUMBER, defaultValue: 1 }
             }
           },
           {
             opcode: "customLevelSetDifficulty",
             blockType: Scratch.BlockType.COMMAND,
-            text: "custom level set difficulty game [SLUG] id [ID] diff [DIFF]",
+            text: "custom level set difficulty game [project] id [ID] diff [DIFF]",
             arguments: {
-              SLUG: { type: Scratch.ArgumentType.STRING, defaultValue: "game-slug" },
+              project: { type: Scratch.ArgumentType.STRING, defaultValue: "game-project" },
               ID: { type: Scratch.ArgumentType.NUMBER, defaultValue: 1 },
               DIFF: { type: Scratch.ArgumentType.NUMBER, defaultValue: 5 }
             }
@@ -140,9 +140,9 @@
           {
             opcode: "customLevelUpload",
             blockType: Scratch.BlockType.COMMAND,
-            text: "upload custom level game [SLUG] title [TITLE] version [VERSION] description [DESC] data [DATA]",
+            text: "upload custom level game [project] title [TITLE] version [VERSION] description [DESC] data [DATA]",
             arguments: {
-              SLUG: { type: Scratch.ArgumentType.STRING, defaultValue: "game-slug" },
+              project: { type: Scratch.ArgumentType.STRING, defaultValue: "game-project" },
               TITLE: { type: Scratch.ArgumentType.STRING, defaultValue: "My Level" },
               VERSION: { type: Scratch.ArgumentType.STRING, defaultValue: "1.0" },
               DESC: { type: Scratch.ArgumentType.STRING, defaultValue: "" },
@@ -199,15 +199,15 @@
     }
 
     async customLevelsList(args){
-      const slug = String(args.SLUG || "").trim();
-      if (!slug) return JSON.stringify({ error: "missing_slug" });
-      const data = await getJson("/api/games/custom-lvl/" + encodeURIComponent(slug) + "/list");
+      const project = String(args.project || "").trim();
+      if (!project) return JSON.stringify({ error: "missing_project" });
+      const data = await getJson("/api/games/custom-lvl/" + encodeURIComponent(project) + "/list");
       return JSON.stringify(data || {});
     }
 
     async customLevelsSearch(args){
-      const slug = String(args.SLUG || "").trim();
-      if (!slug) return JSON.stringify({ error: "missing_slug" });
+      const project = String(args.project || "").trim();
+      if (!project) return JSON.stringify({ error: "missing_project" });
       const params = new URLSearchParams();
       const q = String(args.Q || "").trim();
       const creator = String(args.CREATOR || "").trim();
@@ -216,48 +216,48 @@
       if (creator) params.set("creator", creator);
       if (diff) params.set("difficulty", diff);
       const query = params.toString();
-      const path = "/api/games/custom-lvl/" + encodeURIComponent(slug) + "/search" + (query ? "?" + query : "");
+      const path = "/api/games/custom-lvl/" + encodeURIComponent(project) + "/search" + (query ? "?" + query : "");
       const data = await getJson(path);
       return JSON.stringify(data || {});
     }
 
     async customLevelDownload(args){
-      const slug = String(args.SLUG || "").trim();
+      const project = String(args.project || "").trim();
       const id = Number(args.ID);
-      if (!slug || !Number.isFinite(id)) return JSON.stringify({ error: "missing_fields" });
-      const data = await getJson("/api/games/custom-lvl/" + encodeURIComponent(slug) + "/download/" + id);
+      if (!project || !Number.isFinite(id)) return JSON.stringify({ error: "missing_fields" });
+      const data = await getJson("/api/games/custom-lvl/" + encodeURIComponent(project) + "/download/" + id);
       return JSON.stringify(data || {});
     }
 
     async customLevelDelete(args){
-      const slug = String(args.SLUG || "").trim();
+      const project = String(args.project || "").trim();
       const id = Number(args.ID);
-      if (!slug || !Number.isFinite(id)) return;
+      if (!project || !Number.isFinite(id)) return;
       await postJson(
-        "/api/games/custom-lvl/" + encodeURIComponent(slug) + "/delete/" + id,
+        "/api/games/custom-lvl/" + encodeURIComponent(project) + "/delete/" + id,
         {},
         "DELETE"
       );
     }
 
     async customLevelSetDifficulty(args){
-      const slug = String(args.SLUG || "").trim();
+      const project = String(args.project || "").trim();
       const id = Number(args.ID);
       const diff = Number(args.DIFF);
-      if (!slug || !Number.isFinite(id) || !Number.isFinite(diff)) return;
-      await postJson("/api/games/custom-lvl/" + encodeURIComponent(slug) + "/difficulty/" + id, { difficulty: diff });
+      if (!project || !Number.isFinite(id) || !Number.isFinite(diff)) return;
+      await postJson("/api/games/custom-lvl/" + encodeURIComponent(project) + "/difficulty/" + id, { difficulty: diff });
     }
 
     async customLevelUpload(args){
-      const slug = String(args.SLUG || "").trim();
+      const project = String(args.project || "").trim();
       const title = String(args.TITLE || "").trim();
       const version = String(args.VERSION || "").trim();
       const description = String(args.DESC || "").trim();
       const raw_data = String(args.DATA || "");
-      if (!slug || !title || !version || !raw_data) {
+      if (!project || !title || !version || !raw_data) {
         return;
       }
-      await postJson("/api/games/custom-lvl/" + encodeURIComponent(slug) + "/upload", {
+      await postJson("/api/games/custom-lvl/" + encodeURIComponent(project) + "/upload", {
         title,
         version,
         description,

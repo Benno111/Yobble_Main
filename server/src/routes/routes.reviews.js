@@ -4,9 +4,9 @@ import { all, get, run } from "../db.js";
 
 export const reviewsRouter = express.Router();
 
-reviewsRouter.get("/:slug/reviews", requireAuth, async (req,res)=>{
-  const slug = String(req.params.slug || "").trim();
-  const g = await get("SELECT id FROM games WHERE slug=? AND is_hidden=0", [slug]);
+reviewsRouter.get("/:project/reviews", requireAuth, async (req,res)=>{
+  const project = String(req.params.project || "").trim();
+  const g = await get("SELECT id FROM games WHERE project=? AND is_hidden=0", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const rows = await all(
@@ -24,8 +24,8 @@ reviewsRouter.get("/:slug/reviews", requireAuth, async (req,res)=>{
   res.json({ reviews: rows, avg_rating: avg?.avg ?? null, count: avg?.count ?? 0 });
 });
 
-reviewsRouter.post("/:slug/review", requireAuth, async (req,res)=>{
-  const slug = String(req.params.slug || "").trim();
+reviewsRouter.post("/:project/review", requireAuth, async (req,res)=>{
+  const project = String(req.params.project || "").trim();
   const rating = Number(req.body?.rating);
   const comment = String(req.body?.comment || "").trim().slice(0, 2000);
 
@@ -33,7 +33,7 @@ reviewsRouter.post("/:slug/review", requireAuth, async (req,res)=>{
     return res.status(400).json({ error:"invalid_rating" });
   }
 
-  const g = await get("SELECT id FROM games WHERE slug=? AND is_hidden=0", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=? AND is_hidden=0", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const now = Date.now();

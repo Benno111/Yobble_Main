@@ -50,8 +50,8 @@ function renderList(items){
       <div class="game-meta">${game.category ? escapeHtml(game.category) : "Uncategorized"}</div>
       <div class="game-desc">${escapeHtml(game.description || "No description yet.")}</div>
       <div class="game-actions">
-        <a class="btn primary" href="/games/${encodeURIComponent(game.slug)}">Play</a>
-        <a class="btn" href="/game.html?slug=${encodeURIComponent(game.slug)}">Details</a>
+        <a class="btn primary" href="/games/${encodeURIComponent(game.project)}">Play</a>
+        <a class="btn" href="/game.html?project=${encodeURIComponent(game.project)}">Details</a>
       </div>
     `;
     grid.appendChild(card);

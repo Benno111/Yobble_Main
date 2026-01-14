@@ -32,10 +32,10 @@ document.querySelector("#grant").onclick = async ()=>{
 document.querySelector("#createGame").onclick = async ()=>{
   gameMsg.textContent = "";
   try{
-    const slug = document.querySelector("#slug").value.trim();
+    const project = document.querySelector("#project").value.trim();
     const title = document.querySelector("#title").value.trim();
     const description = document.querySelector("#description").value.trim();
-    const r = await api("/api/admin/create_game", { method:"POST", body:{ slug, title, description }});
+    const r = await api("/api/admin/create_game", { method:"POST", body:{ project, title, description }});
     gameMsg.textContent = "Created game id: " + r.game_id;
   }catch(e){ gameMsg.textContent = "Error: " + e.message; }
 };

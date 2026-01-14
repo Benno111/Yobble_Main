@@ -143,7 +143,7 @@ moderationRouter.get("/reports", requireAuth, requireRole(...MOD_ROLES), async (
 /* GET /api/mod/queue */
 moderationRouter.get("/queue", requireAuth, requireRole(...MOD_ROLES), async (_req, res) => {
   const pendingGames = await all(
-    `SELECT 'game' AS type, g.slug AS ref, v.version AS version, v.entry_html AS entry_html,
+    `SELECT 'game' AS type, g.project AS ref, v.version AS version, v.entry_html AS entry_html,
             v.approval_status AS status, v.created_at
      FROM game_versions v
      JOIN games g ON g.id=v.game_id
@@ -222,7 +222,7 @@ moderationRouter.post("/appeals/decide", requireAuth, requireRole(...MOD_ROLES),
 /* GET /api/mod/games/pending */
 moderationRouter.get("/games/pending", requireAuth, requireRole(...MOD_ROLES), async (_req, res) => {
   const rows = await all(
-    `SELECT g.slug, g.title, v.version, v.entry_html, v.created_at, v.approval_status,
+    `SELECT g.project, g.title, v.version, v.entry_html, v.created_at, v.approval_status,
             u.username AS uploader
      FROM game_versions v
      JOIN games g ON g.id=v.game_id
@@ -236,12 +236,12 @@ moderationRouter.get("/games/pending", requireAuth, requireRole(...MOD_ROLES), a
 
 /* POST /api/mod/games/approve */
 moderationRouter.post("/games/approve", requireAuth, requireRole(...MOD_ROLES), async (req, res) => {
-  const slug = String(req.body?.slug || "").trim();
+  const project = String(req.body?.project || "").trim();
   const version = String(req.body?.version || "").trim();
   const publish = !!req.body?.publish;
-  if (!slug || !version) return res.status(400).json({ error: "missing_fields" });
+  if (!project || !version) return res.status(400).json({ error: "missing_fields" });
 
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if (!g) return res.status(404).json({ error: "game_not_found" });
 
   await run(
@@ -261,12 +261,12 @@ moderationRouter.post("/games/approve", requireAuth, requireRole(...MOD_ROLES), 
 
 /* POST /api/mod/games/reject */
 moderationRouter.post("/games/reject", requireAuth, requireRole(...MOD_ROLES), async (req, res) => {
-  const slug = String(req.body?.slug || "").trim();
+  const project = String(req.body?.project || "").trim();
   const version = String(req.body?.version || "").trim();
   const reason = String(req.body?.reason || "").slice(0, 500);
-  if (!slug || !version) return res.status(400).json({ error: "missing_fields" });
+  if (!project || !version) return res.status(400).json({ error: "missing_fields" });
 
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if (!g) return res.status(404).json({ error: "game_not_found" });
 
   await run(
@@ -281,16 +281,16 @@ moderationRouter.post("/games/reject", requireAuth, requireRole(...MOD_ROLES), a
 
 /* POST /api/mod/games/reject-ban */
 moderationRouter.post("/games/reject-ban", requireAuth, requireRole(...MOD_ROLES), async (req, res) => {
-  const slug = String(req.body?.slug || "").trim();
+  const project = String(req.body?.project || "").trim();
   const version = String(req.body?.version || "").trim();
   const reason = String(req.body?.reason || "").slice(0, 500);
   const hours = req.body?.duration_hours == null ? null : Number(req.body.duration_hours);
-  if (!slug || !version) return res.status(400).json({ error: "missing_fields" });
+  if (!project || !version) return res.status(400).json({ error: "missing_fields" });
   if (hours != null && (!Number.isFinite(hours) || hours <= 0)) {
     return res.status(400).json({ error: "bad_duration" });
   }
 
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if (!g) return res.status(404).json({ error: "game_not_found" });
 
   const uploader = await get(
@@ -391,7 +391,7 @@ moderationRouter.get("/search", requireAuth, requireRole(...MOD_ROLES), async (r
 
   const like = `%${q}%`;
   const users = await all("SELECT id, username FROM users WHERE username LIKE ?", [like]);
-  const games = await all("SELECT id, slug, title FROM games WHERE slug LIKE ? OR title LIKE ?", [like, like]);
+  const games = await all("SELECT id, project, title FROM games WHERE project LIKE ? OR title LIKE ?", [like, like]);
   const items = await all("SELECT id, code, name FROM items WHERE code LIKE ? OR name LIKE ?", [like, like]);
 
   res.json({ users, games, items });
@@ -416,7 +416,7 @@ moderationRouter.post("/bans/create", requireAuth, requireRole(...MOD_ROLES), as
     target = await get("SELECT id FROM users WHERE username=?", [ref]);
     targetUserId = target?.id || null;
   } else if (type === "game") {
-    target = await get("SELECT id FROM games WHERE slug=?", [ref]);
+    target = await get("SELECT id FROM games WHERE project=?", [ref]);
   } else if (type === "item") {
     target = await get("SELECT id FROM items WHERE code=?", [ref]);
   } else {
@@ -454,10 +454,10 @@ moderationRouter.post("/bans/create", requireAuth, requireRole(...MOD_ROLES), as
 
 /* POST /api/mod/games/remove (soft hide) */
 moderationRouter.post("/games/remove", requireAuth, requireRole(...MOD_ROLES), async (req, res) => {
-  const slug = String(req.body?.slug || "").trim();
-  if (!slug) return res.status(400).json({ error: "missing_slug" });
+  const project = String(req.body?.project || "").trim();
+  if (!project) return res.status(400).json({ error: "missing_project" });
 
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if (!g) return res.status(404).json({ error: "game_not_found" });
 
   await run("UPDATE games SET is_hidden=1 WHERE id=?", [g.id]);
@@ -466,10 +466,10 @@ moderationRouter.post("/games/remove", requireAuth, requireRole(...MOD_ROLES), a
 
 /* POST /api/mod/games/unhide */
 moderationRouter.post("/games/unhide", requireAuth, requireRole(...MOD_ROLES), async (req, res) => {
-  const slug = String(req.body?.slug || "").trim();
-  if (!slug) return res.status(400).json({ error: "missing_slug" });
+  const project = String(req.body?.project || "").trim();
+  if (!project) return res.status(400).json({ error: "missing_project" });
 
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if (!g) return res.status(404).json({ error: "game_not_found" });
 
   await run("UPDATE games SET is_hidden=0 WHERE id=?", [g.id]);
@@ -478,11 +478,11 @@ moderationRouter.post("/games/unhide", requireAuth, requireRole(...MOD_ROLES), a
 
 /* POST /api/mod/games/feature */
 moderationRouter.post("/games/feature", requireAuth, requireRole(...MOD_ROLES), async (req, res) => {
-  const slug = String(req.body?.slug || "").trim();
+  const project = String(req.body?.project || "").trim();
   const featured = req.body?.featured ? 1 : 0;
-  if (!slug) return res.status(400).json({ error: "missing_slug" });
+  if (!project) return res.status(400).json({ error: "missing_project" });
 
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if (!g) return res.status(404).json({ error: "game_not_found" });
 
   await run("UPDATE games SET is_featured=? WHERE id=?", [featured, g.id]);

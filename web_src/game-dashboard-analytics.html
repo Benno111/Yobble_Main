@@ -13,7 +13,7 @@
       <h1 id="gameTitle">Loading…</h1>
       <p id="gameDesc" class="muted">Fetching game data.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-        <span class="pill" id="gameSlug">Slug —</span>
+        <span class="pill" id="gameproject">project —</span>
         <select id="dashboardPage" style="min-width:220px">
           <option value="versions">Versions</option>
           <option value="uploads">Uploads</option>
@@ -46,10 +46,10 @@ import { mountTopbar } from "/js/layout.js";
 import { api } from "/js/api-pages/game-dashboard.js";
 await mountTopbar("games");
 const params = new URLSearchParams(location.search);
-const slug = params.get("slug") || "";
+const project = params.get("project") || "";
 const gameTitle = document.getElementById("gameTitle");
 const gameDesc = document.getElementById("gameDesc");
-const gameSlug = document.getElementById("gameSlug");
+const gameproject = document.getElementById("gameproject");
 const dashboardPage = document.getElementById("dashboardPage");
 const latestVersion = document.getElementById("latestVersion");
 const publishedVersion = document.getElementById("publishedVersion");
@@ -67,24 +67,24 @@ function formatDate(ms){
   if (!ms) return "—";
   return new Date(ms).toLocaleString();
 }
-if(!slug){
-  gameTitle.textContent = "Missing slug";
-  gameDesc.textContent = "Provide ?slug= in the URL.";
+if(!project){
+  gameTitle.textContent = "Missing project";
+  gameDesc.textContent = "Provide ?project= in the URL.";
 }else{
   try{
-    const res = await api.get("/api/gamehosting/versions?slug=" + encodeURIComponent(slug));
+    const res = await api.get("/api/gamehosting/versions?project=" + encodeURIComponent(project));
     const g = res.game || {};
     const versions = res.versions || [];
     gameTitle.textContent = g.title || "Untitled";
     gameDesc.textContent = g.description || "No description yet.";
-    gameSlug.textContent = `Slug ${g.slug || slug}`;
+    gameproject.textContent = `project ${g.project || project}`;
     dashboardPage.value = "analytics";
     const latest = versions[0]?.version || "—";
     const published = versions.find(v => v.is_published)?.version || "—";
     latestVersion.textContent = `Latest ${latest}`;
     publishedVersion.textContent = `Published ${published}`;
     try{
-      const aRes = await api.get("/api/gamehosting/analytics?slug=" + encodeURIComponent(slug));
+      const aRes = await api.get("/api/gamehosting/analytics?project=" + encodeURIComponent(project));
       const stats = aRes.stats || {};
       const fmtMs = (ms) => {
         const s = Math.floor((ms || 0) / 1000);
@@ -117,7 +117,7 @@ if(!slug){
     }
   }catch{
     gameTitle.textContent = "Dashboard unavailable";
-    gameDesc.textContent = "Could not load game data. Check your access and slug.";
+    gameDesc.textContent = "Could not load game data. Check your access and project.";
     root.innerHTML = `<div class="empty">No data available.</div>`;
   }
 }
@@ -130,7 +130,7 @@ dashboardPage.addEventListener("change", () => {
       : value === "levels"
         ? "/game-dashboard-levels.html"
         : "/game-dashboard-versions.html";
-  const next = slug ? `${target}?slug=${encodeURIComponent(slug)}` : target;
+  const next = project ? `${target}?project=${encodeURIComponent(project)}` : target;
   location.href = next;
 });
 </script>

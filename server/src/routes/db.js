@@ -65,7 +65,7 @@ export async function initDb() {
   /* GAMES */
   await run(`CREATE TABLE IF NOT EXISTS games(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    slug TEXT UNIQUE NOT NULL,
+    project TEXT UNIQUE NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
     is_hidden INTEGER DEFAULT 0
@@ -183,7 +183,7 @@ export async function initDb() {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     token TEXT UNIQUE NOT NULL,
     user_id INTEGER NOT NULL,
-    game_slug TEXT NOT NULL,
+    game_project TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL,
     used_at INTEGER,

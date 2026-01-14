@@ -68,7 +68,7 @@ if(!rows.length){
                <button class="secondary" data-reject-game="${escapeHtml(x.ref || "")}" data-version="${escapeHtml(x.version || "")}">Reject</button>
                <button class="secondary" data-reject-ban-game="${escapeHtml(x.ref || "")}" data-version="${escapeHtml(x.version || "")}">Reject + ban</button>
                <button class="secondary" data-delete-game="${escapeHtml(x.ref || "")}" data-version="${escapeHtml(x.version || "")}">Delete</button>
-               <a class="secondary" href="/play.html?slug=${encodeURIComponent(x.ref || "")}&version=${encodeURIComponent(x.version || "")}&entry=${encodeURIComponent(x.entry_html || "index.html")}&return=${encodeURIComponent("/modqueue.html")}">Playtest</a>
+               <a class="secondary" href="/play.html?project=${encodeURIComponent(x.ref || "")}&version=${encodeURIComponent(x.version || "")}&entry=${encodeURIComponent(x.entry_html || "index.html")}&return=${encodeURIComponent("/modqueue.html")}">Playtest</a>
              </div>`
           : ``
       }
@@ -93,26 +93,26 @@ if(!rows.length){
   });
   document.querySelectorAll("[data-approve-game]").forEach(btn=>{
     btn.addEventListener("click", async ()=>{
-      const slug = btn.dataset.approveGame;
+      const project = btn.dataset.approveGame;
       const version = btn.dataset.version;
-      await api.post("/api/mod/games/approve", { slug, version, publish:false });
+      await api.post("/api/mod/games/approve", { project, version, publish:false });
       btn.textContent = "Approved";
       btn.disabled = true;
     });
   });
   document.querySelectorAll("[data-reject-game]").forEach(btn=>{
     btn.addEventListener("click", async ()=>{
-      const slug = btn.dataset.rejectGame;
+      const project = btn.dataset.rejectGame;
       const version = btn.dataset.version;
       const reason = prompt("Rejection reason?") || "";
-      await api.post("/api/mod/games/reject", { slug, version, reason });
+      await api.post("/api/mod/games/reject", { project, version, reason });
       btn.textContent = "Rejected";
       btn.disabled = true;
     });
   });
   document.querySelectorAll("[data-reject-ban-game]").forEach(btn=>{
     btn.addEventListener("click", async ()=>{
-      const slug = btn.dataset.rejectBanGame;
+      const project = btn.dataset.rejectBanGame;
       const version = btn.dataset.version;
       const reason = prompt("Ban reason? (optional)") || "";
       const hoursRaw = prompt("Ban duration hours? Leave blank for permanent.");
@@ -121,17 +121,17 @@ if(!rows.length){
         alert("Invalid duration.");
         return;
       }
-      await api.post("/api/mod/games/reject-ban", { slug, version, reason, duration_hours });
+      await api.post("/api/mod/games/reject-ban", { project, version, reason, duration_hours });
       btn.textContent = "Rejected + banned";
       btn.disabled = true;
     });
   });
   document.querySelectorAll("[data-delete-game]").forEach(btn=>{
     btn.addEventListener("click", async ()=>{
-      const slug = btn.dataset.deleteGame;
+      const project = btn.dataset.deleteGame;
       const version = btn.dataset.version;
       if (!confirm(`Delete version ${version}? This cannot be undone.`)) return;
-      await api.post("/api/gamehosting/version/delete", { slug, version });
+      await api.post("/api/gamehosting/version/delete", { project, version });
       btn.textContent = "Deleted";
       btn.disabled = true;
     });

@@ -31,7 +31,7 @@
   <section class="card" id="hero-actions">
     <div>
       <label for="q">Search</label>
-      <input id="q" type="search" placeholder="Search title, description, or slug">
+      <input id="q" type="search" placeholder="Search title, description, or project">
     </div>
     <div>
       <label for="category">Category</label>
@@ -106,7 +106,7 @@ function render(){
   const query = q.value.trim().toLowerCase();
   const cat = category.value;
   const filtered = games.filter(g => {
-    const hay = `${g.title || ""} ${g.description || ""} ${g.slug || ""}`.toLowerCase();
+    const hay = `${g.title || ""} ${g.description || ""} ${g.project || ""}`.toLowerCase();
     if (query && !hay.includes(query)) return false;
     if (cat !== "all" && (g.category || "") !== cat) return false;
     return true;
@@ -117,10 +117,10 @@ function render(){
   list.innerHTML = sorted.map((g) => {
     const meta = [
       g.category ? `<span class="pill">${escapeHtml(g.category)}</span>` : "",
-      g.slug ? `<span class="pill">/${escapeHtml(g.slug)}</span>` : ""
+      g.project ? `<span class="pill">/${escapeHtml(g.project)}</span>` : ""
     ].filter(Boolean).join("");
     return `
-    <a class="card stack" href="/games/${encodeURIComponent(g.slug)}">
+    <a class="card stack" href="/games/${encodeURIComponent(g.project)}">
       ${g.is_featured ? `<span class="pill">Featured</span>` : `<span class="pill">Community Pick</span>`}
       <strong>${escapeHtml(g.title || "Untitled")}</strong>
       <div class="small">${escapeHtml(g.description || "No description yet. Tap to explore the build and learn more.")}</div>

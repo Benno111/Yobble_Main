@@ -8,7 +8,7 @@ try{
 }catch{
   me = null;
 }
-const slug = location.pathname.split("/").filter(Boolean).pop();
+const project = location.pathname.split("/").filter(Boolean).pop();
 const heroMain = document.getElementById("hero-main");
 const heroArt = document.getElementById("hero-art");
 const heroActions = document.getElementById("hero-actions");
@@ -47,7 +47,7 @@ async function safeGet(url, fallback){
 }
 async function load(){
   heroMain.textContent = "Loading…";
-  const gRes = await safeGet("/api/games/" + encodeURIComponent(slug), null);
+  const gRes = await safeGet("/api/games/" + encodeURIComponent(project), null);
   if(!gRes){
     heroMain.innerHTML = `
       <h1>Game deleted</h1>
@@ -58,7 +58,7 @@ async function load(){
       unhideBtn.style.display = "inline-flex";
       unhideBtn.onclick = async () => {
         try{
-          await api.post("/api/mod/games/unhide", { slug });
+          await api.post("/api/mod/games/unhide", { project });
           location.reload();
         }catch{
           unhideBtn.textContent = "Failed to unhide";
@@ -68,10 +68,10 @@ async function load(){
     return;
   }
   const g = gRes.game || gRes;
-  const vRes = await safeGet("/api/gamehosting/playable-versions?slug=" + encodeURIComponent(slug), null);
+  const vRes = await safeGet("/api/gamehosting/playable-versions?project=" + encodeURIComponent(project), null);
   let versions = Array.isArray(vRes?.versions) ? vRes.versions : [];
   if (!versions.length) {
-    const fallback = await safeGet("/api/games/" + encodeURIComponent(slug) + "/versions", []);
+    const fallback = await safeGet("/api/games/" + encodeURIComponent(project) + "/versions", []);
     const rawVersions = Array.isArray(fallback) ? fallback : (fallback.versions || []);
     versions = [...new Set(rawVersions.map(v => {
       if (typeof v === "string") return v;
@@ -82,17 +82,17 @@ async function load(){
   if (me && !(me.username === g.owner_username || ["admin","moderator"].includes(me?.role))) {
     versions = versions.filter(Boolean);
   }
-  const inLibRes = await safeGet("/api/library/has?slug=" + encodeURIComponent(slug), null);
+  const inLibRes = await safeGet("/api/library/has?project=" + encodeURIComponent(project), null);
   let inLib = !!inLibRes?.in_library;
   const libAvailable = inLibRes !== null;
   let st = null;
-  const statsRes = await safeGet("/api/stats/" + encodeURIComponent(slug) + "/me", null);
+  const statsRes = await safeGet("/api/stats/" + encodeURIComponent(project) + "/me", null);
   if(statsRes?.stats){
     st = statsRes.stats;
   }else{
     const statsAll = await safeGet("/api/stats/me", []);
     if(Array.isArray(statsAll)){
-      st = statsAll.find(x => x.slug === g.slug) || null;
+      st = statsAll.find(x => x.project === g.project) || null;
     }
   }
   heroMain.innerHTML = `
@@ -101,7 +101,7 @@ async function load(){
     <p>${escapeHtml(g.description || "No description yet.")}</p>
     <div class="hero-meta">
       <span class="badge">By ${escapeHtml(g.owner_display_name || g.owner_username || "Unknown")}</span>
-      <a class="secondary" href="/report.html?target_type=game&target_ref=${encodeURIComponent(g.slug)}">Report</a>
+      <a class="secondary" href="/report.html?target_type=game&target_ref=${encodeURIComponent(g.project)}">Report</a>
     </div>
   `;
   heroArt.textContent = g.banner_path ? "" : "Launch ready";
@@ -115,7 +115,7 @@ async function load(){
     </div>
     <button class="primary" id="playBtn">Play</button>
     ${(me && g.owner_username && me.username === g.owner_username)
-      ? `<a class="secondary" id="dashBtn" href="/game-dashboard.html?slug=${encodeURIComponent(g.slug)}">Open dashboard</a>`
+      ? `<a class="secondary" id="dashBtn" href="/game-dashboard.html?project=${encodeURIComponent(g.project)}">Open dashboard</a>`
       : ""}
     ${libAvailable ? `<button class="secondary" id="libBtn">${inLib ? "In Library" : "Add to Library"}</button>` : ""}
     ${["admin","moderator"].includes(me?.role) ? `<button class="secondary" id="featureBtn">${g.is_featured ? "Unfeature" : "Feature"}</button>` : ""}
@@ -146,7 +146,7 @@ async function load(){
     const version = sel.value;
     if(!version) return;
     try{
-      await api.get(`/api/gamehosting/can-play?slug=${encodeURIComponent(slug)}&version=${encodeURIComponent(version)}`);
+      await api.get(`/api/gamehosting/can-play?project=${encodeURIComponent(project)}&version=${encodeURIComponent(version)}`);
       playBtn.disabled = false;
       if(playNotice) playNotice.textContent = "";
     }catch{
@@ -160,11 +160,11 @@ async function load(){
     const entry = g.entry_html || "index.html";
     let token = "";
     try{
-      const t = await api.post("/api/launcher/token", { game_slug: slug });
+      const t = await api.post("/api/launcher/token", { game_project: project });
       token = t.token || "";
     }catch{}
     const url =
-      `/play.html?slug=${encodeURIComponent(slug)}` +
+      `/play.html?project=${encodeURIComponent(project)}` +
       `&version=${encodeURIComponent(version)}` +
       `&entry=${encodeURIComponent(entry)}` +
       (token ? `&launch_token=${encodeURIComponent(token)}` : "");
@@ -176,11 +176,11 @@ async function load(){
   if(libAvailable){
     document.getElementById("libBtn").onclick = async ()=>{
       if(inLib){
-        await api.post("/api/library/remove", { slug });
+        await api.post("/api/library/remove", { project });
         inLib = false;
         document.getElementById("libBtn").textContent = "Add to Library";
       }else{
-        await api.post("/api/library/add", { slug });
+        await api.post("/api/library/add", { project });
         inLib = true;
         document.getElementById("libBtn").textContent = "In Library";
       }
@@ -191,7 +191,7 @@ async function load(){
     featureBtn.onclick = async ()=>{
       try{
         const next = g.is_featured ? 0 : 1;
-        await api.post("/api/mod/games/feature", { slug, featured: next });
+        await api.post("/api/mod/games/feature", { project, featured: next });
         g.is_featured = next;
         featureBtn.textContent = g.is_featured ? "Unfeature" : "Feature";
       }catch{
@@ -265,7 +265,7 @@ async function load(){
     document.getElementById("submitReview").onclick = async ()=>{
       if(!chosen){ document.getElementById("revStatus").textContent="Pick 1-5 stars first."; return; }
       try{
-        await api.post("/api/reviews/" + encodeURIComponent(slug) + "/review", {
+        await api.post("/api/reviews/" + encodeURIComponent(project) + "/review", {
           rating: chosen,
           comment: document.getElementById("comment").value
         });
@@ -279,7 +279,7 @@ async function load(){
   await loadReviews();
 }
 async function loadReviews(){
-  const r = await safeGet("/api/reviews/" + encodeURIComponent(slug) + "/reviews", null);
+  const r = await safeGet("/api/reviews/" + encodeURIComponent(project) + "/reviews", null);
   reviewsEl.innerHTML = "";
   if(!r){
     reviewsEl.innerHTML = `<div class="review-card muted">Reviews are unavailable.</div>`;

@@ -6,7 +6,7 @@ export const gamesRouter = express.Router();
 
 gamesRouter.get("/", requireAuth, async (_req,res)=>{
   const games = await all(
-    `SELECT g.id, g.slug, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured,
+    `SELECT g.id, g.project, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured,
             (SELECT v.version FROM game_versions v
              WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved'
              ORDER BY v.created_at DESC LIMIT 1) AS latest_version,
@@ -29,10 +29,10 @@ gamesRouter.get("/", requireAuth, async (_req,res)=>{
   res.json({ games: out });
 });
 
-gamesRouter.get("/:slug", requireAuth, async (req,res)=>{
-  const slug = String(req.params.slug || "").trim();
+gamesRouter.get("/:project", requireAuth, async (req,res)=>{
+  const project = String(req.params.project || "").trim();
   const g = await get(
-    `SELECT g.id, g.slug, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured,
+    `SELECT g.id, g.project, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured,
             (SELECT v.version FROM game_versions v
              WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved'
              ORDER BY v.created_at DESC LIMIT 1) AS latest_version,
@@ -42,8 +42,8 @@ gamesRouter.get("/:slug", requireAuth, async (req,res)=>{
             (SELECT ROUND(AVG(r.rating),2) FROM game_reviews r WHERE r.game_id=g.id) AS avg_rating,
             (SELECT COUNT(*) FROM game_reviews r WHERE r.game_id=g.id) AS rating_count
      FROM games g
-     WHERE g.slug=? AND g.is_hidden=0`,
-    [slug]
+     WHERE g.project=? AND g.is_hidden=0`,
+    [project]
   );
   if(!g) return res.status(404).json({ error:"game_deleted" });
 

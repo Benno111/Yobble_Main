@@ -9,7 +9,7 @@ modSearchRouter.get("/", requireAuth, requireRole("moderator"), async (req,res)=
   if(q.length < 3) return res.json({ users:[], games:[], items:[] });
 
   const users = await all(`SELECT id,username FROM users WHERE username LIKE ?`, [q]);
-  const games = await all(`SELECT id,slug,title FROM games WHERE slug LIKE ?`, [q]);
+  const games = await all(`SELECT id,project,title FROM games WHERE project LIKE ?`, [q]);
   const items = await all(`SELECT id,code,name FROM items WHERE code LIKE ?`, [q]);
 
   res.json({ users, games, items });

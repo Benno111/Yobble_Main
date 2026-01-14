@@ -18,7 +18,7 @@ const upload = multer({
   limits: { fileSize: 200 * 1024 * 1024 }
 });
 
-function slugify(s){
+function projectify(s){
   return String(s||"")
     .toLowerCase()
     .trim()
@@ -27,8 +27,8 @@ function slugify(s){
     .slice(0,80);
 }
 
-function safeVersionPath(baseDir, slug, version){
-  const full = path.join(baseDir, slug, version);
+function safeVersionPath(baseDir, project, version){
+  const full = path.join(baseDir, project, version);
   const resolved = path.resolve(full);
   if (!resolved.startsWith(path.resolve(baseDir))) {
     throw new Error("unsafe_path");
@@ -75,15 +75,15 @@ async function safeExtract(zipPath, destDir){
 // - Creates a pending version unless user is moderator/admin (auto-approved + published)
 gameHostingRouter.post("/upload", requireAuth, upload.single("zip"), async (req,res)=>{
   const title = String(req.body?.title || "").trim();
-  const slugInput = String(req.body?.slug || "").trim();
-  const slug = slugify(slugInput || title);
+  const projectInput = String(req.body?.project || "").trim();
+  const project = projectify(projectInput || title);
   const version = String(req.body?.version || "").trim();
   const entry_html = String(req.body?.entry_html || "index.html").trim();
 
   const category = String(req.body?.category || "").trim().slice(0,50) || null;
   const description = String(req.body?.description || "").trim().slice(0,2000) || null;
 
-  if(!slug) return res.status(400).json({ error:"invalid_slug" });
+  if(!project) return res.status(400).json({ error:"invalid_project" });
   if(!version || !req.file) return res.status(400).json({ error:"missing_fields" });
 
   // Upload validation: require entry_html (defaults to index.html)
@@ -98,14 +98,14 @@ gameHostingRouter.post("/upload", requireAuth, upload.single("zip"), async (req,
   }
 
   // Auto-create game if missing
-  let game = await get("SELECT id, slug, owner_user_id FROM games WHERE slug=?", [slug]);
+  let game = await get("SELECT id, project, owner_user_id FROM games WHERE project=?", [project]);
   if(!game){
-    const gTitle = title || slug;
+    const gTitle = title || project;
     await run(
-      `INSERT INTO games(slug,title,description,category,is_hidden,owner_user_id) VALUES(?,?,?,?,0,?)`,
-      [slug, gTitle, description, category, req.user.uid]
+      `INSERT INTO games(project,title,description,category,is_hidden,owner_user_id) VALUES(?,?,?,?,0,?)`,
+      [project, gTitle, description, category, req.user.uid]
     );
-    game = await get("SELECT id, slug, owner_user_id FROM games WHERE slug=?", [slug]);
+    game = await get("SELECT id, project, owner_user_id FROM games WHERE project=?", [project]);
   }else{
     const isPrivileged = (req.user.role === "admin" || req.user.role === "moderator");
     if(!isPrivileged && game.owner_user_id && game.owner_user_id !== req.user.uid){
@@ -129,7 +129,7 @@ gameHostingRouter.post("/upload", requireAuth, upload.single("zip"), async (req,
   }
 
   const GAME_STORAGE_DIR = path.join(PROJECT_ROOT, "game_storage");
-  const destDir = path.join(GAME_STORAGE_DIR, slug, version);
+  const destDir = path.join(GAME_STORAGE_DIR, project, version);
 
   fs.mkdirSync(destDir, { recursive:true });
 
@@ -171,20 +171,20 @@ gameHostingRouter.post("/upload", requireAuth, upload.single("zip"), async (req,
 
   res.json({
     ok:true,
-    slug,
+    project,
     version,
     approval_status,
     published: isPrivileged ? 1 : 0,
-    url: `/games/${slug}/${version}/${entry_html}`
+    url: `/games/${project}/${version}/${entry_html}`
   });
 });
 
 // List versions + upload history for a game
 gameHostingRouter.get("/versions", requireAuth, async (req,res)=>{
-  const slug = String(req.query?.slug || "").trim();
-  if(!slug) return res.status(400).json({ error:"missing_slug" });
+  const project = String(req.query?.project || "").trim();
+  if(!project) return res.status(400).json({ error:"missing_project" });
 
-  const g = await get("SELECT id, slug, title, description, category, owner_user_id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id, project, title, description, category, owner_user_id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const isPrivileged = (req.user.role === "admin" || req.user.role === "moderator");
@@ -226,11 +226,11 @@ gameHostingRouter.get("/versions", requireAuth, async (req,res)=>{
 
 // Whitelist management (owner/mod/admin)
 gameHostingRouter.get("/whitelist", requireAuth, async (req, res) => {
-  const slug = String(req.query?.slug || "").trim();
+  const project = String(req.query?.project || "").trim();
   const version = String(req.query?.version || "").trim();
-  if(!slug || !version) return res.status(400).json({ error:"missing_fields" });
+  if(!project || !version) return res.status(400).json({ error:"missing_fields" });
 
-  const g = await get("SELECT id, owner_user_id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id, owner_user_id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const isOwner = g.owner_user_id === req.user.uid;
@@ -249,12 +249,12 @@ gameHostingRouter.get("/whitelist", requireAuth, async (req, res) => {
 });
 
 gameHostingRouter.post("/whitelist", requireAuth, async (req, res) => {
-  const slug = String(req.body?.slug || "").trim();
+  const project = String(req.body?.project || "").trim();
   const version = String(req.body?.version || "").trim();
   const usernames = Array.isArray(req.body?.usernames) ? req.body.usernames : [];
-  if(!slug || !version) return res.status(400).json({ error:"missing_fields" });
+  if(!project || !version) return res.status(400).json({ error:"missing_fields" });
 
-  const g = await get("SELECT id, owner_user_id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id, owner_user_id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const isOwner = g.owner_user_id === req.user.uid;
@@ -290,10 +290,10 @@ gameHostingRouter.post("/whitelist", requireAuth, async (req, res) => {
 
 // Analytics summary for a game (owner/mod/admin)
 gameHostingRouter.get("/analytics", requireAuth, async (req, res) => {
-  const slug = String(req.query?.slug || "").trim();
-  if(!slug) return res.status(400).json({ error:"missing_slug" });
+  const project = String(req.query?.project || "").trim();
+  if(!project) return res.status(400).json({ error:"missing_project" });
 
-  const g = await get("SELECT id, slug, owner_user_id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id, project, owner_user_id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const isOwner = g.owner_user_id === req.user.uid;
@@ -321,11 +321,11 @@ gameHostingRouter.get("/analytics", requireAuth, async (req, res) => {
 
 // Can play a version (published or whitelisted)
 gameHostingRouter.get("/can-play", requireAuth, async (req, res) => {
-  const slug = String(req.query?.slug || "").trim();
+  const project = String(req.query?.project || "").trim();
   const version = String(req.query?.version || "").trim();
-  if(!slug || !version) return res.status(400).json({ error:"missing_fields" });
+  if(!project || !version) return res.status(400).json({ error:"missing_fields" });
 
-  const g = await get("SELECT id, owner_user_id FROM games WHERE slug=? AND is_hidden=0", [slug]);
+  const g = await get("SELECT id, owner_user_id FROM games WHERE project=? AND is_hidden=0", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const v = await get(
@@ -352,10 +352,10 @@ gameHostingRouter.get("/can-play", requireAuth, async (req, res) => {
 
 // Playable versions for a user
 gameHostingRouter.get("/playable-versions", requireAuth, async (req, res) => {
-  const slug = String(req.query?.slug || "").trim();
-  if(!slug) return res.status(400).json({ error:"missing_slug" });
+  const project = String(req.query?.project || "").trim();
+  if(!project) return res.status(400).json({ error:"missing_project" });
 
-  const g = await get("SELECT id, owner_user_id FROM games WHERE slug=? AND is_hidden=0", [slug]);
+  const g = await get("SELECT id, owner_user_id FROM games WHERE project=? AND is_hidden=0", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const isOwner = g.owner_user_id === req.user.uid;
@@ -385,11 +385,11 @@ gameHostingRouter.get("/playable-versions", requireAuth, async (req, res) => {
 
 // Publish/Rollback (moderator/admin)
 gameHostingRouter.post("/publish", requireAuth, requireRole("moderator"), async (req,res)=>{
-  const slug = String(req.body?.slug || "").trim();
+  const project = String(req.body?.project || "").trim();
   const version = String(req.body?.version || "").trim();
-  if(!slug || !version) return res.status(400).json({ error:"missing_fields" });
+  if(!project || !version) return res.status(400).json({ error:"missing_fields" });
 
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const v = await get(
@@ -407,12 +407,12 @@ gameHostingRouter.post("/publish", requireAuth, requireRole("moderator"), async 
 
 // Publish (owner only, requires approved version)
 gameHostingRouter.post("/publish-owner", requireAuth, async (req,res)=>{
-  const slug = String(req.body?.slug || "").trim();
+  const project = String(req.body?.project || "").trim();
   const version = String(req.body?.version || "").trim();
   const published = req.body?.published !== false;
-  if(!slug) return res.status(400).json({ error:"missing_fields" });
+  if(!project) return res.status(400).json({ error:"missing_fields" });
 
-  const g = await get("SELECT id, owner_user_id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id, owner_user_id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const isOwner = g.owner_user_id === req.user.uid;
@@ -441,11 +441,11 @@ gameHostingRouter.post("/publish-owner", requireAuth, async (req,res)=>{
 
 // Resubmit a rejected version (owner/mod/admin)
 gameHostingRouter.post("/version/resubmit", requireAuth, async (req, res) => {
-  const slug = String(req.body?.slug || "").trim();
+  const project = String(req.body?.project || "").trim();
   const version = String(req.body?.version || "").trim();
-  if(!slug || !version) return res.status(400).json({ error:"missing_fields" });
+  if(!project || !version) return res.status(400).json({ error:"missing_fields" });
 
-  const g = await get("SELECT id, owner_user_id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id, owner_user_id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const isOwner = g.owner_user_id === req.user.uid;
@@ -470,11 +470,11 @@ gameHostingRouter.post("/version/resubmit", requireAuth, async (req, res) => {
 
 // Delete a version (owner/mod/admin)
 gameHostingRouter.post("/version/delete", requireAuth, async (req, res) => {
-  const slug = String(req.body?.slug || "").trim();
+  const project = String(req.body?.project || "").trim();
   const version = String(req.body?.version || "").trim();
-  if(!slug || !version) return res.status(400).json({ error:"missing_fields" });
+  if(!project || !version) return res.status(400).json({ error:"missing_fields" });
 
-  const g = await get("SELECT id, owner_user_id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id, owner_user_id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const isOwner = g.owner_user_id === req.user.uid;
@@ -492,7 +492,7 @@ gameHostingRouter.post("/version/delete", requireAuth, async (req, res) => {
   const GAME_STORAGE_DIR = path.join(PROJECT_ROOT, "game_storage");
 
   try{
-    const target = safeVersionPath(GAME_STORAGE_DIR, slug, version);
+    const target = safeVersionPath(GAME_STORAGE_DIR, project, version);
     fs.rmSync(target, { recursive: true, force: true });
   }catch{}
 

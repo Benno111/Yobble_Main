@@ -9,13 +9,13 @@ for(const g of (r.games || [])){
   const d = document.createElement("div");
   d.className = "card";
   d.innerHTML = `
-    <h3><a href="/games/${g.slug}" style="color:#7aa2ff;text-decoration:none">${g.title}</a></h3>
+    <h3><a href="/games/${g.project}" style="color:#7aa2ff;text-decoration:none">${g.title}</a></h3>
     <div class="muted">${g.category || ""}</div>
     <p>${g.description || ""}</p>
-    <button class="secondary" style="width:auto" data-slug="${g.slug}">Remove</button>
+    <button class="secondary" style="width:auto" data-project="${g.project}">Remove</button>
   `;
   d.querySelector("button").onclick = async ()=>{
-    await api.post("/api/library/remove", { slug: g.slug });
+    await api.post("/api/library/remove", { project: g.project });
     location.reload();
   };
   list.appendChild(d);

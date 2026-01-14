@@ -6,7 +6,7 @@ export const moderationRouter = express.Router();
 
 moderationRouter.get("/games/pending", requireAuth, requireRole("moderator"), async (_req,res)=>{
   const rows = await all(
-    `SELECT g.slug, g.title, v.version, v.entry_html, v.created_at, v.approval_status,
+    `SELECT g.project, g.title, v.version, v.entry_html, v.created_at, v.approval_status,
             u.username AS uploader
      FROM game_versions v
      JOIN games g ON g.id=v.game_id
@@ -19,12 +19,12 @@ moderationRouter.get("/games/pending", requireAuth, requireRole("moderator"), as
 });
 
 moderationRouter.post("/games/approve", requireAuth, requireRole("moderator"), async (req,res)=>{
-  const slug = String(req.body?.slug||"").trim();
+  const project = String(req.body?.project||"").trim();
   const version = String(req.body?.version||"").trim();
   const publish = !!req.body?.publish;
-  if(!slug || !version) return res.status(400).json({ error:"missing_fields" });
+  if(!project || !version) return res.status(400).json({ error:"missing_fields" });
 
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   await run(
@@ -43,12 +43,12 @@ moderationRouter.post("/games/approve", requireAuth, requireRole("moderator"), a
 });
 
 moderationRouter.post("/games/reject", requireAuth, requireRole("moderator"), async (req,res)=>{
-  const slug = String(req.body?.slug||"").trim();
+  const project = String(req.body?.project||"").trim();
   const version = String(req.body?.version||"").trim();
   const reason = String(req.body?.reason||"").slice(0,500);
-  if(!slug || !version) return res.status(400).json({ error:"missing_fields" });
+  if(!project || !version) return res.status(400).json({ error:"missing_fields" });
 
-  const g = await get("SELECT id FROM games WHERE slug=?", [slug]);
+  const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   await run(

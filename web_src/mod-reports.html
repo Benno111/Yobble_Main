@@ -98,7 +98,7 @@ if(!reports.length){
       removeBtn.onclick = async () => {
         if (!confirm(`Hide game ${rep.target_ref}?`)) return;
         try{
-          await api.post("/api/mod/games/remove", { slug: rep.target_ref });
+          await api.post("/api/mod/games/remove", { project: rep.target_ref });
           removeBtn.textContent = "Removed";
           removeBtn.disabled = true;
         }catch{
@@ -111,7 +111,7 @@ if(!reports.length){
       unhideBtn.onclick = async () => {
         if (!confirm(`Unhide game ${rep.target_ref}?`)) return;
         try{
-          await api.post("/api/mod/games/unhide", { slug: rep.target_ref });
+          await api.post("/api/mod/games/unhide", { project: rep.target_ref });
           unhideBtn.textContent = "Unhidden";
           unhideBtn.disabled = true;
         }catch{
