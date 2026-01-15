@@ -124,6 +124,63 @@ if(profile){
     profileHeroActions.hidden = false;
   }
   cards.innerHTML = "";
+  try{
+    const gamesRes = await api.get("/api/games");
+    const games = Array.isArray(gamesRes?.games) ? gamesRes.games : [];
+    const owned = games.filter(g => Number(g.owner_user_id) === Number(profile.id));
+    const gameItems = owned.map(g => `
+      <a class="list-item" href="/games/${encodeURIComponent(g.project)}">
+        <div>
+          <div>${escapeHtml(g.title || g.project || "Untitled")}</div>
+          <div class="meta">${escapeHtml(g.category || "Uncategorized")}</div>
+        </div>
+      </a>
+    `).join("");
+    cards.innerHTML += `
+      <section class="card">
+        <h2>Games owned</h2>
+        <div class="list" style="margin-top:12px">
+          ${gameItems || `<div class="small">No games yet.</div>`}
+        </div>
+      </section>
+    `;
+  }catch{
+    cards.innerHTML += `
+      <section class="card">
+        <h2>Games owned</h2>
+        <div class="small" style="margin-top:12px">Unable to load games.</div>
+      </section>
+    `;
+  }
+  if (isSelf) {
+    try{
+      const invRes = await api.get("/api/inventory");
+      const items = Array.isArray(invRes) ? invRes : (invRes?.items || []);
+      const itemRows = items.map((i) => `
+        <div class="list-item">
+          <div>
+            <div>${escapeHtml(i.name || "Unknown item")}</div>
+            <div class="meta">Qty ${escapeHtml(i.qty ?? 0)}</div>
+          </div>
+        </div>
+      `).join("");
+      cards.innerHTML += `
+        <section class="card">
+          <h2>Items owned</h2>
+          <div class="list" style="margin-top:12px">
+            ${itemRows || `<div class="small">No items yet.</div>`}
+          </div>
+        </section>
+      `;
+    }catch{
+      cards.innerHTML += `
+        <section class="card">
+          <h2>Items owned</h2>
+          <div class="small" style="margin-top:12px">Unable to load items.</div>
+        </section>
+      `;
+    }
+  }
   if(isSelf){
     const logoutBtn = document.getElementById("logoutBtn");
     if(logoutBtn){

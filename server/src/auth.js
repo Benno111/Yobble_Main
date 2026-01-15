@@ -25,11 +25,15 @@ export async function requireAuth(req, res, next) {
   try {
     const decoded = verifyToken(t);
     const u = await get(
-      `SELECT id, username, role, is_banned, ban_reason, banned_at, timeout_until, timeout_reason
+      `SELECT id, username, role, is_banned, ban_reason, banned_at, timeout_until, timeout_reason,
+              delete_at, deleted_at
        FROM users WHERE id=?`,
       [decoded.uid]
     );
     if (!u) return res.status(401).json({ error: "invalid_token" });
+    if (u.deleted_at || (u.delete_at && u.delete_at <= Date.now())) {
+      return res.status(403).json({ error: "account_deleted" });
+    }
 
     const now = Date.now();
     const permaBan = await get(
@@ -138,11 +142,15 @@ export async function requireAuthAllowBanned(req, res, next) {
   try {
     const decoded = verifyToken(t);
     const u = await get(
-      `SELECT id, username, role, is_banned, ban_reason, banned_at, timeout_until, timeout_reason
+      `SELECT id, username, role, is_banned, ban_reason, banned_at, timeout_until, timeout_reason,
+              delete_at, deleted_at
        FROM users WHERE id=?`,
       [decoded.uid]
     );
     if (!u) return res.status(401).json({ error: "invalid_token" });
+    if (u.deleted_at || (u.delete_at && u.delete_at <= Date.now())) {
+      return res.status(403).json({ error: "account_deleted" });
+    }
 
     const now = Date.now();
     const permaBan = await get(

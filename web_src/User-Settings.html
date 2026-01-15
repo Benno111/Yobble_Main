@@ -165,9 +165,10 @@
     <section class="card">
       <h2>Danger zone</h2>
       <p class="small">Take care with these actions. They affect your account immediately.</p>
+      <p class="small" id="deleteStatus">No deletion scheduled.</p>
       <div class="actions" style="margin-top:12px">
-        <button type="button" class="danger">Deactivate account</button>
-        <button type="button" class="danger">Delete account</button>
+        <button type="button" class="danger" id="deleteAccountBtn">Delete account</button>
+        <button type="button" class="danger" id="cancelDeleteBtn" style="display:none">Cancel deletion</button>
       </div>
     </section>
   </form>
@@ -217,11 +218,55 @@
     status.textContent = `Saved ${stamp.toLocaleTimeString()}`;
   }
 
+  async function loadProfile(){
+    try{
+      const data = await api.get("/api/profile/me");
+      const profile = data?.profile || data;
+      if (!profile) return;
+      const mapping = {
+        displayName: profile.display_name || "",
+        statusText: profile.status_text || "",
+        bio: profile.bio || ""
+      };
+      Object.entries(mapping).forEach(([key, value]) => {
+        const field = form.elements.namedItem(key);
+        if (!field) return;
+        field.value = value;
+      });
+      if (deleteStatus) {
+        if (profile.delete_at) {
+          const date = new Date(Number(profile.delete_at));
+          deleteStatus.textContent = `Deletion scheduled for ${date.toLocaleString()}.`;
+          cancelDeleteBtn.style.display = "inline-flex";
+        } else {
+          deleteStatus.textContent = "No deletion scheduled.";
+          cancelDeleteBtn.style.display = "none";
+        }
+      }
+      status.textContent = "Profile loaded";
+    } catch {
+      status.textContent = "Profile load failed";
+    }
+  }
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     saveDraft();
+    const payload = {
+      display_name: form.elements.displayName?.value.trim() || null,
+      status_text: form.elements.statusText?.value.trim() || null,
+      bio: form.elements.bio?.value || null
+    };
+    api("/api/profile/me", { method: "PATCH", body: payload })
+      .then(() => {
+        status.textContent = "Saved to profile";
+      })
+      .catch(() => {
+        status.textContent = "Save failed";
+      });
   });
 
+  await loadProfile();
   loadDraft();
 
   const twoFactorStatus = document.getElementById("twoFactorStatus");
@@ -235,6 +280,9 @@
   const twoFactorDisable = document.getElementById("twoFactorDisable");
   const twoFactorDisableCode = document.getElementById("twoFactorDisableCode");
   const twoFactorDisableConfirm = document.getElementById("twoFactorDisableConfirm");
+  const deleteStatus = document.getElementById("deleteStatus");
+  const deleteAccountBtn = document.getElementById("deleteAccountBtn");
+  const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
 
   function setTwoFactorStatus(text, isError = false){
     twoFactorStatus.textContent = text;
@@ -314,6 +362,35 @@
   });
 
   refreshTwoFactor();
+
+  if (deleteAccountBtn) {
+    deleteAccountBtn.addEventListener("click", async () => {
+      if (!confirm("Schedule account deletion in 30 days? You can cancel before then.")) return;
+      try{
+        const res = await api.post("/api/profile/me/delete", {});
+        const date = res?.delete_at ? new Date(Number(res.delete_at)) : null;
+        if (deleteStatus) {
+          deleteStatus.textContent = date
+            ? `Deletion scheduled for ${date.toLocaleString()}.`
+            : "Deletion scheduled.";
+        }
+        cancelDeleteBtn.style.display = "inline-flex";
+      }catch{
+        if (deleteStatus) deleteStatus.textContent = "Delete scheduling failed.";
+      }
+    });
+  }
+  if (cancelDeleteBtn) {
+    cancelDeleteBtn.addEventListener("click", async () => {
+      try{
+        await api.post("/api/profile/me/delete-cancel", {});
+        cancelDeleteBtn.style.display = "none";
+        if (deleteStatus) deleteStatus.textContent = "Deletion canceled.";
+      }catch{
+        if (deleteStatus) deleteStatus.textContent = "Cancel failed.";
+      }
+    });
+  }
 </script>
 </body>
 </html>

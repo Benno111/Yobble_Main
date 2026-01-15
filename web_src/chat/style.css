@@ -11,6 +11,8 @@
   align-items: start;
   min-height: calc(100vh - 120px);
   padding: 16px 24px 24px;
+  position: relative;
+  z-index: 1;
 }
 
 .chat-shell--collapsed {
@@ -25,6 +27,8 @@
   padding: 16px;
   display: grid;
   gap: 12px;
+  position: relative;
+  z-index: 1;
 }
 
 .chat-shell--collapsed .chat-rooms {
@@ -109,6 +113,8 @@
   display: grid;
   grid-template-rows: auto 1fr auto auto;
   min-height: calc(100vh - 160px);
+  position: relative;
+  z-index: 1;
 }
 
 .chat-panel__header {

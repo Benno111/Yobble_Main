@@ -61,6 +61,10 @@ export async function initDb() {
   await addColumnIfMissing("users", "wallet_address", "TEXT");
   await addColumnIfMissing("users", "wallet_connected_at", "INTEGER");
   await addColumnIfMissing("users", "wallet_label", "TEXT");
+  await addColumnIfMissing("users", "delete_requested_at", "INTEGER");
+  await addColumnIfMissing("users", "delete_at", "INTEGER");
+  await addColumnIfMissing("users", "deleted_at", "INTEGER");
+  await addColumnIfMissing("users", "deleted_reason", "TEXT");
 
   /* GAMES */
   await run(`CREATE TABLE IF NOT EXISTS games(

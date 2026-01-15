@@ -14,6 +14,7 @@ const heroArt = document.getElementById("hero-art");
 const heroActions = document.getElementById("hero-actions");
 const statsEl = document.getElementById("stats");
 const media = document.getElementById("media");
+const levelsEl = document.getElementById("levels");
 const reviewBox = document.getElementById("reviewBox");
 const reviewsEl = document.getElementById("reviews");
 function escapeHtml(v){
@@ -240,6 +241,36 @@ async function load(){
     }
   }else{
     media.innerHTML = `<div class="muted">No media uploaded yet.</div>`;
+  }
+  if (levelsEl) {
+    try{
+      const levelsRes = await api.get("/api/games/custom-lvl/" + encodeURIComponent(project) + "/list");
+      const levels = Array.isArray(levelsRes?.levels) ? levelsRes.levels : [];
+      const rows = levels.slice(0, 6).map((lvl) => `
+        <div class="list-item">
+          <div>
+            <div>${escapeHtml(lvl.title || "Untitled level")}</div>
+            <div class="meta">v${escapeHtml(lvl.version || "—")} · ${escapeHtml(lvl.uploader_username || "unknown")}</div>
+          </div>
+        </div>
+      `).join("");
+      levelsEl.innerHTML = `
+        <div class="section-title">
+          <h2>Custom Levels</h2>
+          <a class="secondary" href="/levels.html?project=${encodeURIComponent(project)}">Browse</a>
+        </div>
+        <div class="list" style="margin-top:12px">
+          ${rows || `<div class="muted">No custom levels yet.</div>`}
+        </div>
+      `;
+    }catch{
+      levelsEl.innerHTML = `
+        <div class="section-title">
+          <h2>Custom Levels</h2>
+        </div>
+        <div class="muted" style="margin-top:12px">Custom levels unavailable.</div>
+      `;
+    }
   }
   if(me){
     reviewBox.innerHTML = `

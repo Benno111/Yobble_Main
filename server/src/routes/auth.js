@@ -59,13 +59,17 @@ authRouter.post("/login", async (req, res) => {
     `SELECT id, username, password_hash, role,
             is_banned, ban_reason, banned_at,
             timeout_until, timeout_reason,
-            totp_enabled, totp_secret
+            totp_enabled, totp_secret,
+            delete_at, deleted_at
      FROM users WHERE username=?`,
     [username]
   );
 
   if (!user) {
     return res.status(401).json({ error: "invalid_login" });
+  }
+  if (user.deleted_at || (user.delete_at && user.delete_at <= Date.now())) {
+    return res.status(403).json({ error: "account_deleted" });
   }
 
   const ok = await bcrypt.compare(password, user.password_hash);
