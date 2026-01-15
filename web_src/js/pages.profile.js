@@ -16,7 +16,8 @@ async function refresh(){
   display_name.value = p.display_name || "";
   bio.value = p.bio || "";
   status_text.value = p.status_text || "";
-  avWrap.innerHTML = p.avatar_url ? `<img src="${htmlEscape(p.avatar_url)}">` : "";
+  const src = p.avatar_url || "/assets/logo.svg";
+  avWrap.innerHTML = `<img src="${htmlEscape(src)}">`;
 }
 document.querySelector("#save").addEventListener("click", async ()=>{
   msg.textContent = "";

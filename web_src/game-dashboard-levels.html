@@ -20,6 +20,10 @@
           <option value="analytics">Analytics</option>
           <option value="levels">Custom Levels</option>
         </select>
+        <label class="checkbox" style="align-items:center">
+          <input type="checkbox" id="customLevelsToggle" checked>
+          <span>Custom level browser</span>
+        </label>
       </div>
     </div>
     <div>
@@ -54,6 +58,7 @@ const dashboardPage = document.getElementById("dashboardPage");
 const latestVersion = document.getElementById("latestVersion");
 const publishedVersion = document.getElementById("publishedVersion");
 const root = document.getElementById("levelsRoot");
+const customLevelsToggle = document.getElementById("customLevelsToggle");
 function escapeHtml(v){
   return String(v ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;",
@@ -237,6 +242,13 @@ dashboardPage.addEventListener("change", () => {
       : value === "levels"
         ? "/game-dashboard-levels.html"
         : "/game-dashboard-versions.html";
+  const next = project ? `${target}?project=${encodeURIComponent(project)}` : target;
+  location.href = next;
+});
+customLevelsToggle.addEventListener("change", () => {
+  const target = customLevelsToggle.checked
+    ? "/game-dashboard-levels.html"
+    : "/game-dashboard-versions.html";
   const next = project ? `${target}?project=${encodeURIComponent(project)}` : target;
   location.href = next;
 });

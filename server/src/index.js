@@ -5,9 +5,10 @@ import path from "path";
 import fs from "fs";
 import http from "http";
 import https from "https";
+import sqlite3 from "sqlite3";
 import { fileURLToPath } from "url";
 
-import { initDb, get, run } from "./db.js";
+import { initDb, get, run, all } from "./db.js";
 import { requireAuth, verifyToken } from "./auth.js";
 
 // ⭐ Single import for all routers
@@ -152,6 +153,17 @@ function readCookie(req, name) {
     return decodeURIComponent(entry.slice(idx + 1));
   }
   return null;
+}
+
+function enforceIframeHtml(req, res) {
+  const fetchDest = String(req.headers["sec-fetch-dest"] || "");
+  const ext = path.extname(req.path || "");
+  const isHtmlRequest = !ext || ext === ".html";
+  if (isHtmlRequest && fetchDest && fetchDest !== "iframe") {
+    res.status(404).sendFile(path.join(WEB_DIR, "404.html"));
+    return false;
+  }
+  return true;
 }
 
 function listFilesRecursive(baseDir, sub = "") {
@@ -363,7 +375,10 @@ app.use("/games/:project/:version", async (req, res, next) => {
       [g.id, version]
     );
 
-    if (v && v.is_published === 1) return next();
+    if (v && v.is_published === 1) {
+      if (!enforceIframeHtml(req, res)) return;
+      return next();
+    }
 
     let h = req.headers.authorization || "";
     if (!h.startsWith("Bearer ")) {
@@ -379,7 +394,10 @@ app.use("/games/:project/:version", async (req, res, next) => {
     return requireAuth(req, res, async () => {
       const isOwner = g.owner_user_id === req.user.uid;
       const isPrivileged = req.user.role === "admin" || req.user.role === "moderator";
-      if (isOwner || isPrivileged) return next();
+      if (isOwner || isPrivileged) {
+        if (!enforceIframeHtml(req, res)) return;
+        return next();
+      }
 
       if (v) {
         const wl = await get(
@@ -388,7 +406,10 @@ app.use("/games/:project/:version", async (req, res, next) => {
            LIMIT 1`,
           [g.id, version, req.user.uid]
         );
-        if (wl) return next();
+        if (wl) {
+          if (!enforceIframeHtml(req, res)) return;
+          return next();
+        }
       }
       return res.status(403).send("Not authorized for this version.");
     });
@@ -455,11 +476,111 @@ app.use((req, res) => {
   res.status(404).sendFile(path.join(WEB_DIR, "404.html"));
 });
 
+async function deleteCustomLevelsForUser(userId) {
+  const levelsDir = path.join(PROJECT_ROOT, "save", "custom_levels");
+  if (!fs.existsSync(levelsDir)) return;
+  const files = fs.readdirSync(levelsDir).filter((name) => name.endsWith(".sqlite"));
+  for (const file of files) {
+    const dbPath = path.join(levelsDir, file);
+    const db = new sqlite3.Database(dbPath);
+    await new Promise((resolve) => {
+      db.run("DELETE FROM levels WHERE uploader_user_id=?", [userId], () => {
+        db.close(() => resolve());
+      });
+    });
+  }
+}
+
+async function tableExists(name) {
+  const row = await get(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+    [name]
+  );
+  return !!row;
+}
+
+async function processAccountDeletions() {
+  const now = Date.now();
+  const rows = await all(
+    "SELECT id, username FROM users WHERE delete_at IS NOT NULL AND delete_at <= ? AND deleted_at IS NULL",
+    [now]
+  );
+  if (!rows.length) return;
+  const hasInventory = await tableExists("inventory");
+  const hasProfiles = await tableExists("profiles");
+  const hasFriends = await tableExists("friends");
+  const hasWallets = await tableExists("wallets");
+  const hasWalletTransactions = await tableExists("wallet_transactions");
+  const hasMarketplace = await tableExists("marketplace");
+  const hasLauncherTokens = await tableExists("launcher_tokens");
+  const hasReviews = await tableExists("game_reviews");
+  const hasPlaytime = await tableExists("game_playtime");
+  const hasUploads = await tableExists("game_uploads");
+  const hasLibrary = await tableExists("user_library");
+  const hasGames = await tableExists("games");
+
+  for (const row of rows) {
+    const userId = row.id;
+    const deletedUsername = `deleted_${userId}`;
+    if (hasInventory) {
+      const invRows = await all(
+        "SELECT item_id, qty FROM inventory WHERE user_id=?",
+        [userId]
+      );
+      for (const item of invRows) {
+        await run(
+          `INSERT INTO inventory (user_id, item_id, qty)
+           VALUES (0, ?, ?)
+           ON CONFLICT(user_id, item_id) DO UPDATE SET qty=qty+excluded.qty`,
+          [item.item_id, item.qty]
+        );
+      }
+      await run("DELETE FROM inventory WHERE user_id=?", [userId]);
+    }
+    if (hasGames) {
+      await run("UPDATE games SET owner_user_id=NULL WHERE owner_user_id=?", [userId]);
+    }
+    if (hasProfiles) await run("DELETE FROM profiles WHERE user_id=?", [userId]);
+    if (hasFriends) await run("DELETE FROM friends WHERE user_id=? OR friend_id=?", [userId, userId]);
+    if (hasWallets) await run("DELETE FROM wallets WHERE user_id=?", [userId]);
+    if (hasWalletTransactions) await run("DELETE FROM wallet_transactions WHERE user_id=?", [userId]);
+    if (hasMarketplace) await run("DELETE FROM marketplace WHERE seller_id=?", [userId]);
+    if (hasLauncherTokens) await run("DELETE FROM launcher_tokens WHERE user_id=?", [userId]);
+    if (hasReviews) await run("DELETE FROM game_reviews WHERE user_id=?", [userId]);
+    if (hasPlaytime) await run("DELETE FROM game_playtime WHERE user_id=?", [userId]);
+    if (hasUploads) await run("DELETE FROM game_uploads WHERE uploader_user_id=?", [userId]);
+    if (hasLibrary) await run("DELETE FROM user_library WHERE user_id=?", [userId]);
+    await deleteCustomLevelsForUser(userId);
+    await run(
+      `UPDATE users SET
+        username=?,
+        password_hash=NULL,
+        role='user',
+        is_banned=1,
+        ban_reason='account_deleted',
+        banned_at=?,
+        timeout_until=NULL,
+        timeout_reason=NULL,
+        wallet_address=NULL,
+        wallet_connected_at=NULL,
+        wallet_label=NULL,
+        delete_requested_at=NULL,
+        delete_at=NULL,
+        deleted_at=?,
+        deleted_reason='account_deleted'
+       WHERE id=?`,
+      [deletedUsername, now, now, userId]
+    );
+  }
+}
+
 /* -----------------------------
    START
 ----------------------------- */
 minifyWebAssets(WEB_SOURCE_DIR, WEB_DIR);
 await initDb();
+await processAccountDeletions();
+setInterval(processAccountDeletions, 6 * 60 * 60 * 1000);
 
 const PORT = Number(process.env.PORT || 5050);
 const PORT2 = Number(process.env.PORT2 || 3000);

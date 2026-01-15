@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Level Browser - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="dash-wrap">
+  <section class="card hero">
+    <div>
+      <h1 id="pageTitle">Level browser</h1>
+      <p id="pageDesc" class="muted">Browse custom levels for this game.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <span class="pill" id="gameproject">project —</span>
+        <input id="levelSearch" type="search" placeholder="Search levels..." style="min-width:220px">
+      </div>
+    </div>
+    <div class="actions" style="justify-content:flex-end">
+      <a class="secondary" id="backBtn" href="/game-dashboard-levels.html">Open dashboard</a>
+    </div>
+  </section>
+  <section class="card">
+    <div class="section-title">
+      <h2>Custom Levels</h2>
+    </div>
+    <div id="levelsRoot" style="margin-top:12px"></div>
+  </section>
+</main>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api-pages/game-dashboard.js";
+await mountTopbar("games");
+const params = new URLSearchParams(location.search);
+const project = params.get("project") || "";
+const gameproject = document.getElementById("gameproject");
+const pageTitle = document.getElementById("pageTitle");
+const pageDesc = document.getElementById("pageDesc");
+const backBtn = document.getElementById("backBtn");
+const root = document.getElementById("levelsRoot");
+const levelSearch = document.getElementById("levelSearch");
+let levels = [];
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+function formatDate(ms){
+  if (!ms) return "—";
+  return new Date(ms).toLocaleString();
+}
+function render(){
+  const q = (levelSearch.value || "").trim().toLowerCase();
+  const filtered = levels.filter((l) => {
+    const hay = `${l.title || ""} ${l.version || ""} ${l.uploader_username || ""}`.toLowerCase();
+    return hay.includes(q);
+  });
+  const rows = filtered.map((l) => `
+    <div class="list-item">
+      <div>
+        <div>${escapeHtml(l.title || "Untitled level")}</div>
+        <div class="meta">v${escapeHtml(l.version || "—")} · ${escapeHtml(l.uploader_username || "unknown")} · ${escapeHtml(formatDate(l.updated_at))}</div>
+      </div>
+      <div class="actions" style="justify-content:flex-end">
+        <button class="secondary" data-level-download="${l.id}">Copy data</button>
+      </div>
+    </div>
+  `).join("");
+  root.innerHTML = rows || `<div class="muted">No levels found.</div>`;
+  root.querySelectorAll("[data-level-download]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-level-download");
+      try{
+        const res = await api.get(
+          "/api/games/custom-lvl/" + encodeURIComponent(project) + "/download/" + id
+        );
+        const raw = res.level?.raw_data || "";
+        if (navigator.clipboard && raw) {
+          await navigator.clipboard.writeText(raw);
+          btn.textContent = "Copied";
+          setTimeout(() => { btn.textContent = "Copy data"; }, 1000);
+        } else {
+          prompt("Level data", raw);
+        }
+      }catch{
+        btn.textContent = "Failed";
+      }
+    });
+  });
+}
+if(!project){
+  pageTitle.textContent = "Missing project";
+  pageDesc.textContent = "Provide ?project= in the URL.";
+  root.innerHTML = `<div class="muted">No project selected.</div>`;
+}else{
+  gameproject.textContent = `project ${project}`;
+  backBtn.href = `/game-dashboard-levels.html?project=${encodeURIComponent(project)}`;
+  try{
+    const levelsRes = await api.get("/api/games/custom-lvl/" + encodeURIComponent(project) + "/list");
+    levels = Array.isArray(levelsRes?.levels) ? levelsRes.levels : [];
+    render();
+  }catch{
+    root.innerHTML = `<div class="muted">Custom levels unavailable.</div>`;
+  }
+}
+levelSearch.addEventListener("input", render);
+</script>
+</body>
+</html>

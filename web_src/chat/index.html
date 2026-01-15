@@ -67,13 +67,16 @@ const API = {
 
 let token = localStorage.getItem("token");
 let username = localStorage.getItem("username");
-let currentChannel = "general";
+let currentChannelId = "";
+let currentChannelName = "";
 let rooms = [];
 let ws = null;
+let wsChannelId = "";
 let oldestMessageId = null;
 let loadingHistory = false;
 let attachments = [];
 let typingTimeout = null;
+let manualClose = false;
 
 const chatMessages = document.getElementById("chatMessages");
 const chatInput = document.getElementById("chatInput");
@@ -104,10 +107,13 @@ async function fetchRooms() {
   if (!res.ok) return;
   const data = await res.json();
   rooms = Array.isArray(data.rooms) ? data.rooms : [];
-  if (!rooms.length) rooms = ["general"];
-  if (!rooms.includes(currentChannel)) currentChannel = rooms[0];
+  if (!rooms.length) return;
+  if (!rooms.some((room) => room.id === currentChannelId)) {
+    currentChannelId = rooms[0].id;
+    currentChannelName = rooms[0].name;
+  }
   renderRoomList();
-  switchChannel(currentChannel);
+  switchChannel(currentChannelId);
 }
 
 function renderRoomList() {
@@ -115,18 +121,21 @@ function renderRoomList() {
   rooms.forEach(function (room) {
     const row = document.createElement("button");
     row.type = "button";
-    row.className = "chat-room" + (room === currentChannel ? " chat-room--active" : "");
-    row.textContent = "#" + room;
+    row.className = "chat-room" + (room.id === currentChannelId ? " chat-room--active" : "");
+    row.textContent = "#" + (room.name || "room");
     row.addEventListener("click", function () {
-      switchChannel(room);
+      switchChannel(room.id);
     });
     channelList.appendChild(row);
   });
 }
 
-function switchChannel(room) {
-  currentChannel = room;
-  currentChannelLabel.textContent = "#" + room;
+function switchChannel(roomId) {
+  const room = rooms.find((r) => r.id === roomId) || rooms[0];
+  if (!room) return;
+  currentChannelId = room.id;
+  currentChannelName = room.name;
+  currentChannelLabel.textContent = "#" + (room.name || "room");
   channelMeta.textContent = "Connected";
   oldestMessageId = null;
   chatMessages.innerHTML = "";
@@ -136,14 +145,20 @@ function switchChannel(room) {
 }
 
 function connectWS() {
-  if (ws) {
-    try { ws.close(); } catch (e) {}
+  if (ws && ws.readyState === WebSocket.OPEN && wsChannelId === currentChannelId) {
+    return;
   }
+  if (ws) {
+    manualClose = true;
+    try { ws.close(1000, "switch"); } catch (e) {}
+  }
+  manualClose = false;
   const url = API.wsBase() + "?token=" + encodeURIComponent(token) +
-    "&channel=" + encodeURIComponent(currentChannel);
+    "&channel=" + encodeURIComponent(currentChannelId);
   ws = new WebSocket(url);
 
   ws.onopen = function () {
+    wsChannelId = currentChannelId;
     channelMeta.textContent = "Live";
   };
 
@@ -158,8 +173,8 @@ function connectWS() {
   };
 
   ws.onclose = function () {
-    channelMeta.textContent = "Reconnecting...";
-    setTimeout(connectWS, 2000);
+    if (manualClose) return;
+    channelMeta.textContent = "Disconnected";
   };
 }
 
@@ -176,7 +191,7 @@ async function loadHistory(initial) {
   if (loadingHistory) return;
   loadingHistory = true;
   const url = new URL(API.messages, location.origin);
-  url.searchParams.set("channel", currentChannel);
+  url.searchParams.set("channel", currentChannelId);
   url.searchParams.set("limit", "30");
   if (oldestMessageId) url.searchParams.set("beforeId", String(oldestMessageId));
 
@@ -256,7 +271,7 @@ async function sendMessage() {
   const text = chatInput.value.trim();
   if (!text && !attachments.length) return;
   const form = new FormData();
-  form.append("channel", currentChannel);
+  form.append("channel", currentChannelId);
   form.append("text", text);
   attachments.forEach(function (file) {
     form.append("files", file);
@@ -318,7 +333,7 @@ sidebarToggleBtnHeader.addEventListener("click", function () {
 });
 
 async function createRoom() {
-  const name = (newRoomInput.value || "").trim().toLowerCase();
+  const name = (newRoomInput.value || "").trim();
   if (!name) return;
   createRoomBtn.disabled = true;
   try {
@@ -332,7 +347,7 @@ async function createRoom() {
     rooms = Array.isArray(data.rooms) ? data.rooms : rooms;
     newRoomInput.value = "";
     renderRoomList();
-    if (data.created) switchChannel(data.created);
+    if (data.created && data.created.id) switchChannel(data.created.id);
   } finally {
     createRoomBtn.disabled = false;
   }
