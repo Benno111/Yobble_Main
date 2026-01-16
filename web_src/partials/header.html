@@ -60,6 +60,7 @@
       </button>
       <div class="navDropdownMenu" role="menu">
         <a href="/upload.html" data-page="uupload" role="menuitem">Upload</a>
+        <a href="/item-upload.html" data-page="uitemupload" role="menuitem">Item upload</a>
         <a href="/download.html" id="Download" role="menuitem">Download</a>
       </div>
     </div>
@@ -67,5 +68,17 @@
       <a href="/modqueue.html"><span class="navIcon" aria-hidden="true">🛡️</span><span class="navLabel navLabel-full">Moderation</span><span class="navLabel navLabel-abbr">M</span><span class="navLabel navLabel-emoji">🛡️</span></a>
     </span>
   </nav>
-  <span id="walletBalance" class="pill" style="margin-left:auto">Balance…</span>
+  <div class="header-right" id="headerRight">
+    <div class="navDropdown userDropdown">
+      <button class="navDropdownToggle" type="button" aria-expanded="false">
+        <span id="headerUsername">Account</span>
+        <span class="navDropdownArrow" aria-hidden="true">▾</span>
+      </button>
+      <div class="navDropdownMenu" role="menu">
+        <a href="/profile.html" role="menuitem">Profile</a>
+        <a href="/profile.html" role="menuitem">User settings</a>
+        <a href="#" id="logoutBtn" role="menuitem">Logout</a>
+      </div>
+    </div>
+  </div>
 </header>

@@ -7,16 +7,22 @@ import crypto from "crypto";
 import { all, get, run } from "../db.js";
 import { requireAuth, verifyToken } from "../auth.js";
 
-const DEFAULT_ROOMS = ["general", "rules", "announcements", "offtopic"];
+const DEFAULT_ROOMS = [];
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_ATTACHMENTS = 5;
 
 function sanitizeRoom(name) {
   if (typeof name !== "string") return "";
-  const trimmed = name.trim();
+  const trimmed = name.trim().toLowerCase();
   if (!trimmed) return "";
-  if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) return "";
-  return trimmed;
+  const normalized = trimmed
+    .replace(/[^a-z0-9\s_-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!normalized) return "";
+  if (!/^[a-z0-9_-]+$/.test(normalized)) return "";
+  return normalized;
 }
 
 function isDmChannel(channel) {
@@ -47,6 +53,33 @@ async function ensureDefaultRooms() {
 async function loadRooms() {
   await ensureDefaultRooms();
   return all("SELECT channel_uuid, name FROM chat_channels WHERE is_dm = 0 ORDER BY name");
+}
+
+async function ensureDefaultRoomMembership(username, ts) {
+  if (!username) return;
+  const rooms = await all(
+    `SELECT channel_uuid
+     FROM chat_channels
+     WHERE is_dm = 0 AND name IN (${DEFAULT_ROOMS.map(() => "?").join(",")})`,
+    DEFAULT_ROOMS
+  );
+  for (const room of rooms) {
+    await ensureChannelMember(room.channel_uuid, username, ts);
+  }
+}
+
+async function loadRoomsForUser(username) {
+  await ensureDefaultRooms();
+  const ts = Date.now();
+  await ensureDefaultRoomMembership(username, ts);
+  return all(
+    `SELECT c.channel_uuid, c.name
+     FROM chat_channels c
+     JOIN chat_channel_members m ON m.channel_uuid = c.channel_uuid
+     WHERE c.is_dm = 0 AND m.username = ?
+     ORDER BY c.name`,
+    [username]
+  );
 }
 
 async function getChannelById(channelUuid) {
@@ -104,11 +137,19 @@ function normalizeChannel(input, rooms) {
   const trimmed = typeof input === "string" ? input.trim() : "";
   if (!trimmed) return rooms[0]?.channel_uuid || "";
   if (isDmChannel(trimmed)) return trimmed;
-  return trimmed;
+  const direct = rooms.find((room) => room.channel_uuid === trimmed);
+  if (direct) return direct.channel_uuid;
+  const byName = rooms.find((room) => room.name === trimmed);
+  if (byName) return byName.channel_uuid;
+  return rooms[0]?.channel_uuid || "";
 }
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
+}
+
+function createInviteToken() {
+  return crypto.randomBytes(18).toString("hex");
 }
 
 export function createChatRouter({ projectRoot }) {
@@ -122,11 +163,7 @@ export function createChatRouter({ projectRoot }) {
   router.get("/rooms", requireAuth, async (req, res) => {
     const { username } = req.user;
     try {
-      const rooms = await loadRooms();
-      const ts = Date.now();
-      for (const room of rooms) {
-        await ensureChannelMember(room.channel_uuid, username, ts);
-      }
+      const rooms = await loadRoomsForUser(username);
       res.json({
         rooms: rooms.map((room) => ({
           id: room.channel_uuid,
@@ -157,7 +194,7 @@ export function createChatRouter({ projectRoot }) {
       );
       const channel = await getChannelById(channelUuid);
       if (channel) await ensureChannelMember(channel.channel_uuid, username, ts);
-      const rooms = await loadRooms();
+      const rooms = await loadRoomsForUser(username);
       return res.json({
         created: channel
           ? { id: channel.channel_uuid, name: channel.name }
@@ -173,9 +210,61 @@ export function createChatRouter({ projectRoot }) {
     }
   });
 
+  router.post("/invites", requireAuth, async (req, res) => {
+    const { username } = req.user;
+    const channelId = String(req.body?.channel_id || "").trim();
+    if (!channelId) return res.status(400).json({ error: "missing_channel" });
+    if (isDmChannel(channelId)) return res.status(400).json({ error: "invalid_room" });
+
+    const roomRows = await loadRoomsForUser(username);
+    const channelRow = roomRows.find((room) => room.channel_uuid === channelId);
+    if (!channelRow) return res.status(403).json({ error: "not_allowed" });
+
+    const token = createInviteToken();
+    const createdAt = Date.now();
+    const expiresAt = createdAt + 7 * 24 * 60 * 60 * 1000;
+    await run(
+      `INSERT INTO chat_invites (token, channel_uuid, created_by, created_at, expires_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [token, channelRow.channel_uuid, username, createdAt, expiresAt]
+    );
+
+    res.json({
+      token,
+      channel: { id: channelRow.channel_uuid, name: channelRow.name },
+      expires_at: expiresAt
+    });
+  });
+
+  router.get("/invites/:token", requireAuth, async (req, res) => {
+    const { username } = req.user;
+    const token = String(req.params.token || "").trim();
+    if (!token) return res.status(400).json({ error: "missing_token" });
+
+    const row = await get(
+      `SELECT token, channel_uuid, expires_at
+       FROM chat_invites WHERE token = ?`,
+      [token]
+    );
+    if (!row) return res.status(404).json({ error: "not_found" });
+    if (row.expires_at && row.expires_at < Date.now()) {
+      return res.status(410).json({ error: "expired" });
+    }
+
+    const channelRow = await getChannelById(row.channel_uuid);
+    if (!channelRow || channelRow.is_dm) {
+      return res.status(404).json({ error: "not_found" });
+    }
+    await ensureChannelMember(channelRow.channel_uuid, username, Date.now());
+
+    res.json({
+      channel: { id: channelRow.channel_uuid, name: channelRow.name }
+    });
+  });
+
   router.get("/messages", requireAuth, async (req, res) => {
     const { username } = req.user;
-    const roomRows = await loadRooms();
+    const roomRows = await loadRoomsForUser(username);
     const channelId = normalizeChannel(req.query.channel, roomRows);
     let channelRow = null;
     let channelName = "";
@@ -185,13 +274,9 @@ export function createChatRouter({ projectRoot }) {
       channelRow = dmChannel;
       channelName = dmChannel.name;
     } else {
-      channelRow = roomRows.find((room) => room.channel_uuid === channelId)
-        || await getChannelById(channelId)
-        || await getChannelByName(channelId, false)
-        || roomRows[0];
+      channelRow = roomRows.find((room) => room.channel_uuid === channelId);
       if (!channelRow) return res.status(403).json({ error: "not_allowed" });
       channelName = channelRow.name;
-      await ensureChannelMember(channelRow.channel_uuid, username, Date.now());
     }
     const beforeId = req.query.beforeId ? parseInt(req.query.beforeId, 10) : null;
     const limit = Math.min(parseInt(req.query.limit || "30", 10), 100);
@@ -252,7 +337,7 @@ export function createChatRouter({ projectRoot }) {
 
   router.post("/messages", requireAuth, upload.array("files", MAX_ATTACHMENTS), async (req, res) => {
     const { username } = req.user;
-    const roomRows = await loadRooms();
+    const roomRows = await loadRoomsForUser(username);
     const channelId = normalizeChannel(req.body?.channel, roomRows);
     let channelRow = null;
     let channelName = "";
@@ -262,13 +347,9 @@ export function createChatRouter({ projectRoot }) {
       channelRow = dmChannel;
       channelName = dmChannel.name;
     } else {
-      channelRow = roomRows.find((room) => room.channel_uuid === channelId)
-        || await getChannelById(channelId)
-        || await getChannelByName(channelId, false)
-        || roomRows[0];
+      channelRow = roomRows.find((room) => room.channel_uuid === channelId);
       if (!channelRow) return res.status(403).json({ error: "not_allowed" });
       channelName = channelRow.name;
-      await ensureChannelMember(channelRow.channel_uuid, username, Date.now());
     }
     const text = String(req.body?.text || "").trim().slice(0, MAX_MESSAGE_LENGTH);
     const files = Array.isArray(req.files) ? req.files : [];
@@ -403,7 +484,7 @@ export function attachChatWs(server, { projectRoot }) {
       return;
     }
 
-    const roomRows = await loadRooms();
+    const roomRows = await loadRoomsForUser(username);
     const channelId = normalizeChannel(channelParam, roomRows);
     let channelRow = null;
     let channelName = "";
@@ -416,16 +497,12 @@ export function attachChatWs(server, { projectRoot }) {
       channelRow = dmChannel;
       channelName = dmChannel.name;
     } else {
-      channelRow = roomRows.find((room) => room.channel_uuid === channelId)
-        || await getChannelById(channelId)
-        || await getChannelByName(channelId, false)
-        || roomRows[0];
+      channelRow = roomRows.find((room) => room.channel_uuid === channelId);
       if (!channelRow) {
         ws.close(4002, "Not allowed");
         return;
       }
       channelName = channelRow.name;
-      await ensureChannelMember(channelRow.channel_uuid, username, Date.now());
     }
 
     ws.username = username;

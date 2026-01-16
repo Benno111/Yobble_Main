@@ -26,6 +26,13 @@ export async function mountTopbar(page){
   if(user && (user.role==="admin"||user.role==="moderator")){
     const el=document.getElementById("adminLinks"); if(el) el.hidden=false;
   }
+  const headerRight = document.getElementById("headerRight");
+  const headerUsername = document.getElementById("headerUsername");
+  if (user && headerUsername) {
+    headerUsername.textContent = user.username || "Account";
+  } else if (headerRight) {
+    headerRight.remove();
+  }
   document.querySelectorAll("#mainNav a").forEach(a=>{
     if(a.dataset.page===page) a.classList.add("active");
   });
@@ -53,6 +60,15 @@ export async function mountTopbar(page){
       }
     });
   });
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      localStorage.removeItem("token");
+      localStorage.removeItem("username");
+      location.href = "/login.html";
+    });
+  }
   if (window.electron) {
     const uploadLink = document.getElementById("navUpload");
     if (uploadLink) uploadLink.style.display = "none";
@@ -61,9 +77,9 @@ export async function mountTopbar(page){
   if (token && balanceEl) {
     if (walletData) {
       const balance = Number(walletData?.balance ?? 0);
-      balanceEl.textContent = `Balance ${Number.isFinite(balance) ? balance : 0}`;
+      balanceEl.textContent = `Yobble Dollar ${Number.isFinite(balance) ? balance : 0}`;
     } else {
-      balanceEl.textContent = "Balance —";
+      balanceEl.textContent = "Yobble Dollar —";
     }
   } else if (balanceEl) {
     balanceEl.remove();

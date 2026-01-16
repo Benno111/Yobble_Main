@@ -910,11 +910,11 @@ function buildVideoEmbed(url) {
   }
 
   if (host.includes("streamable.com")) {
-    const slug = cleanPath.replace("/", "");
-    if (slug) {
+    const project = cleanPath.replace("/", "");
+    if (project) {
       return {
         kind: "iframe",
-        src: "https://streamable.com/e/" + slug,
+        src: "https://streamable.com/e/" + project,
         title: "Streamable video",
       };
     }

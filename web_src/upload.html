@@ -13,6 +13,9 @@
       
       <h1>Publish a game build</h1>
       <p>Upload a web build ZIP to create or update a game version.</p>
+      <div class="hero-actions">
+        <a class="cta-link" href="/item-upload.html">Item upload</a>
+      </div>
     </div>
     <div class="hero-art">Upload queue</div>
   </section>
@@ -60,34 +63,6 @@
       <div class="pill">Latest upload</div>
       <div id="last" class="status">No uploads yet.</div>
     </div>
-    <div class="panel">
-      <div class="pill">Item upload</div>
-      <div>
-        <label for="item_code">Item code</label>
-        <input id="item_code" placeholder="item-code">
-      </div>
-      <div>
-        <label for="item_name">Item name</label>
-        <input id="item_name" placeholder="Item name">
-      </div>
-      <div>
-        <label for="item_desc">Description</label>
-        <textarea id="item_desc" rows="4" placeholder="Short description"></textarea>
-      </div>
-      <div>
-        <label for="item_price">Price</label>
-        <input id="item_price" type="number" min="0" step="1" placeholder="0">
-      </div>
-      <div>
-        <label for="item_icon">Icon (optional)</label>
-        <input id="item_icon" type="file" accept=".png,.jpg,.jpeg,.webp">
-      </div>
-      <div class="actions">
-        <button id="itemUploadBtn" class="primary" type="button">Upload item</button>
-        <span class="status" id="itemStatus"></span>
-      </div>
-      <div class="status">Icons up to 2MB (PNG/JPG/WEBP).</div>
-    </div>
   </section>
 </main>
 <script type="module">
@@ -101,8 +76,6 @@ const uploadBtn = document.getElementById("uploadBtn");
 const last = document.getElementById("last");
 const uploadProgress = document.getElementById("uploadProgress");
 const uploadProgressWrap = document.getElementById("uploadProgressWrap");
-const itemUploadBtn = document.getElementById("itemUploadBtn");
-const itemStatus = document.getElementById("itemStatus");
 function projectify(v){
   return String(v || "")
     .toLowerCase()
@@ -190,41 +163,6 @@ uploadBtn.onclick = async () => {
     status.textContent = e?.message ? `Upload failed: ${e.message}` : "Upload failed.";
     uploadBtn.disabled = false;
     if (uploadProgressWrap) uploadProgressWrap.style.display = "none";
-  }
-};
-itemUploadBtn.onclick = async () => {
-  itemStatus.textContent = "";
-  itemUploadBtn.disabled = true;
-  const code = document.getElementById("item_code").value.trim();
-  const name = document.getElementById("item_name").value.trim();
-  const description = document.getElementById("item_desc").value.trim();
-  const priceRaw = document.getElementById("item_price").value;
-  const priceNum = Number(priceRaw);
-  const price = Number.isFinite(priceNum) ? Math.floor(priceNum) : NaN;
-  const icon = document.getElementById("item_icon").files?.[0];
-  if (!code || !name) {
-    itemStatus.textContent = "Item code and name are required.";
-    itemUploadBtn.disabled = false;
-    return;
-  }
-  if (!Number.isFinite(price) || price < 0) {
-    itemStatus.textContent = "Price must be 0 or higher.";
-    itemUploadBtn.disabled = false;
-    return;
-  }
-  const fd = new FormData();
-  fd.append("code", code);
-  fd.append("name", name);
-  fd.append("description", description);
-  fd.append("price", String(price));
-  if (icon) fd.append("icon", icon);
-  try{
-    const r = await api.post("/api/items/upload", fd);
-    itemStatus.textContent = r?.status ? `Item uploaded (${r.status}).` : "Item uploaded.";
-  }catch(e){
-    itemStatus.textContent = e?.message ? `Upload failed: ${e.message}` : "Upload failed.";
-  }finally{
-    itemUploadBtn.disabled = false;
   }
 };
 </script>

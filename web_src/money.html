@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Get Balance - Yobble</title>
+<title>Get Yobble Dollar - Yobble</title>
 <link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -11,8 +11,8 @@
   <section class="card hero">
     <div>
       
-      <h1>Get Balance</h1>
-      <p>Use the tools below to manage your in-app currency balance. Connect a crypto wallet to get started.</p>
+      <h1>Get Yobble Dollar</h1>
+      <p>Use the tools below to manage your Yobble Dollar balance. Connect a crypto wallet to get started.</p>
     </div>
     <div class="hero-art">Balance boost</div>
   </section>
@@ -34,7 +34,7 @@
     <div class="panel-header">
       <div>
         <div class="h1" style="margin:0">Purchase options</div>
-        <div class="hint">1 in-app $ = $0.01 USD.</div>
+        <div class="hint">1 Yobble Dollar = $0.01 USD.</div>
       </div>
       <div class="pill">Top-ups</div>
     </div>
@@ -49,7 +49,7 @@
   <section class="panel" id="grantPanel">
     <div class="panel-header">
       <div>
-        <div class="h1" style="margin:0">Grant currency</div>
+        <div class="h1" style="margin:0">Grant Yobble Dollar</div>
         <div class="hint">Leave username empty to grant to yourself.</div>
       </div>
       <div class="pill" id="roleBadge">User</div>
@@ -85,13 +85,12 @@ const isPrivileged = (me.role === "admin" || me.role === "moderator" || me.role 
 const walletLock = document.getElementById("walletLock");
 const walletStatus = document.getElementById("walletStatus");
 const walletAddr = document.getElementById("walletAddr");
-const grantPanel = document.getElementById("grantPanel");
 const purchaseStatus = document.getElementById("purchaseStatus");
 const purchaseGrid = document.getElementById("purchaseGrid");
 const ethRateInput = document.getElementById("ethRate");
 const refreshRateBtn = document.getElementById("refreshRate");
+const grantPanel = document.getElementById("grantPanel");
 let connectedWallet = null;
-const purchaseAddress = "0x11bf0f444574d29b49225f841b6b0e0a6c8534a7";
 async function fetchEthRate(){
   try{
     purchaseStatus.textContent = "Fetching ETH price…";
@@ -129,19 +128,24 @@ function setWalletState(addr){
     walletLock.removeAttribute("data-connected");
   }
 }
-const existing = await getConnectedAccount();
-setWalletState(existing || null);
-if (!existing) {
-  const redirect = encodeURIComponent("/money.html");
-  location.href = `/connect-wallet.html?redirect=${redirect}`;
-}
-fetchEthRate();
-refreshRateBtn.addEventListener("click", fetchEthRate);
-if (window.ethereum) {
-  window.ethereum.on?.("accountsChanged", (accounts) => {
-    const addr = accounts && accounts[0] ? accounts[0] : null;
-    setWalletState(addr);
-  });
+if (!isPrivileged) {
+  const existing = await getConnectedAccount();
+  setWalletState(existing || null);
+  if (!existing) {
+    const redirect = encodeURIComponent("/money.html");
+    location.href = `/connect-wallet.html?redirect=${redirect}`;
+  }
+  fetchEthRate();
+  refreshRateBtn.addEventListener("click", fetchEthRate);
+  if (window.ethereum) {
+    window.ethereum.on?.("accountsChanged", (accounts) => {
+      const addr = accounts && accounts[0] ? accounts[0] : null;
+      setWalletState(addr);
+    });
+  }
+} else {
+  walletLock.style.display = "none";
+  purchaseGrid.closest("#purchasePanel").style.display = "none";
 }
 const username = document.getElementById("username");
 const amount = document.getElementById("amount");
@@ -159,45 +163,47 @@ document.getElementById("fillBtn").onclick = () => {
   amount.value = "100";
   if(!reason.value) reason.value = "Testing grant";
 };
-for (let usd = 1; usd <= 20; usd += 1) {
-  const amount = usd * 100;
-  const card = document.createElement("div");
-  card.className = "purchase-card";
-  card.innerHTML = `
-    <h3>${amount} in-app $</h3>
-    <div class="meta">$${usd.toFixed(2)} USD</div>
-    <button class="primary" type="button" data-amount="${amount}">Buy $${usd}</button>
-  `;
-  const btn = card.querySelector("button");
-  btn.addEventListener("click", async () => {
-    purchaseStatus.textContent = "";
-    if (!connectedWallet) {
-      purchaseStatus.textContent = "Connect a crypto wallet before purchasing.";
-      return;
-    }
-    const rate = Number(ethRateInput.value || 0);
-    if (!Number.isFinite(rate) || rate <= 0) {
-      purchaseStatus.textContent = "Enter a valid ETH price in USD.";
-      return;
-    }
-    const usdAmount = usd;
-    const ethAmount = usdAmount / rate;
-    const wei = toWei(ethAmount);
-    try{
-      await window.ethereum.request({
-        method: "eth_sendTransaction",
-        params: [{
-          from: connectedWallet,
-          to: purchaseAddress,
-          value: "0x" + wei.toString(16)
-        }]
-      });
-      purchaseStatus.textContent = `Transaction submitted for $${usdAmount.toFixed(2)} USD.`;
-    }catch{
-      purchaseStatus.textContent = "Transaction cancelled or failed.";
-    }
-  });
-  purchaseGrid.appendChild(card);
+if (!isPrivileged) {
+  for (let usd = 1; usd <= 20; usd += 1) {
+    const amount = usd * 100;
+    const card = document.createElement("div");
+    card.className = "purchase-card";
+    card.innerHTML = `
+      <h3>${amount} Yobble Dollar</h3>
+      <div class="meta">$${usd.toFixed(2)} USD</div>
+      <button class="primary" type="button" data-amount="${amount}">Buy $${usd}</button>
+    `;
+    const btn = card.querySelector("button");
+    btn.addEventListener("click", async () => {
+      purchaseStatus.textContent = "";
+      if (!connectedWallet) {
+        purchaseStatus.textContent = "Connect a crypto wallet before purchasing.";
+        return;
+      }
+      const rate = Number(ethRateInput.value || 0);
+      if (!Number.isFinite(rate) || rate <= 0) {
+        purchaseStatus.textContent = "Enter a valid ETH price in USD.";
+        return;
+      }
+      const usdAmount = usd;
+      const ethAmount = usdAmount / rate;
+      const wei = toWei(ethAmount);
+      try{
+        await window.ethereum.request({
+          method: "eth_sendTransaction",
+          params: [{
+            from: connectedWallet,
+            to: "0x11bf0f444574d29b49225f841b6b0e0a6c8534a7",
+            value: "0x" + wei.toString(16)
+          }]
+        });
+        purchaseStatus.textContent = `Transaction submitted for $${usdAmount.toFixed(2)} USD.`;
+      }catch{
+        purchaseStatus.textContent = "Transaction cancelled or failed.";
+      }
+    });
+    purchaseGrid.appendChild(card);
+  }
 }
 function toWei(eth){
   const parts = eth.toFixed(18).split(".");
@@ -207,10 +213,6 @@ function toWei(eth){
 }
 document.getElementById("grantBtn").onclick = async () => {
   status.textContent = "";
-  if (!connectedWallet) {
-    status.textContent = "Connect a crypto wallet before using money tools.";
-    return;
-  }
   try{
     const target = username.value.trim();
     const amt = Number(amount.value || 0);

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Item - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="item-wrap">
+  <section class="card hero">
+    <div>
+      <h1 id="itemTitle">Marketplace item</h1>
+      <p id="itemSubtitle">Review item details and report anything suspicious.</p>
+      <div class="hero-meta">
+        <span class="pill" id="itemCode">Code</span>
+        <span class="pill" id="itemSeller">Seller</span>
+        <span class="pill" id="itemBalance">Yobble Dollar —</span>
+      </div>
+    </div>
+    <div class="hero-art">Item spotlight</div>
+  </section>
+  <section class="card">
+    <div class="item-detail">
+      <div class="item-media" id="itemMedia"></div>
+      <div class="stack">
+        <div class="item-name" id="itemName"></div>
+        <div class="small muted" id="itemUploaderName"></div>
+        <div class="pill" id="itemPrice">Price</div>
+        <div class="pill" id="itemQty">Qty</div>
+        <div class="small" id="itemMeta"></div>
+        <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap">
+          <a class="cta-link" id="backLink" href="/market.html">Back to marketplace</a>
+          <a class="cta-link" id="reportLink" href="/report.html">Report item</a>
+          <button class="secondary" id="modRemoveBtn" style="display:none">Remove + ban owner</button>
+        </div>
+      </div>
+    </div>
+    <div class="empty" id="itemEmpty" hidden>Listing not found.</div>
+  </section>
+  <section class="card">
+    <div class="pill">Purchase</div>
+    <div class="stack" style="margin-top:12px">
+      <div>
+        <label for="buyQty">Quantity</label>
+        <input id="buyQty" type="number" min="1" value="1">
+      </div>
+      <div class="actions">
+        <button id="buyConfirm" class="primary">Buy</button>
+        <span class="status" id="buyStatus"></span>
+      </div>
+    </div>
+  </section>
+</main>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api-pages/market.js";
+await mountTopbar("market");
+const title = document.getElementById("itemTitle");
+const subtitle = document.getElementById("itemSubtitle");
+const code = document.getElementById("itemCode");
+const seller = document.getElementById("itemSeller");
+const nameEl = document.getElementById("itemName");
+const price = document.getElementById("itemPrice");
+const qty = document.getElementById("itemQty");
+const meta = document.getElementById("itemMeta");
+const media = document.getElementById("itemMedia");
+const empty = document.getElementById("itemEmpty");
+const itemBalance = document.getElementById("itemBalance");
+const reportLink = document.getElementById("reportLink");
+const modRemoveBtn = document.getElementById("modRemoveBtn");
+const buyQty = document.getElementById("buyQty");
+const buyConfirm = document.getElementById("buyConfirm");
+const buyStatus = document.getElementById("buyStatus");
+const uploaderName = document.getElementById("itemUploaderName");
+const params = new URLSearchParams(location.search);
+const listingId = Number(params.get("listing_id") || params.get("id") || 0);
+let activeListing = null;
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+function setEmpty(message){
+  empty.hidden = false;
+  empty.textContent = message;
+  media.innerHTML = "";
+}
+function applyListing(listing){
+  activeListing = listing;
+  if (!listing) {
+    setEmpty("Listing not found.");
+    return;
+  }
+  title.textContent = listing.name || listing.code || "Marketplace item";
+  subtitle.textContent = listing.name ? "Listing details for this item." : "Listing details.";
+  nameEl.textContent = listing.name || listing.code || "Item";
+  uploaderName.textContent = `by ${listing.seller_username || "unknown"}`;
+  code.textContent = `Code ${listing.code || "unknown"}`;
+  seller.textContent = `Seller ${listing.seller_username || "unknown"}`;
+  price.textContent = `Price $${listing.price ?? 0}`;
+  qty.textContent = `Qty ${listing.qty ?? 0}`;
+  meta.textContent = `Listed ${new Date(listing.created_at || Date.now()).toLocaleString()}`;
+  if (reportLink) {
+    reportLink.href = `/report.html?target_type=item&target_ref=${encodeURIComponent(listing.code || listing.name || listing.id)}`;
+  }
+  if (listing.icon_path) {
+    media.innerHTML = `<img src="${escapeHtml(listing.icon_path)}" alt="${escapeHtml(listing.name || "Item")}">`;
+  } else {
+    media.innerHTML = `<div class="item-fallback" aria-hidden="true">${escapeHtml((listing.name || "?").slice(0, 1))}</div>`;
+  }
+}
+async function loadListing(){
+  if (!listingId) {
+    setEmpty("Missing listing id.");
+    return;
+  }
+  try{
+    const [marketRes, walletRes, meRes] = await Promise.all([
+      api.get("/api/market"),
+      api.get("/api/wallet").catch(() => null),
+      api.get("/api/auth/me").catch(() => null)
+    ]);
+    const listings = Array.isArray(marketRes) ? marketRes : (marketRes.listings || []);
+    const listing = listings.find((l) => Number(l.id) === listingId) || null;
+    applyListing(listing);
+    const balance = Number(walletRes?.wallet?.balance ?? walletRes?.balance ?? 0);
+    if (itemBalance) {
+      itemBalance.textContent = `Yobble Dollar ${Number.isFinite(balance) ? balance : 0}`;
+    }
+    const role = meRes?.user?.role || meRes?.role || "";
+    if (modRemoveBtn && ["admin","moderator"].includes(role)) {
+      modRemoveBtn.style.display = "inline-flex";
+    }
+  } catch {
+    setEmpty("Could not load listing.");
+  }
+}
+await loadListing();
+buyConfirm.onclick = async () => {
+  if (!activeListing) return;
+  const qtyValue = Number(buyQty.value || 0);
+  if (!Number.isFinite(qtyValue) || qtyValue <= 0) {
+    buyStatus.textContent = "Enter a valid quantity.";
+    return;
+  }
+  buyStatus.textContent = "Processing...";
+  try{
+    await api.post("/api/market/buy", { listing_id: activeListing.id, qty: qtyValue });
+    buyStatus.textContent = "Purchased ✔";
+    await loadListing();
+  }catch(e){
+    buyStatus.textContent = e?.message ? `Failed: ${e.message}` : "Purchase failed.";
+  }
+};
+if (modRemoveBtn) {
+  modRemoveBtn.onclick = async () => {
+    if (!activeListing) return;
+    if (!confirm(`Remove item ${activeListing.code || activeListing.name}?`)) return;
+    try{
+      await api.post("/api/mod/items/reject-ban", {
+        ref: activeListing.code || activeListing.id,
+        reason: "removed_from_item_page"
+      });
+      modRemoveBtn.textContent = "Removed";
+      modRemoveBtn.disabled = true;
+    }catch{
+      modRemoveBtn.textContent = "Failed";
+    }
+  };
+}
+</script>
+</body>
+</html>

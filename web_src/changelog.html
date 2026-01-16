@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Changelog - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="log-wrap">
+  <section class="card hero">
+    <div>
+      <h1>Changelog</h1>
+      <p>Product updates, fixes, and new features.</p>
+    </div>
+    <div class="hero-art">Release notes</div>
+  </section>
+  <section class="card">
+    <div id="logList" class="list"></div>
+    <div id="logEmpty" class="empty" hidden>No updates yet.</div>
+  </section>
+</main>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+await mountTopbar("changelog");
+const logList = document.getElementById("logList");
+const logEmpty = document.getElementById("logEmpty");
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+try{
+  const res = await fetch("/api/changelog");
+  const data = await res.json();
+  const entries = Array.isArray(data.entries) ? data.entries : [];
+  if (!entries.length) {
+    logEmpty.hidden = false;
+  } else {
+    logList.innerHTML = entries.map((entry) => `
+      <div class="list-item">
+        <div style="flex:1">
+          <div style="font-weight:700">${escapeHtml(entry.title || "Update")}</div>
+          <div class="small">${escapeHtml(new Date(entry.created_at || Date.now()).toLocaleDateString())}</div>
+          <div style="margin-top:6px;white-space:pre-wrap">${escapeHtml(entry.body || "")}</div>
+        </div>
+      </div>
+    `).join("");
+  }
+} catch {
+  logEmpty.hidden = false;
+  logEmpty.textContent = "Could not load updates.";
+}
+</script>
+</body>
+</html>

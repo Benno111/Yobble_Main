@@ -64,6 +64,7 @@ if(!reports.length){
         <button class="primary">Ban for</button>
         ${rep.target_type === "game" ? `<button class="secondary" data-remove>Remove game</button>` : ``}
         ${rep.target_type === "game" && isAdmin ? `<button class="secondary" data-unhide>Unhide game</button>` : ``}
+        ${rep.target_type === "item" ? `<button class="secondary" data-item-remove>Remove item + ban owner</button>` : ``}
         <button class="secondary dismiss-btn">Dismiss</button>
       </div>
     `;
@@ -125,6 +126,26 @@ if(!reports.length){
       await api.post("/api/reports/mod/dismiss", { id: rep.id, note });
       d.remove();
     };
+    const itemRemoveBtn = d.querySelector("[data-item-remove]");
+    if (itemRemoveBtn) {
+      itemRemoveBtn.onclick = async () => {
+        if (!confirm(`Remove item ${rep.target_ref} and ban owner?`)) return;
+        try{
+          const r = await api.post("/api/mod/items/reject-ban", {
+            ref: rep.target_ref,
+            reason: rep.message
+          });
+          await api.post("/api/reports/mod/resolve", {
+            id: rep.id,
+            note: `Item removed + ${r.ban || "ban"}`
+          });
+          itemRemoveBtn.textContent = "Removed";
+          itemRemoveBtn.disabled = true;
+        }catch{
+          alert("Failed to remove item.");
+        }
+      };
+    }
     list.appendChild(d);
   }
 }

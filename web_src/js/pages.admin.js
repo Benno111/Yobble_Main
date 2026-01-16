@@ -26,7 +26,7 @@ document.querySelector("#grant").onclick = async ()=>{
     const user_id = Number(document.querySelector("#user_id").value || 0);
     const delta = Number(document.querySelector("#delta").value || 0);
     const r = await api("/api/admin/grant_currency", { method:"POST", body:{ user_id, delta }});
-    grantMsg.textContent = "OK. New balance: " + r.balance;
+    grantMsg.textContent = "OK. New Yobble Dollar balance: " + r.balance;
   }catch(e){ grantMsg.textContent = "Error: " + e.message; }
 };
 document.querySelector("#createGame").onclick = async ()=>{

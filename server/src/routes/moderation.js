@@ -384,6 +384,111 @@ moderationRouter.post("/items/reject", requireAuth, requireRole(...MOD_ROLES), a
   res.json({ ok: true });
 });
 
+async function getItemByRef(ref) {
+  const byCode = await get("SELECT id, code, uploaded_by FROM items WHERE code=?", [ref]);
+  if (byCode) return byCode;
+  const numericId = Number(ref);
+  if (Number.isFinite(numericId) && numericId > 0) {
+    const byId = await get("SELECT id, code, uploaded_by FROM items WHERE id=?", [numericId]);
+    if (byId) return byId;
+  }
+  const byName = await get("SELECT id, code, uploaded_by FROM items WHERE name=?", [ref]);
+  return byName || null;
+}
+
+async function refundItemHolders(itemId, itemPrice, reason) {
+  const rows = await all(
+    "SELECT user_id, qty FROM inventory WHERE item_id=?",
+    [itemId]
+  );
+  if (!rows.length) return { refunded_users: 0, refunded_total: 0 };
+  const now = Date.now();
+  let total = 0;
+  let users = 0;
+  for (const row of rows) {
+    const qty = Number(row.qty || 0);
+    if (qty <= 0) continue;
+    const refund = qty * itemPrice;
+    await run(
+      "INSERT OR IGNORE INTO wallets(user_id,balance,updated_at) VALUES(?,?,?)",
+      [row.user_id, 0, now]
+    );
+    await run(
+      "UPDATE wallets SET balance=balance+?, updated_at=? WHERE user_id=?",
+      [refund, now, row.user_id]
+    );
+    await run(
+      "INSERT INTO wallet_transactions(user_id,amount,reason,ref_type,ref_id,created_at) VALUES(?,?,?,?,?,?)",
+      [row.user_id, refund, reason, "item", itemId, now]
+    );
+    total += refund;
+    users += 1;
+  }
+  await run("DELETE FROM inventory WHERE item_id=?", [itemId]);
+  return { refunded_users: users, refunded_total: total };
+}
+
+/* POST /api/mod/items/reject-ban */
+moderationRouter.post("/items/reject-ban", requireAuth, requireRole(...MOD_ROLES), async (req, res) => {
+  const ref = String(req.body?.ref || req.body?.code || "").trim();
+  const reason = String(req.body?.reason || "").trim().slice(0, 500);
+  if (!ref) return res.status(400).json({ error: "missing_ref" });
+
+  const item = await getItemByRef(ref);
+  if (!item) return res.status(404).json({ error: "item_not_found" });
+
+  const itemRow = await get(
+    "SELECT id, code, price FROM items WHERE id=?",
+    [item.id]
+  );
+  const itemPrice = Number(itemRow?.price || 0);
+  const refundInfo = await refundItemHolders(
+    item.id,
+    Number.isFinite(itemPrice) ? Math.max(itemPrice, 0) : 0,
+    "item_removed_refund"
+  );
+
+  await run("DELETE FROM marketplace_listings WHERE item_id=?", [item.id]);
+  await run("DELETE FROM marketplace_auto_stock WHERE item_id=?", [item.id]);
+  await run("DELETE FROM marketplace WHERE item_id=?", [item.id]);
+
+  await run(
+    `UPDATE items SET approval_status='rejected', rejected_reason=?, approved_by=NULL, approved_at=NULL
+     WHERE id=?`,
+    [reason || "removed_by_mod", item.id]
+  );
+
+  if (!item.uploaded_by) {
+    return res.json({ ok: true, item: item.code, refunds: refundInfo });
+  }
+  const uploader = await get(
+    "SELECT id, is_banned, timeout_until FROM users WHERE id=?",
+    [item.uploaded_by]
+  );
+  if (!uploader) return res.json({ ok: true, item: item.code, refunds: refundInfo });
+
+  const now = Date.now();
+  if (uploader.is_banned) {
+    await run(
+      `UPDATE users
+       SET is_banned=1, ban_reason=?, banned_at=?,
+           timeout_until=NULL, timeout_reason=NULL
+       WHERE id=?`,
+      [reason || "permanent_ban", now, uploader.id]
+    );
+    return res.json({ ok: true, item: item.code, ban: "permanent", refunds: refundInfo });
+  }
+
+  const durationMs = 30 * 24 * 60 * 60 * 1000;
+  await run(
+    `UPDATE users
+     SET is_banned=0, timeout_until=?, timeout_reason=? 
+     WHERE id=?`,
+    [now + durationMs, reason || "item_removed", uploader.id]
+  );
+  res.json({ ok: true, item: item.code, ban: "30d", refunds: refundInfo });
+});
+
 /* GET /api/mod/search?q= */
 moderationRouter.get("/search", requireAuth, requireRole(...MOD_ROLES), async (req, res) => {
   const q = String(req.query.q || "").trim();
