@@ -18,7 +18,9 @@
 </main>
 <script type="module">
 import { requireAuth } from "/js/auth.js";
+import { mountTopbar } from "/js/layout.js";
 await requireAuth();
+await mountTopbar("uitemupload");
 upload.onclick = async ()=>{
   const fd=new FormData();
   fd.append("code",code.value.trim());

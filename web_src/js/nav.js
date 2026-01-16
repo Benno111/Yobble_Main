@@ -34,7 +34,7 @@ export async function mountShell(activeId){
         <div class="topbar">
           <div class="left">
             <span class="pill">beta UI</span>
-            <span class="pill">soft currency</span>
+            <span class="pill">Yobble Dollar</span>
           </div>
           <div class="row">
             <a class="pill" href="/report">Report</a>

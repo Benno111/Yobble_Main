@@ -15,11 +15,10 @@
     <aside class="chat-rooms" id="chatSidebar">
       <div class="chat-rooms__header">
         <div class="chat-rooms__title">Rooms</div>
-        <button type="button" class="chat-rooms__toggle" id="sidebarToggleBtn">Hide</button>
-      </div>
-      <div class="chat-rooms__create">
-        <input id="newRoomInput" class="chat-rooms__input" type="text" placeholder="Create room">
-        <button type="button" class="chat-rooms__create-btn" id="createRoomBtn">Add</button>
+        <div class="chat-rooms__header-actions">
+          <button type="button" class="chat-rooms__create-btn" id="openCreateRoomBtn">New</button>
+          <button type="button" class="chat-rooms__toggle" id="sidebarToggleBtn">Hide</button>
+        </div>
       </div>
       <div class="chat-rooms__list" id="channelList"></div>
     </aside>
@@ -31,6 +30,7 @@
           <div class="chat-panel__meta" id="channelMeta">Connected</div>
         </div>
         <div class="chat-panel__actions">
+          <button type="button" class="btn btn--small" id="inviteBtn">Invite</button>
           <button type="button" class="chat-rooms__toggle" id="sidebarToggleBtnHeader">Rooms</button>
           <button id="logoutBtn" class="btn btn--small">Logout</button>
         </div>
@@ -49,6 +49,20 @@
     </section>
   </section>
 </main>
+<div class="chat-modal" id="newRoomModal" aria-hidden="true">
+  <div class="chat-modal__panel" role="dialog" aria-modal="true" aria-labelledby="newRoomTitle">
+    <div class="chat-modal__header">
+      <div class="chat-modal__title" id="newRoomTitle">Create room</div>
+      <button type="button" class="chat-modal__close" id="closeCreateRoomBtn" aria-label="Close">✕</button>
+    </div>
+    <div class="chat-modal__body">
+      <input id="newRoomInput" class="chat-rooms__input" type="text" placeholder="Create room">
+      <div class="chat-modal__actions">
+        <button type="button" class="chat-rooms__create-btn" id="createRoomBtn">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script type="module">
   import { mountTopbar } from "/js/layout.js";
@@ -91,8 +105,12 @@ const sidebarToggleBtnHeader = document.getElementById("sidebarToggleBtnHeader")
 const chatRoot = document.getElementById("chatRoot");
 const attachmentPreview = document.getElementById("attachmentPreview");
 const channelMeta = document.getElementById("channelMeta");
+const inviteBtn = document.getElementById("inviteBtn");
 const newRoomInput = document.getElementById("newRoomInput");
 const createRoomBtn = document.getElementById("createRoomBtn");
+const newRoomModal = document.getElementById("newRoomModal");
+const openCreateRoomBtn = document.getElementById("openCreateRoomBtn");
+const closeCreateRoomBtn = document.getElementById("closeCreateRoomBtn");
 
 if (!token) {
   window.location.href = "/login.html";
@@ -107,17 +125,30 @@ async function fetchRooms() {
   if (!res.ok) return;
   const data = await res.json();
   rooms = Array.isArray(data.rooms) ? data.rooms : [];
-  if (!rooms.length) return;
+  renderRoomList();
+  if (!rooms.length) {
+    currentChannelId = "";
+    currentChannelName = "";
+    currentChannelLabel.textContent = "#no-room";
+    channelMeta.textContent = "No rooms available";
+    return;
+  }
   if (!rooms.some((room) => room.id === currentChannelId)) {
     currentChannelId = rooms[0].id;
     currentChannelName = rooms[0].name;
   }
-  renderRoomList();
   switchChannel(currentChannelId);
 }
 
 function renderRoomList() {
   channelList.innerHTML = "";
+  if (!rooms.length) {
+    const empty = document.createElement("div");
+    empty.className = "chat-rooms__empty";
+    empty.textContent = "No rooms yet.";
+    channelList.appendChild(empty);
+    return;
+  }
   rooms.forEach(function (room) {
     const row = document.createElement("button");
     row.type = "button";
@@ -132,7 +163,13 @@ function renderRoomList() {
 
 function switchChannel(roomId) {
   const room = rooms.find((r) => r.id === roomId) || rooms[0];
-  if (!room) return;
+  if (!room) {
+    currentChannelId = "";
+    currentChannelName = "";
+    currentChannelLabel.textContent = "#no-room";
+    channelMeta.textContent = "No rooms available";
+    return;
+  }
   currentChannelId = room.id;
   currentChannelName = room.name;
   currentChannelLabel.textContent = "#" + (room.name || "room");
@@ -348,6 +385,7 @@ async function createRoom() {
     newRoomInput.value = "";
     renderRoomList();
     if (data.created && data.created.id) switchChannel(data.created.id);
+    newRoomModal.classList.remove("is-open");
   } finally {
     createRoomBtn.disabled = false;
   }
@@ -360,6 +398,45 @@ newRoomInput.addEventListener("keydown", function (e) {
     createRoom();
   }
 });
+openCreateRoomBtn.addEventListener("click", function () {
+  newRoomModal.classList.add("is-open");
+  newRoomInput.focus();
+});
+closeCreateRoomBtn.addEventListener("click", function () {
+  newRoomModal.classList.remove("is-open");
+});
+newRoomModal.addEventListener("click", function (e) {
+  if (e.target === newRoomModal) {
+    newRoomModal.classList.remove("is-open");
+  }
+});
+
+inviteBtn.addEventListener("click", async function () {
+  if (!currentChannelId) return;
+  channelMeta.textContent = "Creating invite...";
+  try {
+    const res = await fetch("/api/chat/invites", {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ channel_id: currentChannelId })
+    });
+    if (!res.ok) {
+      channelMeta.textContent = "Invite failed.";
+      return;
+    }
+    const data = await res.json();
+    const url = `${location.origin}/chat/index.html?invite=${encodeURIComponent(data.token)}`;
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+      channelMeta.textContent = "Invite link copied.";
+    } else {
+      channelMeta.textContent = "Invite link ready.";
+      window.prompt("Copy invite link:", url);
+    }
+  } catch {
+    channelMeta.textContent = "Invite failed.";
+  }
+});
 
 document.getElementById("logoutBtn").addEventListener("click", function () {
   localStorage.removeItem("token");
@@ -367,7 +444,20 @@ document.getElementById("logoutBtn").addEventListener("click", function () {
   window.location.href = "/login.html";
 });
 
-fetchRooms();
+const inviteToken = new URLSearchParams(location.search).get("invite");
+if (inviteToken) {
+  fetch(`/api/chat/invites/${encodeURIComponent(inviteToken)}`, { headers: authHeaders() })
+    .then((res) => res.ok ? res.json() : null)
+    .then((data) => {
+      if (data?.channel?.id) {
+        currentChannelId = data.channel.id;
+        currentChannelName = data.channel.name;
+      }
+    })
+    .finally(fetchRooms);
+} else {
+  fetchRooms();
+}
 </script>
 </body>
 </html>

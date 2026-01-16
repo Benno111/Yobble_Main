@@ -233,6 +233,37 @@ export async function initDb() {
     FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE
   )`);
 
+  /* ITEMS */
+  await run(`CREATE TABLE IF NOT EXISTS items(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL
+  )`);
+  await addColumnIfMissing("items", "description", "TEXT");
+  await addColumnIfMissing("items", "icon_path", "TEXT");
+  await addColumnIfMissing("items", "price", "INTEGER DEFAULT 0");
+  await addColumnIfMissing("items", "approval_status", "TEXT DEFAULT 'pending'");
+  await addColumnIfMissing("items", "uploaded_by", "INTEGER");
+  await addColumnIfMissing("items", "approved_by", "INTEGER");
+  await addColumnIfMissing("items", "approved_at", "INTEGER");
+  await addColumnIfMissing("items", "rejected_reason", "TEXT");
+  await addColumnIfMissing("items", "created_at", "INTEGER");
+
+  // Remove legacy items without uploader info (and any related records).
+  await run("DELETE FROM items WHERE uploaded_by IS NULL");
+  if (await tableExists("inventory")) {
+    await run("DELETE FROM inventory WHERE item_id NOT IN (SELECT id FROM items)");
+  }
+  if (await tableExists("marketplace")) {
+    await run("DELETE FROM marketplace WHERE item_id NOT IN (SELECT id FROM items)");
+  }
+  if (await tableExists("marketplace_listings")) {
+    await run("DELETE FROM marketplace_listings WHERE item_id NOT IN (SELECT id FROM items)");
+  }
+  if (await tableExists("marketplace_auto_stock")) {
+    await run("DELETE FROM marketplace_auto_stock WHERE item_id NOT IN (SELECT id FROM items)");
+  }
+
   /* CHAT */
   if (await tableExists("chat_channels")) {
     const cols = await getColumns("chat_channels");
@@ -312,6 +343,10 @@ export async function initDb() {
     created_by TEXT
   )`);
 
+  await run(
+    "DELETE FROM chat_channels WHERE is_dm = 0 AND name IN ('general','rules','announcements','offtopic')"
+  );
+
   await run(`CREATE TABLE IF NOT EXISTS chat_channel_members(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     channel_uuid TEXT NOT NULL,
@@ -333,6 +368,15 @@ export async function initDb() {
 
   await addColumnIfMissing("chat_messages", "channel_uuid", "TEXT");
 
+  await run(`CREATE TABLE IF NOT EXISTS chat_invites(
+    token TEXT PRIMARY KEY,
+    channel_uuid TEXT NOT NULL,
+    created_by TEXT,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER,
+    FOREIGN KEY(channel_uuid) REFERENCES chat_channels(channel_uuid) ON DELETE CASCADE
+  )`);
+
   await run(`CREATE TABLE IF NOT EXISTS chat_attachments(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     message_id INTEGER NOT NULL,
@@ -342,6 +386,14 @@ export async function initDb() {
     size INTEGER,
     created_at INTEGER NOT NULL,
     FOREIGN KEY(message_id) REFERENCES chat_messages(id) ON DELETE CASCADE
+  )`);
+
+  await run(`CREATE TABLE IF NOT EXISTS changelog_entries(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    created_by TEXT
   )`);
 
   console.log("[DB] schema ready");

@@ -26,6 +26,7 @@ import { sdkRouter } from "./sdk.js";
 import { customLevelsRouter } from "./custom-levels.js";
 import { createChatRouter } from "./chat.js";
 import { gameEditorRouter } from "./gameeditor.js";
+import { changelogRouter } from "./changelog.js";
 
 export {
   authRouter,
@@ -50,5 +51,6 @@ export {
   sdkRouter,
   customLevelsRouter,
   createChatRouter,
-  gameEditorRouter
+  gameEditorRouter,
+  changelogRouter
 };
