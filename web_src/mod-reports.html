@@ -65,6 +65,7 @@ if(!reports.length){
         ${rep.target_type === "game" ? `<button class="secondary" data-remove>Remove game</button>` : ``}
         ${rep.target_type === "game" && isAdmin ? `<button class="secondary" data-unhide>Unhide game</button>` : ``}
         ${rep.target_type === "item" ? `<button class="secondary" data-item-remove>Remove item + ban owner</button>` : ``}
+        ${rep.target_type === "chat_room" ? `<button class="secondary" data-room-remove>Delete room</button>` : ``}
         <button class="secondary dismiss-btn">Dismiss</button>
       </div>
     `;
@@ -143,6 +144,23 @@ if(!reports.length){
           itemRemoveBtn.disabled = true;
         }catch{
           alert("Failed to remove item.");
+        }
+      };
+    }
+    const roomRemoveBtn = d.querySelector("[data-room-remove]");
+    if (roomRemoveBtn) {
+      roomRemoveBtn.onclick = async () => {
+        if (!confirm(`Delete chat room ${rep.target_ref}?`)) return;
+        try{
+          await api.post("/api/mod/chat/rooms/remove", { room: rep.target_ref });
+          await api.post("/api/reports/mod/resolve", {
+            id: rep.id,
+            note: "Chat room deleted"
+          });
+          roomRemoveBtn.textContent = "Deleted";
+          roomRemoveBtn.disabled = true;
+        }catch{
+          alert("Failed to delete room.");
         }
       };
     }

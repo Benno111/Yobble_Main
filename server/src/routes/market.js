@@ -85,7 +85,7 @@ marketRouter.get("/", async (_req, res) => {
      FROM marketplace_listings l
      JOIN items i ON i.id = l.item_id
      JOIN users u ON u.id = l.seller_user_id
-     WHERE l.status='active'
+     WHERE l.status='active' AND i.approval_status='approved'
      ORDER BY l.created_at DESC`
   );
   res.json({ listings: rows });

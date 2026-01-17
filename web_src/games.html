@@ -56,8 +56,10 @@
   </section>
 </main>
 <script type="module">
+import { requireAuth } from "/js/auth.js";
 import { mountTopbar } from "/js/layout.js";
 import { api } from "/js/api-pages/games.js";
+await requireAuth();
 await mountTopbar("games");
 const list = document.getElementById("list");
 const empty = document.getElementById("empty");

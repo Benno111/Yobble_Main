@@ -31,6 +31,7 @@
         </div>
         <div class="chat-panel__actions">
           <button type="button" class="btn btn--small" id="inviteBtn">Invite</button>
+          <button type="button" class="btn btn--small" id="reportRoomBtn">Report room</button>
           <button type="button" class="chat-rooms__toggle" id="sidebarToggleBtnHeader">Rooms</button>
           <button id="logoutBtn" class="btn btn--small">Logout</button>
         </div>
@@ -65,7 +66,9 @@
 </div>
 
 <script type="module">
+  import { requireAuth } from "/js/auth.js";
   import { mountTopbar } from "/js/layout.js";
+  await requireAuth();
   mountTopbar("uchat");
 </script>
 
@@ -106,6 +109,7 @@ const chatRoot = document.getElementById("chatRoot");
 const attachmentPreview = document.getElementById("attachmentPreview");
 const channelMeta = document.getElementById("channelMeta");
 const inviteBtn = document.getElementById("inviteBtn");
+const reportRoomBtn = document.getElementById("reportRoomBtn");
 const newRoomInput = document.getElementById("newRoomInput");
 const createRoomBtn = document.getElementById("createRoomBtn");
 const newRoomModal = document.getElementById("newRoomModal");
@@ -174,6 +178,9 @@ function switchChannel(roomId) {
   currentChannelName = room.name;
   currentChannelLabel.textContent = "#" + (room.name || "room");
   channelMeta.textContent = "Connected";
+  if (reportRoomBtn) {
+    reportRoomBtn.dataset.room = room.id;
+  }
   oldestMessageId = null;
   chatMessages.innerHTML = "";
   connectWS();
@@ -247,26 +254,36 @@ async function loadHistory(initial) {
 }
 
 function createMessageElement(msg) {
-  const row = document.createElement("div");
+  const row = document.createElement("section");
   row.className = "chat-msg-row";
   row.dataset.id = msg.id;
 
-  const meta = document.createElement("div");
-  meta.className = "chat-msg-meta";
+  const header = document.createElement("div");
+  header.className = "chat-msg-header";
   const userSpan = document.createElement("span");
   userSpan.className = "chat-msg-user";
   userSpan.textContent = msg.user || "Unknown";
   const timeSpan = document.createElement("span");
   timeSpan.className = "chat-msg-time";
   timeSpan.textContent = new Date(msg.ts || Date.now()).toLocaleTimeString();
-  meta.appendChild(userSpan);
-  meta.appendChild(timeSpan);
+  const reportBtn = document.createElement("button");
+  reportBtn.type = "button";
+  reportBtn.className = "chat-msg-report";
+  reportBtn.textContent = "Report";
+  reportBtn.addEventListener("click", function () {
+    const ref = msg.id || "";
+    const url = `/report.html?target_type=chat_message&target_ref=${encodeURIComponent(ref)}`;
+    window.location.href = url;
+  });
+  header.appendChild(userSpan);
+  header.appendChild(timeSpan);
+  header.appendChild(reportBtn);
 
   const body = document.createElement("div");
   body.className = "chat-msg-body";
   body.textContent = msg.text || "";
 
-  row.appendChild(meta);
+  row.appendChild(header);
   row.appendChild(body);
 
   if (Array.isArray(msg.attachments) && msg.attachments.length) {
@@ -436,6 +453,13 @@ inviteBtn.addEventListener("click", async function () {
   } catch {
     channelMeta.textContent = "Invite failed.";
   }
+});
+
+reportRoomBtn.addEventListener("click", function () {
+  if (!currentChannelId) return;
+  const ref = reportRoomBtn.dataset.room || currentChannelId;
+  const url = `/report.html?target_type=chat_room&target_ref=${encodeURIComponent(ref)}`;
+  window.location.href = url;
 });
 
 document.getElementById("logoutBtn").addEventListener("click", function () {

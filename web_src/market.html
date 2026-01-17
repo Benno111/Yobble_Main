@@ -50,8 +50,10 @@
   <!-- Auto listings rendered through /api/market -->
 </main>
 <script type="module">
+import { requireAuth } from "/js/auth.js";
 import { mountTopbar } from "/js/layout.js";
 import { api } from "/js/api-pages/market.js";
+await requireAuth();
 await mountTopbar("market");
 const list = document.getElementById("list");
 const empty = document.getElementById("empty");
