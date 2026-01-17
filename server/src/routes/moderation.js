@@ -428,6 +428,19 @@ async function refundItemHolders(itemId, itemPrice, reason) {
   return { refunded_users: users, refunded_total: total };
 }
 
+async function getChatRoomByRef(ref) {
+  const byId = await get(
+    "SELECT channel_uuid, name FROM chat_channels WHERE channel_uuid=? AND is_dm=0",
+    [ref]
+  );
+  if (byId) return byId;
+  const byName = await get(
+    "SELECT channel_uuid, name FROM chat_channels WHERE name=? AND is_dm=0",
+    [ref]
+  );
+  return byName || null;
+}
+
 /* POST /api/mod/items/reject-ban */
 moderationRouter.post("/items/reject-ban", requireAuth, requireRole(...MOD_ROLES), async (req, res) => {
   const ref = String(req.body?.ref || req.body?.code || "").trim();
@@ -487,6 +500,33 @@ moderationRouter.post("/items/reject-ban", requireAuth, requireRole(...MOD_ROLES
     [now + durationMs, reason || "item_removed", uploader.id]
   );
   res.json({ ok: true, item: item.code, ban: "30d", refunds: refundInfo });
+});
+
+/* POST /api/mod/chat/rooms/remove */
+moderationRouter.post("/chat/rooms/remove", requireAuth, requireRole(...MOD_ROLES), async (req, res) => {
+  const ref = String(req.body?.room || req.body?.ref || "").trim();
+  if (!ref) return res.status(400).json({ error: "missing_room" });
+
+  const room = await getChatRoomByRef(ref);
+  if (!room) return res.status(404).json({ error: "room_not_found" });
+
+  const messageIds = await all(
+    "SELECT id FROM chat_messages WHERE channel_uuid=?",
+    [room.channel_uuid]
+  );
+  if (messageIds.length) {
+    const placeholders = messageIds.map(() => "?").join(",");
+    await run(
+      `DELETE FROM chat_attachments WHERE message_id IN (${placeholders})`,
+      messageIds.map((m) => m.id)
+    );
+  }
+  await run("DELETE FROM chat_messages WHERE channel_uuid=?", [room.channel_uuid]);
+  await run("DELETE FROM chat_channel_members WHERE channel_uuid=?", [room.channel_uuid]);
+  await run("DELETE FROM chat_invites WHERE channel_uuid=?", [room.channel_uuid]);
+  await run("DELETE FROM chat_channels WHERE channel_uuid=?", [room.channel_uuid]);
+
+  res.json({ ok: true });
 });
 
 /* GET /api/mod/search?q= */

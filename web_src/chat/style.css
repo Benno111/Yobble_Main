@@ -71,6 +71,18 @@
   font-size: 13px;
   padding: 6px 4px;
 }
+
+.chat-msg-report {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chat-msg-report:hover {
+  color: var(--text);
+}
 .chat-rooms__create {
   display: flex;
   gap: 8px;
@@ -205,9 +217,9 @@
 }
 
 .chat-panel__messages {
-  padding: 16px;
+  padding: 12px;
   display: grid;
-  gap: 12px;
+  gap: 8px;
   background: var(--bg);
   overflow: auto;
   max-height: 60vh;
@@ -227,19 +239,23 @@
 }
 
 .chat-msg-row {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
+  background: #0c0f14;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 8px;
+  width: 100%;
+  min-height: 56px;
+  max-height: 56px;
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
-.chat-msg-meta {
+.chat-msg-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  font-size: 12px;
 }
 
 .chat-msg-user {
@@ -253,6 +269,20 @@
 
 .chat-msg-body {
   white-space: pre-wrap;
+  font-size: 13px;
+}
+
+.chat-msg-report {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chat-msg-report:hover {
+  color: var(--text);
 }
 
 .chat-attachments {

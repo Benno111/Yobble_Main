@@ -18,7 +18,7 @@ const upload = multer({
 
 async function createReport(req, res){
   const { target_type, target_ref, category, message } = req.body || {};
-  if(!target_type || !["user","game","item","listing","trade"].includes(target_type)){
+  if(!target_type || !["user","game","item","listing","trade","chat_message","chat_room"].includes(target_type)){
     return res.status(400).json({ error:"bad_request" });
   }
 
