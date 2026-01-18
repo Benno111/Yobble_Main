@@ -184,7 +184,10 @@ gameHostingRouter.get("/versions", requireAuth, async (req,res)=>{
   const project = String(req.query?.project || "").trim();
   if(!project) return res.status(400).json({ error:"missing_project" });
 
-  const g = await get("SELECT id, project, title, description, category, owner_user_id FROM games WHERE project=?", [project]);
+  const g = await get(
+    "SELECT id, project, title, description, category, owner_user_id, custom_levels_enabled FROM games WHERE project=?",
+    [project]
+  );
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
   const isPrivileged = (req.user.role === "admin" || req.user.role === "moderator");
@@ -381,6 +384,23 @@ gameHostingRouter.get("/playable-versions", requireAuth, async (req, res) => {
   );
   for (const r of wlRows) published.add(r.version);
   res.json({ versions: Array.from(published) });
+});
+
+// Toggle custom level browser (owner/mod/admin)
+gameHostingRouter.post("/custom-levels-toggle", requireAuth, async (req, res) => {
+  const project = String(req.body?.project || "").trim();
+  const enabled = req.body?.enabled !== false;
+  if (!project) return res.status(400).json({ error: "missing_project" });
+
+  const g = await get("SELECT id, owner_user_id FROM games WHERE project=?", [project]);
+  if (!g) return res.status(404).json({ error: "game_not_found" });
+
+  const isOwner = g.owner_user_id === req.user.uid;
+  const isPrivileged = req.user.role === "admin" || req.user.role === "moderator";
+  if (!isOwner && !isPrivileged) return res.status(403).json({ error: "forbidden_owner" });
+
+  await run("UPDATE games SET custom_levels_enabled=? WHERE id=?", [enabled ? 1 : 0, g.id]);
+  res.json({ ok: true, custom_levels_enabled: enabled ? 1 : 0 });
 });
 
 // Publish/Rollback (moderator/admin)

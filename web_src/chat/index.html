@@ -94,6 +94,7 @@ let loadingHistory = false;
 let attachments = [];
 let typingTimeout = null;
 let manualClose = false;
+let roomRefreshTimer = null;
 
 const chatMessages = document.getElementById("chatMessages");
 const chatInput = document.getElementById("chatInput");
@@ -124,7 +125,9 @@ function authHeaders() {
   return { Authorization: "Bearer " + token };
 }
 
-async function fetchRooms() {
+async function fetchRooms(options) {
+  const opts = options || {};
+  const shouldSwitch = opts.shouldSwitch !== false;
   const res = await fetch(API.rooms, { headers: authHeaders() });
   if (!res.ok) return;
   const data = await res.json();
@@ -141,7 +144,14 @@ async function fetchRooms() {
     currentChannelId = rooms[0].id;
     currentChannelName = rooms[0].name;
   }
-  switchChannel(currentChannelId);
+  if (shouldSwitch) switchChannel(currentChannelId);
+}
+
+function startRoomRefresh() {
+  if (roomRefreshTimer) clearInterval(roomRefreshTimer);
+  roomRefreshTimer = setInterval(function () {
+    fetchRooms({ shouldSwitch: false });
+  }, 15000);
 }
 
 function renderRoomList() {
@@ -478,9 +488,9 @@ if (inviteToken) {
         currentChannelName = data.channel.name;
       }
     })
-    .finally(fetchRooms);
+    .finally(() => fetchRooms().finally(startRoomRefresh));
 } else {
-  fetchRooms();
+  fetchRooms().finally(startRoomRefresh);
 }
 </script>
 </body>
