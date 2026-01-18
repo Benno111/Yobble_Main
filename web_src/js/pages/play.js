@@ -2,6 +2,12 @@ import { api } from "../api-pages/play.js";
 import { requireAuth } from "../auth.js";
 await requireAuth();
 const q = new URLSearchParams(location.search);
+if (!q.get("project") && q.get("slug")) {
+  q.set("project", q.get("slug"));
+  q.delete("slug");
+  const newSearch = q.toString();
+  location.replace(`${location.pathname}${newSearch ? `?${newSearch}` : ""}${location.hash}`);
+}
 const project = q.get("project") || "";
 const version = q.get("version") || "";
 const entry = q.get("entry") || "index.html";

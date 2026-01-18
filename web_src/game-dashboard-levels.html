@@ -24,6 +24,7 @@
           <input type="checkbox" id="customLevelsToggle" checked>
           <span>Custom level browser</span>
         </label>
+        <span class="muted" id="customLevelsMsg"></span>
       </div>
     </div>
     <div>
@@ -59,6 +60,7 @@ const latestVersion = document.getElementById("latestVersion");
 const publishedVersion = document.getElementById("publishedVersion");
 const root = document.getElementById("levelsRoot");
 const customLevelsToggle = document.getElementById("customLevelsToggle");
+const customLevelsMsg = document.getElementById("customLevelsMsg");
 function escapeHtml(v){
   return String(v ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;",
@@ -83,6 +85,7 @@ if(!project){
     gameTitle.textContent = g.title || "Untitled";
     gameDesc.textContent = g.description || "No description yet.";
     gameproject.textContent = `project ${g.project || project}`;
+    customLevelsToggle.checked = g.custom_levels_enabled !== 0;
     dashboardPage.value = "levels";
     const latest = versions[0]?.version || "—";
     const published = versions.find(v => v.is_published)?.version || "—";
@@ -246,11 +249,25 @@ dashboardPage.addEventListener("change", () => {
   location.href = next;
 });
 customLevelsToggle.addEventListener("change", () => {
-  const target = customLevelsToggle.checked
-    ? "/game-dashboard-levels.html"
-    : "/game-dashboard-versions.html";
-  const next = project ? `${target}?project=${encodeURIComponent(project)}` : target;
-  location.href = next;
+  if (!project) return;
+  const enabled = customLevelsToggle.checked;
+  customLevelsToggle.disabled = true;
+  if (customLevelsMsg) customLevelsMsg.textContent = "Saving…";
+  api.post("/api/gamehosting/custom-levels-toggle", { project, enabled })
+    .then((res) => {
+      customLevelsToggle.checked = res.custom_levels_enabled !== 0;
+      if (customLevelsMsg) customLevelsMsg.textContent = "Saved";
+      setTimeout(() => {
+        if (customLevelsMsg) customLevelsMsg.textContent = "";
+      }, 1200);
+    })
+    .catch(() => {
+      customLevelsToggle.checked = !enabled;
+      if (customLevelsMsg) customLevelsMsg.textContent = "Failed";
+    })
+    .finally(() => {
+      customLevelsToggle.disabled = false;
+    });
 });
 </script>
 </body>

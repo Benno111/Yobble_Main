@@ -243,6 +243,9 @@ async function load(){
     media.innerHTML = `<div class="muted">No media uploaded yet.</div>`;
   }
   if (levelsEl) {
+    if (g.custom_levels_enabled === 0) {
+      levelsEl.hidden = true;
+    } else {
     try{
       const levelsRes = await api.get("/api/games/custom-lvl/" + encodeURIComponent(project) + "/list");
       const levels = Array.isArray(levelsRes?.levels) ? levelsRes.levels : [];
@@ -270,6 +273,7 @@ async function load(){
         </div>
         <div class="muted" style="margin-top:12px">Custom levels unavailable.</div>
       `;
+    }
     }
   }
   if(me){

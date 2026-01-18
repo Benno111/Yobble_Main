@@ -15,6 +15,35 @@
     </div>
     <div class="hero-art">Release notes</div>
   </section>
+  <section class="card" id="modChangeWrap" hidden>
+    <div class="section-title">
+      <h2>Manage changelog</h2>
+      <span class="pill">Moderators only</span>
+    </div>
+    <form id="modChangeForm" class="stack">
+      <input type="hidden" name="id">
+      <label class="form-field">
+        <span class="small">Title</span>
+        <input name="title" type="text" maxlength="140" required>
+      </label>
+      <label class="form-field">
+        <span class="small">Body</span>
+        <textarea name="body" rows="6" required></textarea>
+      </label>
+      <label class="form-field">
+        <span class="small">Status</span>
+        <select name="status">
+          <option value="published">Published</option>
+          <option value="draft">Draft</option>
+        </select>
+      </label>
+      <div class="row" style="justify-content:flex-start">
+        <button class="primary" type="submit" id="modChangeSave">Save change</button>
+        <button class="secondary" type="button" id="modChangeReset">New change</button>
+        <span class="small" id="modChangeNotice"></span>
+      </div>
+    </form>
+  </section>
   <section class="card">
     <div id="logList" class="list"></div>
     <div id="logEmpty" class="empty" hidden>No updates yet.</div>
@@ -22,9 +51,18 @@
 </main>
 <script type="module">
 import { mountTopbar } from "/js/layout.js";
+import { getCurrentUser } from "/js/auth-client.js";
+
 await mountTopbar("changelog");
 const logList = document.getElementById("logList");
 const logEmpty = document.getElementById("logEmpty");
+const modWrap = document.getElementById("modChangeWrap");
+const modForm = document.getElementById("modChangeForm");
+const modReset = document.getElementById("modChangeReset");
+const modNotice = document.getElementById("modChangeNotice");
+const modSave = document.getElementById("modChangeSave");
+const token = localStorage.getItem("token");
+
 function escapeHtml(v){
   return String(v ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;",
@@ -34,27 +72,116 @@ function escapeHtml(v){
     "'": "&#39;"
   }[c]));
 }
-try{
-  const res = await fetch("/api/changelog");
-  const data = await res.json();
-  const entries = Array.isArray(data.entries) ? data.entries : [];
-  if (!entries.length) {
-    logEmpty.hidden = false;
-  } else {
-    logList.innerHTML = entries.map((entry) => `
-      <div class="list-item">
-        <div style="flex:1">
+
+function renderEntry(entry, canEdit){
+  const status = entry.status || "published";
+  const statusBadge = status !== "published" ? `<span class="pill">Draft</span>` : "";
+  return `
+    <div class="list-item" data-entry-id="${entry.id}">
+      <div style="flex:1">
+        <div class="row" style="justify-content:space-between;gap:10px">
           <div style="font-weight:700">${escapeHtml(entry.title || "Update")}</div>
-          <div class="small">${escapeHtml(new Date(entry.created_at || Date.now()).toLocaleDateString())}</div>
-          <div style="margin-top:6px;white-space:pre-wrap">${escapeHtml(entry.body || "")}</div>
+          ${statusBadge}
         </div>
+        <div class="small">${escapeHtml(new Date(entry.created_at || Date.now()).toLocaleDateString())}</div>
+        <div style="margin-top:6px;white-space:pre-wrap">${escapeHtml(entry.body || "")}</div>
       </div>
-    `).join("");
-  }
-} catch {
-  logEmpty.hidden = false;
-  logEmpty.textContent = "Could not load updates.";
+      ${canEdit ? `<div class="actions"><button class="secondary" data-edit-entry="${entry.id}">Edit</button></div>` : ""}
+    </div>
+  `;
 }
+
+async function loadEntries(canEdit){
+  try{
+    const url = canEdit ? "/api/changelog?status=all" : "/api/changelog";
+    const res = await fetch(url, canEdit && token ? { headers: { Authorization: "Bearer " + token } } : undefined);
+    const data = await res.json();
+    const entries = Array.isArray(data.entries) ? data.entries : [];
+    if (!entries.length) {
+      logEmpty.hidden = false;
+      logList.innerHTML = "";
+      return;
+    }
+    logEmpty.hidden = true;
+    logList.innerHTML = entries.map((entry) => renderEntry(entry, canEdit)).join("");
+    if (canEdit) {
+      logList.querySelectorAll("[data-edit-entry]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-edit-entry");
+          const entry = entries.find((e) => String(e.id) === String(id));
+          if (!entry || !modForm) return;
+          modForm.id.value = entry.id;
+          modForm.title.value = entry.title || "";
+          modForm.body.value = entry.body || "";
+          modForm.status.value = entry.status || "published";
+          if (modNotice) modNotice.textContent = "Editing entry " + entry.id;
+          modSave.textContent = "Update change";
+        });
+      });
+    }
+  } catch {
+    logEmpty.hidden = false;
+    logEmpty.textContent = "Could not load updates.";
+  }
+}
+
+const user = await getCurrentUser();
+const isMod = user && (user.role === "admin" || user.role === "mod" || user.role === "moderator");
+if (isMod && modWrap) modWrap.hidden = false;
+
+if (modReset && modForm) {
+  modReset.addEventListener("click", () => {
+    modForm.reset();
+    modForm.id.value = "";
+    modSave.textContent = "Save change";
+    if (modNotice) modNotice.textContent = "";
+  });
+}
+
+if (modForm) {
+  modForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!token) {
+      if (modNotice) modNotice.textContent = "Login required.";
+      return;
+    }
+    const payload = {
+      title: modForm.title.value.trim(),
+      body: modForm.body.value.trim(),
+      status: modForm.status.value
+    };
+    if (!payload.title || !payload.body) {
+      if (modNotice) modNotice.textContent = "Title and body are required.";
+      return;
+    }
+    const isEdit = !!modForm.id.value;
+    modSave.disabled = true;
+    if (modNotice) modNotice.textContent = isEdit ? "Updating..." : "Publishing...";
+    const resp = await fetch(
+      isEdit ? `/api/changelog/${encodeURIComponent(modForm.id.value)}` : "/api/changelog",
+      {
+        method: isEdit ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+    modSave.disabled = false;
+    if (!resp.ok) {
+      if (modNotice) modNotice.textContent = "Save failed.";
+      return;
+    }
+    modForm.reset();
+    modForm.id.value = "";
+    modSave.textContent = "Save change";
+    if (modNotice) modNotice.textContent = "Saved.";
+    await loadEntries(isMod);
+  });
+}
+
+await loadEntries(isMod);
 </script>
 </body>
 </html>

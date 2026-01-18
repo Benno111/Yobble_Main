@@ -207,8 +207,12 @@ export async function initDb() {
     project TEXT UNIQUE,
     title TEXT NOT NULL,
     description TEXT,
-    is_hidden INTEGER DEFAULT 0
+    is_hidden INTEGER DEFAULT 0,
+    custom_levels_enabled INTEGER DEFAULT 1
   )`);
+
+  // Ensure project exists for older schemas before slug migration runs.
+  await addColumnIfMissing("games", "project", "TEXT");
 
   /* 🔁 slug → project migration */
   await copyColumnData("games", "slug", "project");
@@ -219,6 +223,7 @@ export async function initDb() {
   await addColumnIfMissing("games", "category", "TEXT");
   await addColumnIfMissing("games", "banner_path", "TEXT");
   await addColumnIfMissing("games", "screenshots_json", "TEXT");
+  await addColumnIfMissing("games", "custom_levels_enabled", "INTEGER DEFAULT 1");
 
   /* GAME VERSIONS */
   await run(`CREATE TABLE IF NOT EXISTS game_versions(
@@ -232,6 +237,40 @@ export async function initDb() {
     UNIQUE(game_id, version),
     FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE
   )`);
+
+  /* BLOG POSTS */
+  await run(`CREATE TABLE IF NOT EXISTS blog_posts(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    project TEXT UNIQUE NOT NULL,
+    summary TEXT,
+    body TEXT NOT NULL,
+    tags_json TEXT,
+    status TEXT DEFAULT 'draft',
+    featured INTEGER DEFAULT 0,
+    author_user_id INTEGER,
+    created_at INTEGER,
+    updated_at INTEGER,
+    published_at INTEGER
+  )`);
+  await addColumnIfMissing("blog_posts", "project", "TEXT");
+  await copyColumnData("blog_posts", "slug", "project");
+  await renameColumnIfExists("blog_posts", "slug", "project");
+
+  /* GAME KV (storage sync) */
+  await run(`CREATE TABLE IF NOT EXISTS game_kv(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    project TEXT NOT NULL,
+    version TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT,
+    updated_at INTEGER NOT NULL,
+    UNIQUE(user_id, project, version, key)
+  )`);
+  await addColumnIfMissing("game_kv", "project", "TEXT");
+  await copyColumnData("game_kv", "slug", "project");
+  await renameColumnIfExists("game_kv", "slug", "project");
 
   /* ITEMS */
   await run(`CREATE TABLE IF NOT EXISTS items(
@@ -393,8 +432,12 @@ export async function initDb() {
     title TEXT NOT NULL,
     body TEXT NOT NULL,
     created_at INTEGER NOT NULL,
-    created_by TEXT
+    created_by TEXT,
+    status TEXT DEFAULT 'published',
+    updated_at INTEGER
   )`);
+  await addColumnIfMissing("changelog_entries", "status", "TEXT DEFAULT 'published'");
+  await addColumnIfMissing("changelog_entries", "updated_at", "INTEGER");
 
   console.log("[DB] schema ready");
 }
