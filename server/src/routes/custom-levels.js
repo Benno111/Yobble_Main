@@ -2,7 +2,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import sqlite3 from "sqlite3";
-import { requireAuth } from "../auth.js";
+import { requireAuth, optionalAuth } from "../auth.js";
 import { get, run } from "../db.js";
 
 export const customLevelsRouter = express.Router();
@@ -88,12 +88,22 @@ function clampDifficulty(v) {
 }
 
 async function requireGame(project) {
-  const g = await get("SELECT id, owner_user_id FROM games WHERE project=?", [project]);
+  const g = await get(
+    "SELECT id, owner_user_id, custom_levels_enabled FROM games WHERE project=?",
+    [project]
+  );
   return g;
 }
 
 function isPrivileged(user) {
   return user?.role === "admin" || user?.role === "moderator";
+}
+
+function canUseCustomLevels(game, user) {
+  if (!game) return false;
+  if (game.custom_levels_enabled === 1) return true;
+  const isOwner = user && game.owner_user_id === user.uid;
+  return isOwner || isPrivileged(user);
 }
 
 customLevelsRouter.post("/:project/upload", requireAuth, async (req, res) => {
@@ -112,6 +122,9 @@ customLevelsRouter.post("/:project/upload", requireAuth, async (req, res) => {
 
   const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
+  if (!canUseCustomLevels(game, req.user)) {
+    return res.status(403).json({ error: "custom_levels_disabled" });
+  }
 
   const db = getLevelDb(project);
   await ensureLevelTable(db, getLevelDbKey(project));
@@ -172,6 +185,9 @@ customLevelsRouter.put("/:project/update/:id", requireAuth, async (req, res) => 
 
   const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
+  if (!canUseCustomLevels(game, req.user)) {
+    return res.status(403).json({ error: "custom_levels_disabled" });
+  }
 
   const db = getLevelDb(project);
   await ensureLevelTable(db, getLevelDbKey(project));
@@ -209,6 +225,9 @@ customLevelsRouter.post("/:project/difficulty/:id", requireAuth, async (req, res
 
   const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
+  if (!canUseCustomLevels(game, req.user)) {
+    return res.status(403).json({ error: "custom_levels_disabled" });
+  }
 
   const isOwner = game.owner_user_id === req.user.uid;
   if (!isOwner && !isPrivileged(req.user)) {
@@ -244,7 +263,7 @@ customLevelsRouter.post("/:project/difficulty/:id", requireAuth, async (req, res
   res.json({ ok: true, awarded: delta });
 });
 
-customLevelsRouter.get("/:project/download/:id", async (req, res) => {
+customLevelsRouter.get("/:project/download/:id", optionalAuth, async (req, res) => {
   const project = String(req.params.project || "").trim();
   const id = Number(req.params.id);
   if (!project || !Number.isFinite(id)) {
@@ -253,6 +272,9 @@ customLevelsRouter.get("/:project/download/:id", async (req, res) => {
 
   const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
+  if (!canUseCustomLevels(game, req.user)) {
+    return res.status(403).json({ error: "custom_levels_disabled" });
+  }
 
   const db = getLevelDb(project);
   await ensureLevelTable(db, getLevelDbKey(project));
@@ -275,6 +297,9 @@ customLevelsRouter.delete("/:project/delete/:id", requireAuth, async (req, res) 
 
   const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
+  if (!canUseCustomLevels(game, req.user)) {
+    return res.status(403).json({ error: "custom_levels_disabled" });
+  }
 
   const db = getLevelDb(project);
   await ensureLevelTable(db, getLevelDbKey(project));
@@ -290,12 +315,15 @@ customLevelsRouter.delete("/:project/delete/:id", requireAuth, async (req, res) 
   res.json({ ok: true });
 });
 
-customLevelsRouter.get("/:project/list", async (req, res) => {
+customLevelsRouter.get("/:project/list", optionalAuth, async (req, res) => {
   const project = String(req.params.project || "").trim();
   if (!project) return res.status(400).json({ error: "missing_project" });
 
   const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
+  if (!canUseCustomLevels(game, req.user)) {
+    return res.status(403).json({ error: "custom_levels_disabled" });
+  }
 
   const db = getLevelDb(project);
   await ensureLevelTable(db, getLevelDbKey(project));
@@ -309,7 +337,7 @@ customLevelsRouter.get("/:project/list", async (req, res) => {
   res.json({ levels: rows });
 });
 
-customLevelsRouter.get("/:project/search", async (req, res) => {
+customLevelsRouter.get("/:project/search", optionalAuth, async (req, res) => {
   const project = String(req.params.project || "").trim();
   const q = String(req.query?.q || "").trim();
   const creator = String(req.query?.creator || "").trim();
@@ -318,6 +346,9 @@ customLevelsRouter.get("/:project/search", async (req, res) => {
 
   const game = await requireGame(project);
   if (!game) return res.status(404).json({ error: "game_not_found" });
+  if (!canUseCustomLevels(game, req.user)) {
+    return res.status(403).json({ error: "custom_levels_disabled" });
+  }
 
   const db = getLevelDb(project);
   await ensureLevelTable(db, getLevelDbKey(project));

@@ -144,6 +144,25 @@ function normalizeChannel(input, rooms) {
   return rooms[0]?.channel_uuid || "";
 }
 
+function resolveChannelInput(input, rooms) {
+  const trimmed = typeof input === "string" ? input.trim() : "";
+  if (!trimmed) return { type: "default" };
+  if (isDmChannel(trimmed)) return { type: "dm", value: trimmed };
+  const direct = rooms.find((room) => room.channel_uuid === trimmed);
+  if (direct) return { type: "room", room: direct };
+  const byName = rooms.find((room) => room.name === trimmed);
+  if (byName) return { type: "room", room: byName };
+  return { type: "missing", value: trimmed };
+}
+
+async function findChannelOrNull(input) {
+  if (!input) return null;
+  let channel = await getChannelById(input);
+  if (!channel) channel = await getChannelByName(input, false);
+  if (channel && channel.is_dm) return null;
+  return channel;
+}
+
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
@@ -265,7 +284,18 @@ export function createChatRouter({ projectRoot }) {
   router.get("/messages", requireAuth, async (req, res) => {
     const { username } = req.user;
     const roomRows = await loadRoomsForUser(username);
-    const channelId = normalizeChannel(req.query.channel, roomRows);
+    const channelRequest = resolveChannelInput(req.query.channel, roomRows);
+    if (channelRequest.type === "missing") {
+      const exists = await findChannelOrNull(channelRequest.value);
+      if (!exists) return res.status(404).json({ error: "not_found" });
+      return res.status(403).json({ error: "not_allowed" });
+    }
+    const channelId =
+      channelRequest.type === "default"
+        ? normalizeChannel("", roomRows)
+        : channelRequest.type === "dm"
+        ? channelRequest.value
+        : channelRequest.room.channel_uuid;
     let channelRow = null;
     let channelName = "";
     if (isDmChannel(channelId)) {
@@ -338,7 +368,18 @@ export function createChatRouter({ projectRoot }) {
   router.post("/messages", requireAuth, upload.array("files", MAX_ATTACHMENTS), async (req, res) => {
     const { username } = req.user;
     const roomRows = await loadRoomsForUser(username);
-    const channelId = normalizeChannel(req.body?.channel, roomRows);
+    const channelRequest = resolveChannelInput(req.body?.channel, roomRows);
+    if (channelRequest.type === "missing") {
+      const exists = await findChannelOrNull(channelRequest.value);
+      if (!exists) return res.status(404).json({ error: "not_found" });
+      return res.status(403).json({ error: "not_allowed" });
+    }
+    const channelId =
+      channelRequest.type === "default"
+        ? normalizeChannel("", roomRows)
+        : channelRequest.type === "dm"
+        ? channelRequest.value
+        : channelRequest.room.channel_uuid;
     let channelRow = null;
     let channelName = "";
     if (isDmChannel(channelId)) {
@@ -485,7 +526,22 @@ export function attachChatWs(server, { projectRoot }) {
     }
 
     const roomRows = await loadRoomsForUser(username);
-    const channelId = normalizeChannel(channelParam, roomRows);
+    const channelRequest = resolveChannelInput(channelParam, roomRows);
+    if (channelRequest.type === "missing") {
+      const exists = await findChannelOrNull(channelRequest.value);
+      if (!exists) {
+        ws.close(4404, "Not found");
+        return;
+      }
+      ws.close(4002, "Not allowed");
+      return;
+    }
+    const channelId =
+      channelRequest.type === "default"
+        ? normalizeChannel("", roomRows)
+        : channelRequest.type === "dm"
+        ? channelRequest.value
+        : channelRequest.room.channel_uuid;
     let channelRow = null;
     let channelName = "";
     if (isDmChannel(channelId)) {

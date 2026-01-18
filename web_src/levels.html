@@ -40,6 +40,7 @@ const pageDesc = document.getElementById("pageDesc");
 const backBtn = document.getElementById("backBtn");
 const root = document.getElementById("levelsRoot");
 const levelSearch = document.getElementById("levelSearch");
+const levelsSection = document.getElementById("levelsRoot")?.closest("section");
 let levels = [];
 function escapeHtml(v){
   return String(v ?? "").replace(/[&<>"']/g, (c) => ({
@@ -101,6 +102,13 @@ if(!project){
   gameproject.textContent = `project ${project}`;
   backBtn.href = `/game-dashboard-levels.html?project=${encodeURIComponent(project)}`;
   try{
+    const gameRes = await api.get("/api/games/" + encodeURIComponent(project));
+    const g = gameRes.game || gameRes;
+    if (g.custom_levels_enabled === 0) {
+      if (levelsSection) levelsSection.style.display = "none";
+      pageDesc.textContent = "Custom level browser is disabled for this game.";
+      return;
+    }
     const levelsRes = await api.get("/api/games/custom-lvl/" + encodeURIComponent(project) + "/list");
     levels = Array.isArray(levelsRes?.levels) ? levelsRes.levels : [];
     render();

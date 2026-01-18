@@ -49,6 +49,7 @@ function listFilesRecursive(baseDir, sub = "") {
 gamesRouter.get("/", requireAuth, async (req, res) => {
   const games = await all(
     `SELECT g.id, g.project, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured,
+            g.custom_levels_enabled,
             g.owner_user_id,
             u.username AS owner_username, pr.display_name AS owner_display_name,
             (SELECT v.version FROM game_versions v
@@ -100,6 +101,7 @@ gamesRouter.get("/:project", async (req, res) => {
 
   const g = await get(
     `SELECT g.id, g.project, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_featured, g.is_hidden,
+            g.custom_levels_enabled,
             u.username AS owner_username, pr.display_name AS owner_display_name,
             (SELECT v.version FROM game_versions v
              WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved'

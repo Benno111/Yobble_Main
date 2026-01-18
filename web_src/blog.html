@@ -30,23 +30,23 @@ function renderTags(tags = []) {
 
 function renderFeatured(post) {
   return `
-    <article class="blog-card">
+    <a class="blog-card blog-link" href="/blog-post.html?project=${encodeURIComponent(post.project)}">
       ${renderTags(post.tags)}
       <h3 style="margin:0">${post.title}</h3>
       <p class="small">${post.summary || post.body.slice(0, 120)}...</p>
       <div class="meta">${new Date(post.published_at || post.created_at).toLocaleDateString()} · ${Math.max(3, Math.ceil((post.body || "").length / 800))} min read</div>
-    </article>
+    </a>
   `;
 }
 
 function renderLatest(post) {
   return `
-    <article class="blog-list-item">
+    <a class="blog-list-item blog-link" href="/blog-post.html?project=${encodeURIComponent(post.project)}">
       ${renderTags(post.tags)}
       <h3 class="title">${post.title}</h3>
       <div class="meta">${new Date(post.published_at || post.created_at).toLocaleDateString()} · ${Math.max(3, Math.ceil((post.body || "").length / 800))} min read</div>
       <p class="small">${post.summary || post.body.slice(0, 140)}...</p>
-    </article>
+    </a>
   `;
 }
 

@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog Post - Yobble</title>
+  <link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<script type="module">
+import { mountTopbar } from "/js/layout.js";
+
+await mountTopbar("ublog");
+
+const params = new URLSearchParams(location.search);
+const project = params.get("project") || "";
+const postTitle = document.getElementById("postTitle");
+const postMeta = document.getElementById("postMeta");
+const postTags = document.getElementById("postTags");
+const postBody = document.getElementById("postBody");
+const backBtn = document.getElementById("backBtn");
+
+function escapeHtml(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+
+function renderTags(tags = []) {
+  if (!tags.length) return "";
+  return tags.map((t) => `<span class="blog-tag">${escapeHtml(t)}</span>`).join("");
+}
+
+function renderBody(text){
+  const raw = escapeHtml(text || "");
+  if (!raw) return "<p class=\"small\">No content.</p>";
+  return raw
+    .split(/\n{2,}/)
+    .map((chunk) => `<p>${chunk.replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
+if (!project) {
+  postTitle.textContent = "Missing post";
+  postMeta.textContent = "Provide ?project= in the URL.";
+} else {
+  try{
+    const resp = await fetch("/api/blog/posts/" + encodeURIComponent(project));
+    if (!resp.ok) throw new Error("not_found");
+    const post = await resp.json();
+    document.title = `${post.title} - Yobble Blog`;
+    postTitle.textContent = post.title;
+    postMeta.textContent =
+      `${new Date(post.published_at || post.created_at).toLocaleDateString()} · ` +
+      `${Math.max(3, Math.ceil((post.body || "").length / 800))} min read · ` +
+      `${post.author || "Yobble"}`;
+    postTags.innerHTML = renderTags(post.tags);
+    postBody.innerHTML = renderBody(post.body);
+  }catch{
+    postTitle.textContent = "Post not found";
+    postMeta.textContent = "This blog post may have been removed.";
+  }
+}
+
+backBtn.addEventListener("click", () => {
+  if (document.referrer && document.referrer.includes("/blog")) {
+    history.back();
+    return;
+  }
+  location.href = "/blog.html";
+});
+</script>
+<body>
+  <main>
+    <section class="card blog-hero">
+      <div class="pill">Platform Blog</div>
+      <h1 id="postTitle">Loading…</h1>
+      <p id="postMeta" class="muted">Fetching post.</p>
+      <div class="hero-actions">
+        <button class="pill outline" id="backBtn" type="button">Back to blog</button>
+      </div>
+      <div id="postTags" class="actions" style="margin-top:10px"></div>
+    </section>
+    <section class="card" style="margin-top:18px">
+      <article id="postBody" class="blog-post" style="display:grid;gap:12px"></article>
+    </section>
+  </main>
+</body>
+</html>
