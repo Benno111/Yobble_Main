@@ -6,6 +6,14 @@ export const blogRouter = express.Router();
 
 const BLOG_ROLES = ["admin", "mod", "moderator"];
 const MAX_LIMIT = 100;
+let blogHasSlugColumn;
+
+async function getBlogHasSlugColumn() {
+  if (blogHasSlugColumn != null) return blogHasSlugColumn;
+  const rows = await all("PRAGMA table_info(blog_posts)");
+  blogHasSlugColumn = rows.some((row) => row.name === "slug");
+  return blogHasSlugColumn;
+}
 
 function projectify(input) {
   return String(input || "")
@@ -122,23 +130,43 @@ blogRouter.post("/posts", requireAuth, requireRole(...BLOG_ROLES), async (req, r
   const tags = normalizeTags(req.body?.tags);
   const now = Date.now();
   const publishedAt = status === "published" ? now : null;
+  const hasSlugColumn = await getBlogHasSlugColumn();
+
+  const columns = [
+    "title",
+    "project",
+    "summary",
+    "body",
+    "tags_json",
+    "status",
+    "featured",
+    "author_user_id",
+    "created_at",
+    "updated_at",
+    "published_at"
+  ];
+  const values = [
+    title,
+    project,
+    summary,
+    body,
+    JSON.stringify(tags),
+    status,
+    featured,
+    req.user.uid,
+    now,
+    now,
+    publishedAt
+  ];
+  if (hasSlugColumn) {
+    columns.splice(2, 0, "slug");
+    values.splice(2, 0, project);
+  }
 
   const result = await run(
-    `INSERT INTO blog_posts(title, project, summary, body, tags_json, status, featured, author_user_id, created_at, updated_at, published_at)
-     VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-    [
-      title,
-      project,
-      summary,
-      body,
-      JSON.stringify(tags),
-      status,
-      featured,
-      req.user.uid,
-      now,
-      now,
-      publishedAt
-    ]
+    `INSERT INTO blog_posts(${columns.join(", ")})
+     VALUES(${columns.map(() => "?").join(", ")})`,
+    values
   );
 
   res.json({ ok: true, id: result.lastID, project });

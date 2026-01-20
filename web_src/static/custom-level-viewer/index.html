@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custom Level Viewer</title>
+<style>
+  :root {
+    color-scheme: light;
+  }
+  body {
+    margin: 0;
+    font-family: "Trebuchet MS", "Lucida Sans Unicode", "Lucida Grande", "Lucida Sans", Arial, sans-serif;
+    background: radial-gradient(circle at 10% 10%, #fef9c3, #f8fafc 45%, #e0f2fe 100%);
+    color: #0f172a;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+  .panel {
+    width: min(760px, 100%);
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
+    padding: 28px;
+  }
+  h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+  }
+  p {
+    margin: 0 0 16px;
+    line-height: 1.5;
+  }
+  .meta {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 18px;
+    font-size: 14px;
+    color: #334155;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .field {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  input {
+    padding: 10px 12px;
+    border: 1px solid #cbd5f5;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+  button {
+    border: none;
+    background: #0f766e;
+    color: #fff;
+    padding: 10px 18px;
+    font-size: 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(15, 118, 110, 0.25);
+  }
+  button:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 12px;
+    overflow-x: auto;
+  }
+  .status {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #0f172a;
+  }
+</style>
+</head>
+<body>
+  <div class="panel">
+    <div class="pill">Custom Level Viewer</div>
+    <h1>View Custom Level by ID</h1>
+    <p>Fetches a single custom level for a project and displays its raw data.</p>
+    <div class="meta">
+      <div><strong>Project:</strong> <span id="projectName">unknown</span></div>
+      <div><strong>Level ID:</strong> <span id="levelId">—</span></div>
+    </div>
+    <div class="field">
+      <label for="levelInput">Level ID</label>
+      <input id="levelInput" placeholder="123" inputmode="numeric" />
+    </div>
+    <button id="loadBtn" type="button">Load Level</button>
+    <div class="status" id="status"></div>
+    <pre id="preview">Awaiting load...</pre>
+  </div>
+<script>
+(() => {
+  const statusEl = document.getElementById("status");
+  const previewEl = document.getElementById("preview");
+  const projectNameEl = document.getElementById("projectName");
+  const levelIdEl = document.getElementById("levelId");
+  const levelInput = document.getElementById("levelInput");
+  const loadBtn = document.getElementById("loadBtn");
+
+  function getProjectFromPath() {
+    const parts = location.pathname.split("/").filter(Boolean);
+    const gamesIndex = parts.indexOf("games");
+    if (gamesIndex === -1 || parts.length < gamesIndex + 2) return "";
+    return parts[gamesIndex + 1];
+  }
+
+  function getLevelIdFromQuery() {
+    const params = new URLSearchParams(location.search);
+    return params.get("id") || "";
+  }
+
+  const project = getProjectFromPath();
+  projectNameEl.textContent = project || "unknown";
+
+  const initialId = getLevelIdFromQuery();
+  if (initialId) {
+    levelInput.value = initialId;
+    levelIdEl.textContent = initialId;
+  }
+
+  async function loadLevel(id) {
+    statusEl.textContent = "";
+    previewEl.textContent = "Loading...";
+    loadBtn.disabled = true;
+
+    if (!project) {
+      statusEl.textContent = "Missing project in URL path.";
+      previewEl.textContent = "";
+      loadBtn.disabled = false;
+      return;
+    }
+
+    if (!id) {
+      statusEl.textContent = "Provide a level ID.";
+      previewEl.textContent = "";
+      loadBtn.disabled = false;
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/games/custom-lvl/${encodeURIComponent(project)}/download/${encodeURIComponent(id)}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Load failed");
+      }
+      const data = await res.json();
+      const level = data.level || {};
+      levelIdEl.textContent = String(level.id || id);
+      previewEl.textContent = level.raw_data || "";
+      statusEl.textContent = "Loaded.";
+    } catch (err) {
+      previewEl.textContent = "";
+      statusEl.textContent = `Load failed: ${err.message || "unknown error"}`;
+    } finally {
+      loadBtn.disabled = false;
+    }
+  }
+
+  loadBtn.addEventListener("click", () => loadLevel(levelInput.value.trim()));
+  if (initialId) {
+    loadLevel(initialId);
+  }
+})();
+</script>
+</body>
+</html>
