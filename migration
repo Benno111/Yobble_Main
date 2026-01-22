@@ -1,0 +1,1 @@
+npm install compression@latest express@latest cors@latest jsonwebtoken@latest bcryptjs@latest sqlite3@latest multer@latest ws@latest unzipper@latest
