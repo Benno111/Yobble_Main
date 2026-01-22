@@ -336,11 +336,204 @@ app.get("/games/:project", (req, res, next) => {
   if (req.path.split("/").length !== 3) return next();
   (async () => {
     try {
-      const row = await get("SELECT is_hidden FROM games WHERE project=?", [req.params.project]);
-      if (!row || row.is_hidden) {
+      const g = await get(
+        `SELECT g.id, g.project, g.title, g.description, g.category, g.banner_path, g.screenshots_json, g.is_hidden,
+                g.is_featured, g.custom_levels_enabled, g.owner_user_id,
+                u.username AS owner_username, pr.display_name AS owner_display_name,
+                (SELECT v.version FROM game_versions v
+                 WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved'
+                 ORDER BY v.created_at DESC LIMIT 1) AS latest_version,
+                (SELECT v.entry_html FROM game_versions v
+                 WHERE v.game_id=g.id AND v.is_published=1 AND v.approval_status='approved'
+                 ORDER BY v.created_at DESC LIMIT 1) AS entry_html
+         FROM games g
+         LEFT JOIN users u ON u.id = g.owner_user_id
+         LEFT JOIN profiles pr ON pr.user_id = g.owner_user_id
+         WHERE g.project=?`,
+        [req.params.project]
+      );
+      if (!g || g.is_hidden) {
         return res.redirect("/404.html?msg=" + encodeURIComponent("Game not found."));
       }
-      return res.sendFile(path.join(WEB_DIR, "game.html"));
+      let user = null;
+      const authHeader = req.headers.authorization || "";
+      const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+      if (token) {
+        try {
+          const decoded = verifyToken(token);
+          user = await get(
+            "SELECT id, username, role FROM users WHERE id=?",
+            [decoded.uid]
+          );
+        } catch {}
+      }
+      let screenshots = [];
+      try{
+        const parsed = JSON.parse(g.screenshots_json || "[]");
+        screenshots = Array.isArray(parsed) ? parsed : [];
+      }catch{}
+      let stats = null;
+      let reviews = null;
+      if (user) {
+        stats = await get(
+          `SELECT playtime_ms, sessions, last_played
+           FROM game_playtime
+           WHERE user_id=? AND game_id=?`,
+          [user.id, g.id]
+        );
+        const reviewRows = await all(
+          `SELECT r.rating, r.comment, r.created_at, r.updated_at, u.username
+           FROM game_reviews r
+           JOIN users u ON u.id=r.user_id
+           WHERE r.game_id=?
+             AND (u.is_banned IS NULL OR u.is_banned=0)
+           ORDER BY r.updated_at DESC
+           LIMIT 100`,
+          [g.id]
+        );
+        const avg = await get(
+          `SELECT AVG(rating) AS avg, COUNT(*) AS count FROM game_reviews WHERE game_id=?`,
+          [g.id]
+        );
+        reviews = { reviews: reviewRows, avg_rating: avg?.avg ?? null, count: avg?.count ?? 0 };
+      }
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[c]));
+      const fmtMs = (ms) => {
+        const s = Math.floor((ms || 0) / 1000);
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        return `${h}h ${m}m`;
+      };
+      const heroHtml = `
+        <span class="badge accent">${escapeHtml(g.category || "Uncategorized")}</span>
+        <h1>${escapeHtml(g.title || "Untitled Game")}</h1>
+        <p>${escapeHtml(g.description || "No description yet.")}</p>
+        <div class="hero-meta">
+          <span class="badge">By ${escapeHtml(g.owner_display_name || g.owner_username || "Unknown")}</span>
+        </div>
+      `.trim();
+      let heroArtHtml = "Launch ready";
+      let heroArtStyle = "";
+      if (g.banner_path) {
+        heroArtHtml = "";
+        heroArtStyle = ` style="background: linear-gradient(130deg,rgba(255,209,102,.2),rgba(20,26,36,.5)), url('${g.banner_path}') center/cover"`;
+      }
+      let mediaHtml = `<div class="muted">No media uploaded yet.</div>`;
+      if (g.banner_path || screenshots.length) {
+        const images = [];
+        if (g.banner_path) {
+          images.push(`<img src="${g.banner_path}" alt="Banner">`);
+        }
+        for (const s of screenshots) {
+          images.push(`<img src="${s}" alt="Screenshot">`);
+        }
+        mediaHtml = `
+          <h2>Media</h2>
+          <div class="gallery" id="gallery">
+            ${images.join("")}
+          </div>
+        `.trim();
+      }
+      let statsHtml = `<div class="muted">No stats yet.</div>`;
+      if (stats) {
+        statsHtml = `
+          <div class="stats">
+            <div class="stat">
+              <div class="label">Your playtime</div>
+              <div class="value">${escapeHtml(fmtMs(stats.playtime_ms || 0))}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Sessions</div>
+              <div class="value">${escapeHtml(stats.sessions || 0)}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Last played</div>
+              <div class="value">${escapeHtml(stats.last_played ? new Date(stats.last_played).toLocaleString() : "—")}</div>
+            </div>
+          </div>
+        `.trim();
+      }
+      const levelsHtml = `<div class="muted">No custom levels yet.</div>`;
+      let reviewBoxHtml = `<div class="muted">Reviews are unavailable for this account.</div>`;
+      let reviewsHtml = `<div class="review-card muted">Reviews are unavailable.</div>`;
+      if (user) {
+        reviewBoxHtml = `
+          <div class="muted">Leave a rating & comment</div>
+          <div id="stars" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+            <button data-star="1" class="secondary" style="width:auto">☆</button>
+            <button data-star="2" class="secondary" style="width:auto">☆</button>
+            <button data-star="3" class="secondary" style="width:auto">☆</button>
+            <button data-star="4" class="secondary" style="width:auto">☆</button>
+            <button data-star="5" class="secondary" style="width:auto">☆</button>
+          </div>
+          <textarea id="comment" rows="3" placeholder="Write your review (optional)"></textarea>
+          <button class="primary" id="submitReview" style="margin-top:10px;width:auto">Submit</button>
+          <div id="revStatus" class="muted" style="margin-top:8px"></div>
+        `.trim();
+        const reviewRows = Array.isArray(reviews?.reviews) ? reviews.reviews : [];
+        if (reviewRows.length) {
+          reviewsHtml = reviewRows.map((row) => {
+            const userLink = `/profile.html?u=${encodeURIComponent(row.username)}`;
+            const stars = "★".repeat(row.rating) + "☆".repeat(5 - row.rating);
+            const when = new Date(row.updated_at || row.created_at).toLocaleString();
+            return `
+              <div class="review-card">
+                <h3><a href="${userLink}">${escapeHtml(row.username)}</a> — ${stars}</h3>
+                <div class="muted">${escapeHtml(when)}</div>
+                <p>${row.comment ? escapeHtml(row.comment) : "<span class='muted'>No comment</span>"}</p>
+              </div>
+            `.trim();
+          }).join("");
+        } else {
+          reviewsHtml = `<div class="review-card">No reviews yet.</div>`;
+        }
+      }
+      const filePath = path.join(WEB_DIR, "game.html");
+      const html = await fs.promises.readFile(filePath, "utf8");
+      let injected = html;
+      injected = injected.replace(
+        /<div id="hero-main">[\s\S]*?<\/div>/,
+        `<div id="hero-main" data-prefilled="1">${heroHtml}</div>`
+      );
+      injected = injected.replace(
+        /<div id="hero-art" class="hero-art"[^>]*>[\s\S]*?<\/div>/,
+        `<div id="hero-art" class="hero-art"${heroArtStyle}>${heroArtHtml}</div>`
+      );
+      injected = injected.replace(
+        /(<section[^>]*id="stats"[^>]*>)[\s\S]*?(<\/section>)/,
+        `$1${statsHtml}$2`
+      );
+      injected = injected.replace(
+        /(<section[^>]*id="media"[^>]*>)[\s\S]*?(<\/section>)/,
+        `$1${mediaHtml}$2`
+      );
+      if (g.custom_levels_enabled === 0) {
+        injected = injected.replace(
+          /<section[^>]*id="levels"[^>]*>[\s\S]*?<\/section>/,
+          `<section class="card" id="levels" hidden></section>`
+        );
+      } else {
+        injected = injected.replace(
+          /(<section[^>]*id="levels"[^>]*>)[\s\S]*?(<\/section>)/,
+          `$1${levelsHtml}$2`
+        );
+      }
+      injected = injected.replace(
+        /(<section[^>]*id="reviewBox"[^>]*>)[\s\S]*?(<\/section>)/,
+        `$1${reviewBoxHtml}$2`
+      );
+      injected = injected.replace(
+        /<div id="reviews"[^>]*>[\s\S]*?<\/div>/,
+        `<div id="reviews" class="grid reviews-grid">${reviewsHtml}</div>`
+      );
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.send(injected);
     } catch {
       return res.redirect("/404.html?msg=" + encodeURIComponent("Game not found."));
     }

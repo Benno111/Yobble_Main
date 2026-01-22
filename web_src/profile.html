@@ -68,16 +68,16 @@ try{
 }catch(err){
   if (lookupUser) {
     if (err?.status === 403 && err?.data?.error === "account_banned") {
-      location.href = "/404.html?msg=" + encodeURIComponent("Account deleted.");
+      location.href = "/404?msg=" + encodeURIComponent("Account deleted.");
       throw err;
     }
     if (err?.status === 403 && err?.data?.error === "account_timed_out") {
       const until = err?.data?.until ? new Date(Number(err.data.until)).toLocaleString() : "unknown";
-      location.href = "/404.html?msg=" + encodeURIComponent(`User is temporarily banned until ${until}.`);
+      location.href = "/404?msg=" + encodeURIComponent(`User is temporarily banned until ${until}.`);
       throw err;
     }
     if (err?.status === 404) {
-      location.href = "/404.html?msg=" + encodeURIComponent("User not found.");
+      location.href = "/404?msg=" + encodeURIComponent("User not found.");
       throw err;
     }
   }
@@ -101,10 +101,10 @@ if(profile){
   }
   const heroActionParts = [];
   if (isSelf) {
-    heroActionParts.push(`<a class="pill action" href="/User-Settings.html">User settings</a>`);
+    heroActionParts.push(`<a class="pill action" href="/User-Settings">User settings</a>`);
     heroActionParts.push(`<button class="pill action" id="logoutBtn" type="button">Logout</button>`);
   } else {
-    heroActionParts.push(`<a class="pill action" href="/report.html?target_type=user&target_ref=${encodeURIComponent(profile.username || "")}">Report</a>`);
+    heroActionParts.push(`<a class="pill action" href="/report?target_type=user&target_ref=${encodeURIComponent(profile.username || "")}">Report</a>`);
   }
   heroActionParts.push(
     isSelf
@@ -203,7 +203,7 @@ if(profile){
   }
 }else{
   if (lookupUser) {
-    location.href = "/404.html?msg=" + encodeURIComponent("User not found.");
+    location.href = "/404?msg=" + encodeURIComponent("User not found.");
   } else {
     empty.hidden = false;
   }

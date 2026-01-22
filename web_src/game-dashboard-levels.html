@@ -239,12 +239,12 @@ if(!project){
 dashboardPage.addEventListener("change", () => {
   const value = dashboardPage.value;
   const target = value === "uploads"
-    ? "/game-dashboard-uploads.html"
+    ? "/game-dashboard-uploads"
     : value === "analytics"
-      ? "/game-dashboard-analytics.html"
+      ? "/game-dashboard-analytics"
       : value === "levels"
-        ? "/game-dashboard-levels.html"
-        : "/game-dashboard-versions.html";
+        ? "/game-dashboard-levels"
+        : "/game-dashboard-versions";
   const next = project ? `${target}?project=${encodeURIComponent(project)}` : target;
   location.href = next;
 });

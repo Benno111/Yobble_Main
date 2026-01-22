@@ -30,8 +30,8 @@
         <div class="pill" id="itemQty">Qty</div>
         <div class="small" id="itemMeta"></div>
         <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap">
-          <a class="cta-link" id="backLink" href="/market.html">Back to marketplace</a>
-          <a class="cta-link" id="reportLink" href="/report.html">Report item</a>
+          <a class="cta-link" id="backLink" href="/market">Back to marketplace</a>
+          <a class="cta-link" id="reportLink" href="/report">Report item</a>
           <button class="secondary" id="modRemoveBtn" style="display:none">Remove + ban owner</button>
         </div>
       </div>
@@ -106,7 +106,7 @@ function applyListing(listing){
   qty.textContent = `Qty ${listing.qty ?? 0}`;
   meta.textContent = `Listed ${new Date(listing.created_at || Date.now()).toLocaleString()}`;
   if (reportLink) {
-    reportLink.href = `/report.html?target_type=item&target_ref=${encodeURIComponent(listing.code || listing.name || listing.id)}`;
+    reportLink.href = `/report?target_type=item&target_ref=${encodeURIComponent(listing.code || listing.name || listing.id)}`;
   }
   if (listing.icon_path) {
     media.innerHTML = `<img src="${escapeHtml(listing.icon_path)}" alt="${escapeHtml(listing.name || "Item")}">`;

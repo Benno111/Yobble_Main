@@ -27,7 +27,7 @@
     </div>
     <div class="actions">
       <button class="primary" id="connectBtn" type="button">Connect wallet</button>
-      <a class="ghost" href="/money.html">Back to Money</a>
+      <a class="ghost" href="/money">Back to Money</a>
     </div>
   </section>
 </main>
@@ -41,7 +41,7 @@ const walletHint = document.getElementById("walletHint");
 const connectBtn = document.getElementById("connectBtn");
 const walletLabel = document.getElementById("walletLabel");
 const params = new URLSearchParams(location.search);
-const redirectTo = params.get("redirect") || "/money.html";
+const redirectTo = params.get("redirect") || "/money";
 function setStatus(text, hint){
   walletStatus.textContent = text;
   walletHint.textContent = hint || "";

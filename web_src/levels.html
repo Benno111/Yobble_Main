@@ -18,7 +18,7 @@
       </div>
     </div>
     <div class="actions" style="justify-content:flex-end">
-      <a class="secondary" id="backBtn" href="/game-dashboard-levels.html">Open dashboard</a>
+      <a class="secondary" id="backBtn" href="/game-dashboard-levels">Open dashboard</a>
     </div>
   </section>
   <section class="card">
@@ -100,7 +100,7 @@ if(!project){
   root.innerHTML = `<div class="muted">No project selected.</div>`;
 }else{
   gameproject.textContent = `project ${project}`;
-  backBtn.href = `/game-dashboard-levels.html?project=${encodeURIComponent(project)}`;
+  backBtn.href = `/game-dashboard-levels?project=${encodeURIComponent(project)}`;
   try{
     const gameRes = await api.get("/api/games/" + encodeURIComponent(project));
     const g = gameRes.game || gameRes;

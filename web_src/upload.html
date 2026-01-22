@@ -14,7 +14,7 @@
       <h1>Publish a game build</h1>
       <p>Upload a web build ZIP to create or update a game version.</p>
       <div class="hero-actions">
-        <a class="cta-link" href="/item-upload.html">Item upload</a>
+        <a class="cta-link" href="/item-upload">Item upload</a>
       </div>
     </div>
     <div class="hero-art">Upload queue</div>
@@ -36,7 +36,7 @@
       </div>
       <div>
         <label for="entry">Entry HTML</label>
-        <input id="entry" placeholder="index.html">
+        <input id="entry" placeholder="index">
       </div>
       <div>
         <label for="category">Category</label>
@@ -58,7 +58,7 @@
         <div id="uploadProgress"></div>
       </div>
       <div class="pill">Notes</div>
-      <div class="status">ZIP must include the entry HTML (default index.html).</div>
+      <div class="status">ZIP must include the entry HTML (default index).</div>
       <div class="status">Large uploads may take a minute to process.</div>
       <div class="pill">Latest upload</div>
       <div id="last" class="status">No uploads yet.</div>
@@ -102,7 +102,7 @@ uploadBtn.onclick = async () => {
   const projectInput = document.getElementById("project").value.trim();
   const project = projectInput || projectify(title);
   const version = document.getElementById("version").value.trim();
-  const entry = document.getElementById("entry").value.trim() || "index.html";
+  const entry = document.getElementById("entry").value.trim() || "index";
   const category = document.getElementById("category").value.trim();
   const description = document.getElementById("description").value.trim();
   if (!title || !version) {

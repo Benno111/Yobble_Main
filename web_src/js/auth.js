@@ -2,7 +2,7 @@ import { api } from "./api.js";
 export async function requireAuth(){
   const token = localStorage.getItem("token");
   if(!token){
-    location.href = "/login.html";
+    location.href = "/login";
     throw new Error("no token");
   }
   try{
@@ -26,7 +26,7 @@ export async function requireAuth(){
 export async function requireAuthAllowBanned(){
   const token = localStorage.getItem("token");
   if(!token){
-    location.href = "/login.html";
+    location.href = "/login";
     throw new Error("no token");
   }
   try{
@@ -43,5 +43,5 @@ export async function logout(){
     await api.post("/api/auth/logout", {});
   }catch{}
   localStorage.removeItem("token");
-  location.href = "/login.html";
+  location.href = "/login";
 }

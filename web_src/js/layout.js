@@ -1,7 +1,7 @@
 import { getCurrentUser } from "./auth-client.js";
 export async function mountTopbar(page){
   const token = localStorage.getItem("token");
-  const headerPromise = fetch("/partials/header.html").then(r => r.text());
+  const headerPromise = fetch("/partials/header").then(r => r.text());
   const userPromise = getCurrentUser();
   const walletPromise = token
     ? fetch("/api/wallet", {
@@ -66,7 +66,7 @@ export async function mountTopbar(page){
       event.preventDefault();
       localStorage.removeItem("token");
       localStorage.removeItem("username");
-      location.href = "/login.html";
+      location.href = "/login";
     });
   }
   if (window.electron) {

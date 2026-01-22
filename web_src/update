@@ -9,13 +9,13 @@ echo
 
 shopt -s globstar
 
-for file in "$WEB_DIR"/**/*.html; do
+for file in "$WEB_DIR"/**/*; do
   [ -f "$file" ] || continue
 
   base="$(basename "$file")"
 
   # Skip auth pages
-  if [[ "$base" == "login.html" || "$base" == "register.html" ]]; then
+  if [[ "$base" == "login" || "$base" == "register" ]]; then
     echo "↷ Skipping auth page: $file"
     continue
   fi
@@ -42,5 +42,5 @@ done
 
 echo
 echo "✅ Layout loader added to all applicable HTML files."
-echo "↩ Restore with: mv file.html.bak file.html"
+echo "↩ Restore with: mv file.bak file"
 

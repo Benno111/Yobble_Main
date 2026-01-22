@@ -17,7 +17,7 @@ async function refresh(){
   }catch(e){
     // If forbidden, kick user out of admin page
     alert("Admin access denied (role is not admin).");
-    location.href = "/index.html";
+    location.href = "/index";
   }
 }
 document.querySelector("#grant").onclick = async ()=>{

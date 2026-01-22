@@ -15,15 +15,15 @@ export async function mountTopbar(active){
   try{ me = (await api("/api/profile/me")).profile; }catch{}
   const isAdmin = me?.role === "admin";
   const links = [
-    ["Home","/index.html","home"],
-    ["Games","/games.html","games"],
-    ["Friends","/friends.html","friends"],
-    ["Stats","/stats.html","stats"],
-    ["Yobble Dollar","/currency.html","currency"],
-    ["Inventory/Trades","/inventory.html","inv"],
-    ["Marketplace","/market.html","market"],
-    ...(isAdmin ? [["Admin","/admin.html","admin"]] : []),
-    ["Profile","/profile.html","profile"]
+    ["Home","/index","home"],
+    ["Games","/games","games"],
+    ["Friends","/friends","friends"],
+    ["Stats","/stats","stats"],
+    ["Yobble Dollar","/currency","currency"],
+    ["Inventory/Trades","/inventory","inv"],
+    ["Marketplace","/market","market"],
+    ...(isAdmin ? [["Admin","/admin","admin"]] : []),
+    ["Profile","/profile","profile"]
   ];
   el.innerHTML = `
     <div class="topbar">

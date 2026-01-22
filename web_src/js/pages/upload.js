@@ -26,7 +26,7 @@ uploadBtn.onclick = async ()=>{
   const title = $("title").value.trim();
   const project = $("project").value.trim();
   const version = $("version").value.trim();
-  const entry_html = ($("entry_html").value.trim() || "index.html");
+  const entry_html = ($("entry_html").value.trim() || "index");
   if(!title || !project || !version){
     status.textContent = "Title, project, version required.";
     return;

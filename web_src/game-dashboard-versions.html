@@ -94,7 +94,7 @@ if(!project){
             </div>
             <div>
               <label class="muted">Entry HTML</label>
-              <input name="entry_html" placeholder="index.html" style="width:100%;margin-top:6px">
+              <input name="entry_html" placeholder="index" style="width:100%;margin-top:6px">
             </div>
             <div>
               <label class="muted">Zip file</label>
@@ -215,7 +215,7 @@ if(!project){
           const fd = new FormData(uploadForm);
           fd.set("project", project);
           fd.set("title", g.title || project);
-          fd.set("entry_html", fd.get("entry_html") || "index.html");
+          fd.set("entry_html", fd.get("entry_html") || "index");
           try{
             const xhr = new XMLHttpRequest();
             xhr.open("POST", "/api/gamehosting/upload");
@@ -257,12 +257,12 @@ if(!project){
 dashboardPage.addEventListener("change", () => {
   const value = dashboardPage.value;
   const target = value === "uploads"
-    ? "/game-dashboard-uploads.html"
+    ? "/game-dashboard-uploads"
     : value === "analytics"
-      ? "/game-dashboard-analytics.html"
+      ? "/game-dashboard-analytics"
       : value === "levels"
-        ? "/game-dashboard-levels.html"
-        : "/game-dashboard-versions.html";
+        ? "/game-dashboard-levels"
+        : "/game-dashboard-versions";
   const next = project ? `${target}?project=${encodeURIComponent(project)}` : target;
   location.href = next;
 });

@@ -65,13 +65,13 @@
     </section>
   </section>
   <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
-    <a class="pill" href="/mod-dashboard.html">Dashboard</a>
-    <a class="pill" href="/mod-reports.html">Reports</a>
-    <a class="pill" href="/mod-appeals.html">Appeals</a>
-    <a class="pill" href="/mod-bans.html">Ban History</a>
-    <a class="pill" href="/mod-tos.html">TOS Editor</a>
-    <a class="pill" href="/modqueue.html">Queue</a>
-    <a class="pill" href="/moderation.html">Overview</a>
+    <a class="pill" href="/mod-dashboard">Dashboard</a>
+    <a class="pill" href="/mod-reports">Reports</a>
+    <a class="pill" href="/mod-appeals">Appeals</a>
+    <a class="pill" href="/mod-bans">Ban History</a>
+    <a class="pill" href="/mod-tos">TOS Editor</a>
+    <a class="pill" href="/modqueue">Queue</a>
+    <a class="pill" href="/moderation">Overview</a>
   </section>
 </main>
 <script type="module">
@@ -254,7 +254,7 @@ async function loadTos(){
 }
 document.getElementById("loadTos").addEventListener("click", loadTos);
 document.getElementById("openTos").addEventListener("click", () => {
-  window.open("/tos.html", "_blank");
+  window.open("/tos", "_blank");
 });
 document.getElementById("saveTos").addEventListener("click", async () => {
   setStatus("Saving…");

@@ -19,8 +19,8 @@
 const params = new URLSearchParams(location.search);
 const project = params.get("project");
 const next = project
-  ? `/game-dashboard-versions.html?project=${encodeURIComponent(project)}`
-  : "/game-dashboard-versions.html";
+  ? `/game-dashboard-versions?project=${encodeURIComponent(project)}`
+  : "/game-dashboard-versions";
 location.replace(next);
 </script>
 </body>

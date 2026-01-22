@@ -9,7 +9,14 @@
 <body>
 <main class="game-page">
   <section class="card hero">
-    <div id="hero-main"></div>
+    <div id="hero-main">
+      <span class="badge accent">Uncategorized</span>
+      <h1>Untitled Game</h1>
+      <p>No description yet.</p>
+      <div class="hero-meta">
+        <span class="badge">By Unknown</span>
+      </div>
+    </div>
     <div class="hero-side">
       <div id="hero-art" class="hero-art">New release</div>
       <div id="hero-actions" class="actions">
@@ -17,12 +24,23 @@
       </div>
     </div>
   </section>
-  <section class="card" id="stats"></section>
-  <section class="card" id="media"></section>
-  <section class="card" id="levels"></section>
-  <section class="card" id="reviewBox"></section>
-  <div id="reviews" class="grid reviews-grid"></div>
+  <section class="card" id="stats">
+    <div class="muted">No stats yet.</div>
+  </section>
+  <section class="card" id="media">
+    <div class="muted">No media uploaded yet.</div>
+  </section>
+  <section class="card" id="levels">
+    <div class="muted">No custom levels yet.</div>
+  </section>
+  <section class="card" id="reviewBox">
+    <div class="muted">No reviews yet.</div>
+  </section>
+  <div id="reviews" class="grid reviews-grid">
+    <div class="review-card">No reviews yet.</div>
+  </div>
 </main>
+<script>window.__GAME_PREFILL__ = null;</script>
 <script type="module" src="/js/pages/game.js"></script>
 </body>
 </html>

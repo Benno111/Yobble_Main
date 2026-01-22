@@ -118,7 +118,7 @@ const openCreateRoomBtn = document.getElementById("openCreateRoomBtn");
 const closeCreateRoomBtn = document.getElementById("closeCreateRoomBtn");
 
 if (!token) {
-  window.location.href = "/login.html";
+  window.location.href = "/login";
 }
 
 function authHeaders() {
@@ -282,7 +282,7 @@ function createMessageElement(msg) {
   reportBtn.textContent = "Report";
   reportBtn.addEventListener("click", function () {
     const ref = msg.id || "";
-    const url = `/report.html?target_type=chat_message&target_ref=${encodeURIComponent(ref)}`;
+    const url = `/report?target_type=chat_message&target_ref=${encodeURIComponent(ref)}`;
     window.location.href = url;
   });
   header.appendChild(userSpan);
@@ -452,7 +452,7 @@ inviteBtn.addEventListener("click", async function () {
       return;
     }
     const data = await res.json();
-    const url = `${location.origin}/chat/index.html?invite=${encodeURIComponent(data.token)}`;
+    const url = `${location.origin}/chat/index?invite=${encodeURIComponent(data.token)}`;
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(url);
       channelMeta.textContent = "Invite link copied.";
@@ -468,14 +468,14 @@ inviteBtn.addEventListener("click", async function () {
 reportRoomBtn.addEventListener("click", function () {
   if (!currentChannelId) return;
   const ref = reportRoomBtn.dataset.room || currentChannelId;
-  const url = `/report.html?target_type=chat_room&target_ref=${encodeURIComponent(ref)}`;
+  const url = `/report?target_type=chat_room&target_ref=${encodeURIComponent(ref)}`;
   window.location.href = url;
 });
 
 document.getElementById("logoutBtn").addEventListener("click", function () {
   localStorage.removeItem("token");
   localStorage.removeItem("username");
-  window.location.href = "/login.html";
+  window.location.href = "/login";
 });
 
 const inviteToken = new URLSearchParams(location.search).get("invite");

@@ -30,7 +30,7 @@ function renderTags(tags = []) {
 
 function renderFeatured(post) {
   return `
-    <a class="blog-card blog-link" href="/blog-post.html?project=${encodeURIComponent(post.project)}">
+    <a class="blog-card blog-link" href="/blog-post?project=${encodeURIComponent(post.project)}">
       ${renderTags(post.tags)}
       <h3 style="margin:0">${post.title}</h3>
       <p class="small">${post.summary || post.body.slice(0, 120)}...</p>
@@ -41,7 +41,7 @@ function renderFeatured(post) {
 
 function renderLatest(post) {
   return `
-    <a class="blog-list-item blog-link" href="/blog-post.html?project=${encodeURIComponent(post.project)}">
+    <a class="blog-list-item blog-link" href="/blog-post?project=${encodeURIComponent(post.project)}">
       ${renderTags(post.tags)}
       <h3 class="title">${post.title}</h3>
       <div class="meta">${new Date(post.published_at || post.created_at).toLocaleDateString()} · ${Math.max(3, Math.ceil((post.body || "").length / 800))} min read</div>
@@ -111,7 +111,7 @@ await loadBlog();
       <p>News, launch notes, and deep dives from the Yobble team. Follow the tools, policies, and creator stories shaping the platform.</p>
       <div class="hero-actions">
         <a class="pill action" href="/register">Follow updates</a>
-        <a class="pill outline" href="/games.html">Browse games</a>
+        <a class="pill outline" href="/games">Browse games</a>
       </div>
       <div class="blog-stats">
         <div class="stat">
@@ -181,7 +181,7 @@ await loadBlog();
         <div class="card">
           <div class="section-title">
             <h2 style="margin:0">Latest posts</h2>
-            <a class="pill outline" href="/download.html">Get the desktop app</a>
+            <a class="pill outline" href="/download">Get the desktop app</a>
           </div>
           <div id="blogLatest" class="blog-list"></div>
         </div>

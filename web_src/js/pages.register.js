@@ -8,7 +8,7 @@ document.querySelector("#go").addEventListener("click", async ()=>{
   msg.textContent = "";
   try{
     await register(username.value.trim(), email.value.trim(), password.value, admin_code.value.trim());
-    location.href = "/index.html";
+    location.href = "/index";
   }catch(e){
     msg.textContent = "Register failed: " + e.message;
   }

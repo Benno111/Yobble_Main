@@ -10,7 +10,7 @@ if (!q.get("project") && q.get("slug")) {
 }
 const project = q.get("project") || "";
 const version = q.get("version") || "";
-const entry = q.get("entry") || "index.html";
+const entry = q.get("entry") || "index";
 const token = q.get("launch_token") || "";
 const authToken = localStorage.getItem("token");
 const returnTo = q.get("return") || "";
@@ -72,7 +72,7 @@ const postFullscreenState = () => {
   }, "*");
 };
 if(fullscreenFrame){
-  fullscreenFrame.src = "/partials/fullscreen-button.html";
+  fullscreenFrame.src = "/partials/fullscreen-button";
   fullscreenFrame.addEventListener("load", () => {
     fullscreenFrame.contentWindow?.postMessage({
       type: "fullscreen:enabled",

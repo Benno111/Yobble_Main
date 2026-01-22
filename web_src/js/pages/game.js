@@ -47,7 +47,9 @@ async function safeGet(url, fallback){
   }
 }
 async function load(){
-  heroMain.textContent = "Loading…";
+  if (heroMain?.dataset?.prefilled !== "1") {
+    heroMain.textContent = "Loading…";
+  }
   const gRes = await safeGet("/api/games/" + encodeURIComponent(project), null);
   if(!gRes){
     heroMain.innerHTML = `
@@ -102,7 +104,7 @@ async function load(){
     <p>${escapeHtml(g.description || "No description yet.")}</p>
     <div class="hero-meta">
       <span class="badge">By ${escapeHtml(g.owner_display_name || g.owner_username || "Unknown")}</span>
-      <a class="secondary" href="/report.html?target_type=game&target_ref=${encodeURIComponent(g.project)}">Report</a>
+      <a class="secondary" href="/report?target_type=game&target_ref=${encodeURIComponent(g.project)}">Report</a>
     </div>
   `;
   heroArt.textContent = g.banner_path ? "" : "Launch ready";
@@ -116,7 +118,7 @@ async function load(){
     </div>
     <button class="primary" id="playBtn">Play</button>
     ${(me && g.owner_username && me.username === g.owner_username)
-      ? `<a class="secondary" id="dashBtn" href="/game-dashboard.html?project=${encodeURIComponent(g.project)}">Open dashboard</a>`
+      ? `<a class="secondary" id="dashBtn" href="/game-dashboard?project=${encodeURIComponent(g.project)}">Open dashboard</a>`
       : ""}
     ${libAvailable ? `<button class="secondary" id="libBtn">${inLib ? "In Library" : "Add to Library"}</button>` : ""}
     ${["admin","moderator"].includes(me?.role) ? `<button class="secondary" id="featureBtn">${g.is_featured ? "Unfeature" : "Feature"}</button>` : ""}
@@ -158,14 +160,14 @@ async function load(){
   playBtn.onclick = async ()=>{
     const version = sel.value;
     if(!version) return;
-    const entry = g.entry_html || "index.html";
+    const entry = g.entry_html || "index";
     let token = "";
     try{
       const t = await api.post("/api/launcher/token", { game_project: project });
       token = t.token || "";
     }catch{}
     const url =
-      `/play.html?project=${encodeURIComponent(project)}` +
+      `/play?project=${encodeURIComponent(project)}` +
       `&version=${encodeURIComponent(version)}` +
       `&entry=${encodeURIComponent(entry)}` +
       (token ? `&launch_token=${encodeURIComponent(token)}` : "");
@@ -260,7 +262,7 @@ async function load(){
       levelsEl.innerHTML = `
         <div class="section-title">
           <h2>Custom Levels</h2>
-          <a class="secondary" href="/levels.html?project=${encodeURIComponent(project)}">Browse</a>
+          <a class="secondary" href="/levels?project=${encodeURIComponent(project)}">Browse</a>
         </div>
         <div class="list" style="margin-top:12px">
           ${rows || `<div class="muted">No custom levels yet.</div>`}
@@ -323,7 +325,7 @@ async function loadReviews(){
   for(const row of (r.reviews || [])){
     const d = document.createElement("div");
     d.className = "review-card";
-    const userLink = `/profile.html?u=${encodeURIComponent(row.username)}`;
+    const userLink = `/profile?u=${encodeURIComponent(row.username)}`;
     d.innerHTML = `
       <h3><a href="${userLink}">${escapeHtml(row.username)}</a> — ${"★".repeat(row.rating)}${"☆".repeat(5-row.rating)}</h3>
       <div class="muted">${escapeHtml(new Date(row.updated_at || row.created_at).toLocaleString())}</div>

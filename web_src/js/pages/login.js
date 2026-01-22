@@ -18,7 +18,7 @@ document.getElementById("btn").onclick = async ()=>{
       const until = r.user.timeout_until ? `?until=${encodeURIComponent(r.user.timeout_until)}` : "";
       location.href = `/temporay-banned${until}`;
     } else {
-      location.href = "/games.html";
+      location.href = "/games";
     }
   }catch(e){
     if (e?.status === 401 && e?.data?.error === "totp_required") {

@@ -6,7 +6,7 @@ document.querySelector("#go").addEventListener("click", async ()=>{
   msg.textContent = "";
   try{
     await login(u.value.trim(), p.value);
-    location.href = "/index.html";
+    location.href = "/index";
   }catch(e){
     msg.textContent = "Login failed: " + e.message;
   }

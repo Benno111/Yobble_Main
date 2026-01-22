@@ -21,12 +21,12 @@
     <div id="empty" class="empty" hidden>Queue empty.</div>
   </section>
   <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
-    <a class="pill" href="/mod-dashboard.html">Dashboard</a>
-    <a class="pill" href="/mod-reports.html">Reports</a>
-    <a class="pill" href="/mod-appeals.html">Appeals</a>
-    <a class="pill" href="/mod-bans.html">Ban History</a>
-    <a class="pill" href="/modqueue.html">Queue</a>
-    <a class="pill" href="/moderation.html">Overview</a>
+    <a class="pill" href="/mod-dashboard">Dashboard</a>
+    <a class="pill" href="/mod-reports">Reports</a>
+    <a class="pill" href="/mod-appeals">Appeals</a>
+    <a class="pill" href="/mod-bans">Ban History</a>
+    <a class="pill" href="/modqueue">Queue</a>
+    <a class="pill" href="/moderation">Overview</a>
   </section>
 </main>
 <script type="module">
@@ -68,7 +68,7 @@ if(!rows.length){
                <button class="secondary" data-reject-game="${escapeHtml(x.ref || "")}" data-version="${escapeHtml(x.version || "")}">Reject</button>
                <button class="secondary" data-reject-ban-game="${escapeHtml(x.ref || "")}" data-version="${escapeHtml(x.version || "")}">Reject + ban</button>
                <button class="secondary" data-delete-game="${escapeHtml(x.ref || "")}" data-version="${escapeHtml(x.version || "")}">Delete</button>
-               <a class="secondary" href="/play.html?project=${encodeURIComponent(x.ref || "")}&version=${encodeURIComponent(x.version || "")}&entry=${encodeURIComponent(x.entry_html || "index.html")}&return=${encodeURIComponent("/modqueue.html")}">Playtest</a>
+               <a class="secondary" href="/play?project=${encodeURIComponent(x.ref || "")}&version=${encodeURIComponent(x.version || "")}&entry=${encodeURIComponent(x.entry_html || "index")}&return=${encodeURIComponent("/modqueue")}">Playtest</a>
              </div>`
           : ``
       }

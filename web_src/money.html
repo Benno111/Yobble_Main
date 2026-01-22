@@ -26,8 +26,8 @@
     </div>
     <div class="wallet-addr" id="walletAddr"></div>
     <div class="actions">
-      <a class="primary" href="/connect-wallet.html" style="width:auto;text-decoration:none;display:inline-block">Connect wallet</a>
-      <a class="ghost" href="/connect-wallet.html" style="width:auto;text-decoration:none;display:inline-block">Switch wallet</a>
+      <a class="primary" href="/connect-wallet" style="width:auto;text-decoration:none;display:inline-block">Connect wallet</a>
+      <a class="ghost" href="/connect-wallet" style="width:auto;text-decoration:none;display:inline-block">Switch wallet</a>
     </div>
   </section>
   <section class="panel" id="purchasePanel">
@@ -132,8 +132,8 @@ if (!isPrivileged) {
   const existing = await getConnectedAccount();
   setWalletState(existing || null);
   if (!existing) {
-    const redirect = encodeURIComponent("/money.html");
-    location.href = `/connect-wallet.html?redirect=${redirect}`;
+    const redirect = encodeURIComponent("/money");
+    location.href = `/connect-wallet?redirect=${redirect}`;
   }
   fetchEthRate();
   refreshRateBtn.addEventListener("click", fetchEthRate);

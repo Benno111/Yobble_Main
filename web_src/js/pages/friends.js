@@ -6,7 +6,7 @@ import { mountTopbar, htmlEscape } from "/js/ui.js";
 -------------------------------- */
 const user = await getCurrentUser();
 if (!user) {
-  location.href = "/login.html";
+  location.href = "/login";
   throw new Error("Not logged in");
 }
 await mountTopbar("friends");

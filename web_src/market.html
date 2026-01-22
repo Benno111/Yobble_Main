@@ -129,7 +129,7 @@ function render(){
       <div class="listing-meta">Qty ${escapeHtml(l.qty ?? 0)} • ${new Date(l.created_at || Date.now()).toLocaleDateString()}</div>
       <div class="listing-price">$${escapeHtml(l.price ?? 0)}</div>
       <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">
-        <a class="cta-link" href="/item.html?listing_id=${encodeURIComponent(l.id)}">View item</a>
+        <a class="cta-link" href="/item?listing_id=${encodeURIComponent(l.id)}">View item</a>
       </div>
     </div>
   `).join("");
