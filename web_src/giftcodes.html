@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gift Codes - Yobble</title>
+<link rel="stylesheet" href="/theme.css" rel="stylesheet"><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="mkt-wrap">
+  <section class="card hero">
+    <div>
+      <h1>Gift Codes</h1>
+      <p>Redeem a code or convert Yobble Dollars into a sharable gift code.</p>
+      <div class="hero-meta">
+        <span class="pill" id="giftBalance">Yobble Dollar —</span>
+      </div>
+    </div>
+    <div class="hero-art">Share the love</div>
+  </section>
+  <section class="card">
+    <div class="pill">Redeem</div>
+    <div class="row" style="margin-top:12px;flex-wrap:wrap">
+      <div style="min-width:220px;flex:1">
+        <label for="giftCode">Gift code</label>
+        <input id="giftCode" type="text" placeholder="Enter gift code">
+      </div>
+      <button type="button" id="redeemGift" class="cta-link" style="height:40px">Redeem</button>
+      <div class="muted" id="giftStatus"></div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="pill">Create</div>
+    <div class="row" style="margin-top:12px;flex-wrap:wrap">
+      <div style="min-width:220px;flex:1">
+        <label for="giftAmount">Amount to convert</label>
+        <input id="giftAmount" type="number" min="1" placeholder="Amount to convert">
+      </div>
+      <button type="button" id="createGift" class="cta-link" style="height:40px">Create code</button>
+      <div class="muted" id="giftCreateStatus"></div>
+    </div>
+  </section>
+  <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
+    <a class="pill" href="/market">Marketplace</a>
+    <a class="pill" href="/inventory">Inventory</a>
+  </section>
+</main>
+<script type="module">
+import { requireAuth } from "/js/auth.js";
+import { mountTopbar } from "/js/layout.js";
+import { api } from "/js/api-pages/market.js";
+await requireAuth();
+await mountTopbar("market");
+
+const giftBalance = document.getElementById("giftBalance");
+const giftCode = document.getElementById("giftCode");
+const redeemGift = document.getElementById("redeemGift");
+const giftStatus = document.getElementById("giftStatus");
+const giftAmount = document.getElementById("giftAmount");
+const createGift = document.getElementById("createGift");
+const giftCreateStatus = document.getElementById("giftCreateStatus");
+
+async function refreshBalance() {
+  const walletRes = await api.get("/api/wallet").catch(() => null);
+  const balance = Number(walletRes?.wallet?.balance ?? walletRes?.balance ?? 0);
+  if (giftBalance) {
+    giftBalance.textContent = `Yobble Dollar ${Number.isFinite(balance) ? balance : 0}`;
+  }
+}
+
+await refreshBalance();
+
+redeemGift.addEventListener("click", async () => {
+  const code = giftCode.value.trim();
+  if (!code) {
+    giftStatus.textContent = "Enter a code first.";
+    return;
+  }
+  redeemGift.disabled = true;
+  giftStatus.textContent = "Redeeming…";
+  try{
+    const res = await api.post("/api/market/gift/redeem", { code });
+    giftStatus.textContent = res?.amount
+      ? `Redeemed +${res.amount} Yobble Dollars.`
+      : "Redeemed.";
+    giftCode.value = "";
+    await refreshBalance();
+  }catch (e){
+    const msg = e?.message || "Redeem failed.";
+    giftStatus.textContent = msg.includes("already_redeemed")
+      ? "Code already redeemed."
+      : msg.includes("expired")
+      ? "Code expired."
+      : msg.includes("not_found")
+      ? "Code not found."
+      : "Redeem failed.";
+  }finally{
+    redeemGift.disabled = false;
+  }
+});
+
+createGift.addEventListener("click", async () => {
+  const amount = Number(giftAmount.value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    giftCreateStatus.textContent = "Enter a valid amount.";
+    return;
+  }
+  createGift.disabled = true;
+  giftCreateStatus.textContent = "Creating…";
+  try{
+    const res = await api.post("/api/market/gift/create-user", { amount });
+    giftCreateStatus.textContent = res?.code
+      ? `Code created: ${res.code}`
+      : "Code created.";
+    giftAmount.value = "";
+    await refreshBalance();
+  }catch (e){
+    const msg = e?.message || "Create failed.";
+    giftCreateStatus.textContent = msg.includes("insufficient_funds")
+      ? "Not enough balance."
+      : "Create failed.";
+  }finally{
+    createGift.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

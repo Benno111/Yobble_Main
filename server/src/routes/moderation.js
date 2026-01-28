@@ -14,7 +14,7 @@ const MOD_ROLES = ["admin", "mod", "moderator"];
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, "../../..");
-const TOS_PATH = path.join(PROJECT_ROOT, "tos.json");
+const TOS_PATH = path.join(PROJECT_ROOT, "save", "tos");
 const UPDATE_ZIP_URL = "https://github.com/Benno111/Yobble_Main/archive/refs/heads/main.zip";
 
 function readCookie(req, name) {

@@ -8,6 +8,7 @@ const listings = document.querySelector("#listings");
 const trades = document.querySelector("#trades");
 const grantMsg = document.querySelector("#grantMsg");
 const gameMsg = document.querySelector("#gameMsg");
+const giftMsg = document.querySelector("#giftMsg");
 async function refresh(){
   try{
     const r = await api("/api/admin/overview");
@@ -38,5 +39,19 @@ document.querySelector("#createGame").onclick = async ()=>{
     const r = await api("/api/admin/create_game", { method:"POST", body:{ project, title, description }});
     gameMsg.textContent = "Created game id: " + r.game_id;
   }catch(e){ gameMsg.textContent = "Error: " + e.message; }
+};
+document.querySelector("#createGift").onclick = async ()=>{
+  giftMsg.textContent = "";
+  try{
+    const amount = Number(document.querySelector("#giftAmount").value || 0);
+    const code = document.querySelector("#giftCode").value.trim();
+    const expiry = document.querySelector("#giftExpiry").value;
+    const expires_at = expiry ? new Date(expiry + "T00:00:00").getTime() : null;
+    const payload = { amount };
+    if (code) payload.code = code;
+    if (expires_at) payload.expires_at = expires_at;
+    const r = await api("/api/market/gift/create", { method:"POST", body: payload });
+    giftMsg.textContent = "Gift code created: " + r.code;
+  }catch(e){ giftMsg.textContent = "Error: " + e.message; }
 };
 await refresh();

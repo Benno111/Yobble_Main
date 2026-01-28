@@ -10,6 +10,40 @@ import { requireAuth, verifyToken } from "../auth.js";
 const DEFAULT_ROOMS = [];
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_ATTACHMENTS = 5;
+const BAD_WORDS = [
+  "asshole",
+  "bastard",
+  "bitch",
+  "bullshit",
+  "crap",
+  "cunt",
+  "damn",
+  "dick",
+  "fuck",
+  "motherfucker",
+  "nigga",
+  "nigger",
+  "piss",
+  "prick",
+  "shit",
+  "slut",
+  "twat",
+  "wanker"
+];
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const badWordPattern = new RegExp(
+  `\\b(${BAD_WORDS.map(escapeRegExp).join("|")})\\b`,
+  "gi"
+);
+
+function censorText(value) {
+  if (!value) return "";
+  return String(value).replace(badWordPattern, (match) => "*".repeat(match.length));
+}
 
 function sanitizeRoom(name) {
   if (typeof name !== "string") return "";
@@ -392,7 +426,8 @@ export function createChatRouter({ projectRoot }) {
       if (!channelRow) return res.status(403).json({ error: "not_allowed" });
       channelName = channelRow.name;
     }
-    const text = String(req.body?.text || "").trim().slice(0, MAX_MESSAGE_LENGTH);
+    const rawText = String(req.body?.text || "").trim().slice(0, MAX_MESSAGE_LENGTH);
+    const text = censorText(rawText);
     const files = Array.isArray(req.files) ? req.files : [];
     if (!text && !files.length) {
       return res.status(400).json({ error: "empty_message" });
@@ -578,7 +613,8 @@ export function attachChatWs(server, { projectRoot }) {
         return;
       }
       if (data.type !== "chat") return;
-      const text = String(data.text || "").trim().slice(0, MAX_MESSAGE_LENGTH);
+      const rawText = String(data.text || "").trim().slice(0, MAX_MESSAGE_LENGTH);
+      const text = censorText(rawText);
       if (!text) return;
       const ts = Date.now();
       try {

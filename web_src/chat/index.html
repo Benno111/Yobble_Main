@@ -96,6 +96,27 @@ let typingTimeout = null;
 let manualClose = false;
 let roomRefreshTimer = null;
 
+const BAD_WORDS = [
+  "asshole",
+  "bastard",
+  "bitch",
+  "bullshit",
+  "crap",
+  "cunt",
+  "damn",
+  "dick",
+  "fuck",
+  "motherfucker",
+  "nigga",
+  "nigger",
+  "piss",
+  "prick",
+  "shit",
+  "slut",
+  "twat",
+  "wanker"
+];
+
 const chatMessages = document.getElementById("chatMessages");
 const chatInput = document.getElementById("chatInput");
 const sendBtn = document.getElementById("sendBtn");
@@ -123,6 +144,20 @@ if (!token) {
 
 function authHeaders() {
   return { Authorization: "Bearer " + token };
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const badWordPattern = new RegExp(
+  `\\b(${BAD_WORDS.map(escapeRegExp).join("|")})\\b`,
+  "gi"
+);
+
+function censorText(value) {
+  if (!value) return "";
+  return String(value).replace(badWordPattern, (match) => "*".repeat(match.length));
 }
 
 async function fetchRooms(options) {
@@ -291,7 +326,7 @@ function createMessageElement(msg) {
 
   const body = document.createElement("div");
   body.className = "chat-msg-body";
-  body.textContent = msg.text || "";
+  body.textContent = censorText(msg.text || "");
 
   row.appendChild(header);
   row.appendChild(body);
@@ -332,7 +367,7 @@ function addMessage(msg) {
 }
 
 async function sendMessage() {
-  const text = chatInput.value.trim();
+  const text = censorText(chatInput.value.trim());
   if (!text && !attachments.length) return;
   const form = new FormData();
   form.append("channel", currentChannelId);

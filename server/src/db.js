@@ -163,6 +163,19 @@ export async function initDb() {
   await addColumnIfMissing("users", "deleted_at", "INTEGER");
   await addColumnIfMissing("users", "deleted_reason", "TEXT");
 
+  /* GIFT CODES */
+  await run(`CREATE TABLE IF NOT EXISTS gift_codes(
+    code TEXT PRIMARY KEY,
+    amount INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    created_by INTEGER,
+    redeemed_at INTEGER,
+    redeemed_by INTEGER,
+    expires_at INTEGER,
+    FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY(redeemed_by) REFERENCES users(id) ON DELETE SET NULL
+  )`);
+
   /* PROFILES */
   await run(`CREATE TABLE IF NOT EXISTS profiles(
     user_id INTEGER PRIMARY KEY,
