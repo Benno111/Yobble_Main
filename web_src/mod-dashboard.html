@@ -53,9 +53,9 @@
     <a class="pill" href="/mod-tos">Open TOS editor →</a>
   </section>
   <section class="card">
-    <div class="stat-title">Server update</div>
-    <div class="stat-meta">Pull latest build, overwrite files, then restart the server.</div>
-    <button class="pill" id="mod-update-btn" type="button">Run update</button>
+    <div class="stat-title">Server control</div>
+    <div class="stat-meta">Stop the server process immediately.</div>
+    <button class="pill" id="mod-stop-btn" type="button">Stop server</button>
   </section>
   <section class="card" style="display:flex;gap:10px;flex-wrap:wrap">
     <a class="pill" href="/mod-dashboard">Dashboard</a>
@@ -84,19 +84,19 @@ document.getElementById("recent").textContent = `24h ${s.created24h} • 7d ${s.
 document.getElementById("stat-open").textContent = `${s.openAppeals ?? 0} open appeals`;
 document.getElementById("stat-activity").textContent = `${s.created24h ?? 0} bans 24h`;
 
-const updateBtn = document.getElementById("mod-update-btn");
-updateBtn.addEventListener("click", async () => {
-  if (!confirm("Run server update? This will restart the server.")) return;
-  updateBtn.disabled = true;
-  updateBtn.textContent = "Updating...";
+const stopBtn = document.getElementById("mod-stop-btn");
+stopBtn.addEventListener("click", async () => {
+  if (!confirm("Stop the server process now?")) return;
+  stopBtn.disabled = true;
+  stopBtn.textContent = "Stopping...";
   try {
-    await api.post("/api/mod/update", {});
-    updateBtn.textContent = "Update started";
+    await api.post("/api/mod/stop", {});
+    stopBtn.textContent = "Stopped";
   } catch (err) {
     console.error(err);
-    alert("Update failed.");
-    updateBtn.textContent = "Run update";
-    updateBtn.disabled = false;
+    alert("Stop failed.");
+    stopBtn.textContent = "Stop server";
+    stopBtn.disabled = false;
   }
 });
 </script>

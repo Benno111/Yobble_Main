@@ -651,3 +651,9 @@ moderationRouter.post("/update", requireAuth, requireRole(...MOD_ROLES), async (
     res.status(500).json({ error: "update_failed" });
   }
 });
+
+/* POST /api/mod/stop */
+moderationRouter.post("/stop", requireAuth, requireRole(...MOD_ROLES), async (_req, res) => {
+  res.json({ ok: true });
+  setTimeout(() => process.exit(0), 300);
+});
