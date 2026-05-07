@@ -10,6 +10,19 @@ on:
       - ".github/workflows/android-build.yml"
       - "Android src/Yobble/**"
   workflow_dispatch:
+    inputs:
+      app_name:
+        description: "Android app display name"
+        required: false
+        default: "Yobble"
+      base_url:
+        description: "Base URL loaded by the Android WebView"
+        required: false
+        default: "http://photography-cage.gl.at.ply.gg:52426"
+      app_id:
+        description: "Android applicationId (package id)"
+        required: false
+        default: "com.yobble.client"
 
 jobs:
   build:
@@ -37,6 +50,50 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Apply Android app overrides
+        env:
+          WORKFLOW_APP_NAME: ${{ github.event.inputs.app_name }}
+          WORKFLOW_BASE_URL: ${{ github.event.inputs.base_url }}
+          WORKFLOW_APP_ID: ${{ github.event.inputs.app_id }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import re
+
+          root = Path(".")
+          app_name = os.environ.get("WORKFLOW_APP_NAME", "").strip()
+          base_url = os.environ.get("WORKFLOW_BASE_URL", "").strip()
+          app_id = os.environ.get("WORKFLOW_APP_ID", "").strip()
+
+          if app_name:
+              strings = root / "app/src/main/res/values/strings.xml"
+              text = strings.read_text(encoding="utf-8")
+              updated = re.sub(r'(<string name="app_name">)(.*?)(</string>)', r"\1" + app_name + r"\3", text, count=1, flags=re.DOTALL)
+              if updated == text:
+                  raise SystemExit("Unable to update app_name in strings.xml")
+              strings.write_text(updated, encoding="utf-8")
+              print(f"Updated app_name -> {app_name}")
+
+          if base_url:
+              activity = root / "app/src/main/java/com/Benno111/dorfplatformertimetravel/MainActivity.java"
+              text = activity.read_text(encoding="utf-8")
+              updated = re.sub(r'(private static final String BASE_URL = ")([^"]*)(";\s*)', r"\1" + base_url + r"\3", text, count=1)
+              if updated == text:
+                  raise SystemExit("Unable to update BASE_URL in MainActivity.java")
+              activity.write_text(updated, encoding="utf-8")
+              print(f"Updated BASE_URL -> {base_url}")
+
+          if app_id:
+              gradle_file = root / "app/build.gradle.kts"
+              text = gradle_file.read_text(encoding="utf-8")
+              updated = re.sub(r'(applicationId\s*=\s*")([^"]*)(")', r"\1" + app_id + r"\3", text, count=1)
+              if updated == text:
+                  raise SystemExit("Unable to update applicationId in app/build.gradle.kts")
+              gradle_file.write_text(updated, encoding="utf-8")
+              print(f"Updated applicationId -> {app_id}")
+          PY
 
       - name: Build debug APK
         run: ./gradlew --no-daemon clean assembleDebug
