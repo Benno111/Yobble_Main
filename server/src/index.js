@@ -28,11 +28,7 @@ import {
   gameHostingRouter,
   blogRouter,
   friendsRouter,
-  inventoryRouter,
-  marketRouter,
-  walletRouter,
   moderationRouter,
-  itemsRouter,
   statsRouter,
   appealsRouter,
   storageRouter,
@@ -58,11 +54,7 @@ const routerImports = [
   ["gameHostingRouter", gameHostingRouter],
   ["blogRouter", blogRouter],
   ["friendsRouter", friendsRouter],
-  ["inventoryRouter", inventoryRouter],
-  ["marketRouter", marketRouter],
-  ["walletRouter", walletRouter],
   ["moderationRouter", moderationRouter],
-  ["itemsRouter", itemsRouter],
   ["statsRouter", statsRouter],
   ["appealsRouter", appealsRouter],
   ["storageRouter", storageRouter],
@@ -876,11 +868,7 @@ app.use("/api/gamehosting", gameHostingRouter);
 app.use("/api/blog", blogRouter);
 
 app.use("/api/friends", friendsRouter);
-app.use("/api/inventory", inventoryRouter);
-app.use("/api/market", marketRouter);
-app.use("/api/wallet", walletRouter);
 app.use("/api/mod", moderationRouter);
-app.use("/api/items", itemsRouter);
 app.use("/api/stats", statsRouter);
 app.use("/api/appeals", appealsRouter);
 app.use("/api/storage", storageRouter);

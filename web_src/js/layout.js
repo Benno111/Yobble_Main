@@ -44,31 +44,12 @@ const HEADER_HTML = `
     </div>
     <div class="navDropdown">
       <button class="navDropdownToggle" type="button" aria-expanded="false">
-        <span class="navIcon" aria-hidden="true">🛒</span>
-        <span class="navLabel navLabel-full">Economy</span>
-        <span class="navLabel navLabel-abbr">Eco</span>
-        <span class="navLabel navLabel-emoji">🛒</span>
-        <span class="navDropdownArrow" aria-hidden="true">▾</span>
-      </button>
-      <div class="navDropdownMenu" role="menu">
-        <a href="/market" data-page="umarket" role="menuitem">Marketplace</a>
-        <a href="/inventory" data-page="uinventory" role="menuitem">Inventory</a>
-        <a href="/money" role="menuitem">Get Balance</a>
-      </div>
-    </div>
-    <div class="navDropdown">
-      <button class="navDropdownToggle" type="button" aria-expanded="false">
         <span class="navIcon" aria-hidden="true">⤴️</span>
         <span class="navLabel navLabel-full">Create</span>
         <span class="navLabel navLabel-abbr">Create</span>
         <span class="navLabel navLabel-emoji">⤴️</span>
         <span class="navDropdownArrow" aria-hidden="true">▾</span>
       </button>
-      <div class="navDropdownMenu" role="menu">
-        <a href="/upload" data-page="uupload" role="menuitem">Upload</a>
-        <a href="/item-upload" data-page="uitemupload" role="menuitem">Item upload</a>
-        <a href="/download" id="Download" role="menuitem">Download</a>
-      </div>
     </div>
     <span id="adminLinks" hidden>
       <a href="/modqueue"><span class="navIcon" aria-hidden="true">🛡️</span><span class="navLabel navLabel-full">Moderation</span><span class="navLabel navLabel-abbr">M</span><span class="navLabel navLabel-emoji">🛡️</span></a>

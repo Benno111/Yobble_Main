@@ -12,9 +12,6 @@ import { blogRouter } from "./routes.blog.js";
 
 // Optional / existing routers (uncomment when files exist)
 import { friendsRouter } from "./friends.js";
-import { inventoryRouter } from "./inventory.js";
-import { marketRouter } from "./market.js";
-import { walletRouter } from "./wallet.js";
 import { moderationRouter } from "./moderation.js";
 import { itemsRouter } from "./routes.items.js";
 import { statsRouter } from "./routes.stats.js";
@@ -40,9 +37,6 @@ export {
   gameHostingRouter,
   blogRouter,
   friendsRouter,
-  inventoryRouter,
-  marketRouter,
-  walletRouter,
   moderationRouter,
   itemsRouter,
   statsRouter,
