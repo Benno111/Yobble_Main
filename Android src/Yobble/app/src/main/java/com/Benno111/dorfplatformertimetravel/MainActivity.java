@@ -119,6 +119,8 @@ public class MainActivity extends Activity {
                 Uri uri = request.getUrl();
                 WebResourceResponse asset = assetLoader.shouldInterceptRequest(uri);
                 if (asset != null) return asset;
+                WebResourceResponse offlineGame = interceptOfflineGameRequest(uri);
+                if (offlineGame != null) return offlineGame;
                 WebResourceResponse assetFile = interceptAssetRequest(uri);
                 if (assetFile != null) return assetFile;
                 return super.shouldInterceptRequest(view, request);
@@ -129,6 +131,8 @@ public class MainActivity extends Activity {
                 Uri uri = Uri.parse(url);
                 WebResourceResponse asset = assetLoader.shouldInterceptRequest(uri);
                 if (asset != null) return asset;
+                WebResourceResponse offlineGame = interceptOfflineGameRequest(uri);
+                if (offlineGame != null) return offlineGame;
                 WebResourceResponse assetFile = interceptAssetRequest(uri);
                 if (assetFile != null) return assetFile;
                 return super.shouldInterceptRequest(view, url);
@@ -652,6 +656,46 @@ public class MainActivity extends Activity {
         if (extension.equals("ttf")) return "font/ttf";
         if (extension.equals("otf")) return "font/otf";
         return null;
+    }
+
+    private WebResourceResponse interceptOfflineGameRequest(Uri uri) {
+        if (uri == null) return null;
+        String host = uri.getHost();
+        if (host == null || !host.equalsIgnoreCase(Uri.parse(BASE_URL).getHost())) return null;
+        String path = uri.getPath();
+        if (path == null) return null;
+
+        String[] parts = path.split("/");
+        if (parts.length < 5) return null;
+        if (!"games".equals(parts[1])) return null;
+
+        String project = Uri.decode(parts[2]);
+        String version = Uri.decode(parts[3]);
+        File versionDir = getOfflineVersionDir(project, version);
+        File marker = getOfflineMarkerFile(project, version);
+        if (!marker.exists()) return null;
+
+        StringBuilder rel = new StringBuilder();
+        for (int i = 4; i < parts.length; i++) {
+            if (parts[i] == null || parts[i].isEmpty()) continue;
+            if (rel.length() > 0) rel.append('/');
+            rel.append(Uri.decode(parts[i]));
+        }
+        if (rel.length() == 0) return null;
+
+        try {
+            File target = new File(versionDir, rel.toString());
+            String resolved = target.getCanonicalPath();
+            String root = versionDir.getCanonicalPath();
+            if (!resolved.startsWith(root) || !target.exists() || !target.isFile()) return null;
+
+            String mime = resolveMimeType(uri, null);
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Access-Control-Allow-Origin", "*");
+            return new WebResourceResponse(mime, null, 200, "OK", headers, new java.io.FileInputStream(target));
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private WebResourceResponse interceptAssetRequest(Uri uri) {
