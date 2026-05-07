@@ -23,7 +23,6 @@ export async function mountTopbar(active){
     ["Games","/games","games"],
     ["Friends","/friends","friends"],
     ["Stats","/stats","stats"],
-    ["Yobble Dollar","/currency","currency"],
     ["Inventory/Trades","/inventory","inv"],
     ["Marketplace","/market","market"],
     ...(isAdmin ? [["Admin","/admin","admin"]] : []),
