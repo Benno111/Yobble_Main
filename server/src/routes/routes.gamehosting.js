@@ -37,6 +37,177 @@ function safeVersionPath(baseDir, project, version){
   return resolved;
 }
 
+function safeVersionFilePath(baseDir, project, version, fileName) {
+  const versionDir = safeVersionPath(baseDir, project, version);
+  const full = path.join(versionDir, fileName);
+  const resolved = path.resolve(full);
+  if (!resolved.startsWith(versionDir + path.sep) && resolved !== versionDir) {
+    throw new Error("unsafe_path");
+  }
+  return resolved;
+}
+
+function collectFilesRecursive(rootDir) {
+  const files = [];
+  const visit = (dir, relBase) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, entry.name);
+      const rel = relBase ? path.posix.join(relBase, entry.name) : entry.name;
+      if (entry.isDirectory()) {
+        visit(abs, rel);
+      } else if (entry.isFile()) {
+        files.push({ abs, rel });
+      }
+    }
+  };
+  visit(rootDir, "");
+  return files;
+}
+
+function getMimeType(fileName) {
+  const ext = path.extname(fileName).toLowerCase();
+  switch (ext) {
+    case ".html":
+    case ".htm":
+      return "text/html; charset=utf-8";
+    case ".js":
+    case ".mjs":
+      return "text/javascript; charset=utf-8";
+    case ".css":
+      return "text/css; charset=utf-8";
+    case ".json":
+      return "application/json; charset=utf-8";
+    case ".svg":
+      return "image/svg+xml";
+    case ".png":
+      return "image/png";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".gif":
+      return "image/gif";
+    case ".webp":
+      return "image/webp";
+    case ".wav":
+      return "audio/wav";
+    case ".mp3":
+      return "audio/mpeg";
+    case ".ogg":
+      return "audio/ogg";
+    case ".ttf":
+      return "font/ttf";
+    case ".otf":
+      return "font/otf";
+    case ".woff":
+      return "font/woff";
+    case ".woff2":
+      return "font/woff2";
+    default:
+      return "application/octet-stream";
+  }
+}
+
+function escapeInlineScript(text) {
+  return String(text).replace(/<\/script/gi, "<\\/script");
+}
+
+function normalizePackedPath(value) {
+  const raw = String(value || "").trim();
+  if (!raw || /^(?:[a-z][a-z0-9+\-.]*:)?\/\//i.test(raw) || raw.startsWith("data:") || raw.startsWith("blob:")) {
+    return "";
+  }
+  return raw.split("#")[0].split("?")[0].replace(/^[./\\]+/, "").replace(/^\/+/, "");
+}
+
+function rewriteCssUrls(cssText, assetUrls) {
+  return String(cssText).replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (match, quote, rawUrl) => {
+    const rel = normalizePackedPath(rawUrl);
+    return rel && assetUrls[rel] ? `url("${assetUrls[rel]}")` : match;
+  });
+}
+
+function buildSingleFileGameHtml({ htmlPath, versionDir, project, version }) {
+  const htmlText = fs.readFileSync(htmlPath, "utf8");
+  const files = collectFilesRecursive(versionDir);
+  const assetUrls = {};
+  const textFiles = new Map();
+  let projectJsonBase64 = null;
+
+  for (const file of files) {
+    const mime = getMimeType(file.rel);
+    const buffer = fs.readFileSync(file.abs);
+    if (file.rel === "assets/project.json") {
+      projectJsonBase64 = buffer.toString("base64");
+    }
+    if (mime.startsWith("text/") || mime.includes("javascript") || mime.includes("json") || mime.includes("xml")) {
+      textFiles.set(file.rel, buffer.toString("utf8"));
+    }
+    assetUrls[file.rel] = `data:${mime};base64,${buffer.toString("base64")}`;
+  }
+
+  let packed = htmlText;
+
+  packed = packed.replace(
+    /<script\b([^>]*?)src=["']([^"']+)["']([^>]*)>\s*<\/script>/gi,
+    (match, pre, src, post) => {
+      const rel = normalizePackedPath(src);
+      const text = rel ? textFiles.get(rel) : null;
+      if (!text || !rel.match(/\.(?:js|mjs)$/i)) return match;
+      return `<script${pre}${post}>${escapeInlineScript(text)}</script>`;
+    }
+  );
+
+  packed = packed.replace(
+    /<link\b([^>]*?)href=["']([^"']+)["']([^>]*?)>/gi,
+    (match, pre, href, post) => {
+      const rel = normalizePackedPath(href);
+      const text = rel ? textFiles.get(rel) : null;
+      const isStylesheet = /rel=["'][^"']*stylesheet[^"']*["']/i.test(match);
+      if (!text || !rel.match(/\.(?:css)$/i) || !isStylesheet) return match;
+      return `<style${pre}${post}>${escapeInlineScript(rewriteCssUrls(text, assetUrls))}</style>`;
+    }
+  );
+
+  packed = packed.replace(
+    /<script>\s*const getProjectData = \(function\(\) \{[\s\S]*?xhr\.open\('GET', "\.\/assets\/project\.json"\);\s*xhr\.send\(\);\s*\}\);\s*\}\)\(\);\s*<\/script>/,
+    () => {
+      if (!projectJsonBase64) return "";
+      return `
+<script>
+  window.__YOBBLE_PROJECT_JSON_B64__ = ${JSON.stringify(projectJsonBase64)};
+  window.__YOBBLE_ASSET_URLS__ = ${JSON.stringify(assetUrls)};
+  window.__YOBBLE_ASSET_URL = (assetPath) => window.__YOBBLE_ASSET_URLS__[assetPath] || assetPath;
+  window.__YOBBLE_PROJECT_JSON_BUFFER__ = (() => {
+    const bin = atob(window.__YOBBLE_PROJECT_JSON_B64__);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  })();
+</script>
+<script>
+    const getProjectData = (function() {
+      const storage = scaffolding.storage;
+      storage.onprogress = (total, loaded) => {
+        setProgress(interpolate(0.2, 0.98, loaded / total));
+      };
+      storage.addWebStore(
+        [
+          storage.AssetType.ImageVector,
+          storage.AssetType.ImageBitmap,
+          storage.AssetType.Sound,
+          storage.AssetType.Font
+        ].filter(i => i),
+        (asset) => window.__YOBBLE_ASSET_URL('assets/' + asset.assetId + '.' + asset.dataFormat)
+      );
+      return () => Promise.resolve(window.__YOBBLE_PROJECT_JSON_BUFFER__.slice(0));
+    })();
+  </script>`;
+    }
+  );
+
+  return packed;
+}
+
 function shellQuote(value){
   return `'${String(value).replace(/'/g, "''")}'`;
 }
@@ -630,5 +801,65 @@ gameHostingRouter.get("/version/backup", requireAuth, async (req, res) => {
     res.download(backupZipPath, `${project}-${version}.zip`);
   }catch{
     return res.status(404).json({ error:"backup_unavailable" });
+  }
+});
+
+// Download the selected version entry HTML file (owner/mod/admin or whitelisted/public)
+gameHostingRouter.get("/version/html", requireAuth, async (req, res) => {
+  const project = String(req.query?.project || "").trim();
+  const version = String(req.query?.version || "").trim();
+  if(!project || !version) return res.status(400).json({ error:"missing_fields" });
+
+  const g = await get("SELECT id, owner_user_id FROM games WHERE project=?", [project]);
+  if(!g) return res.status(404).json({ error:"game_not_found" });
+
+  const v = await get(
+    `SELECT entry_html, is_published FROM game_versions WHERE game_id=? AND version=?`,
+    [g.id, version]
+  );
+  if(!v) return res.status(404).json({ error:"version_not_found" });
+
+  const isOwner = g.owner_user_id === req.user.uid;
+  const isPrivileged = req.user.role === "admin" || req.user.role === "moderator";
+  if (!(v.is_published === 1 || isOwner || isPrivileged)) {
+    const wl = await get(
+      `SELECT 1 FROM game_version_whitelist
+       WHERE game_id=? AND version=? AND user_id=?
+       LIMIT 1`,
+      [g.id, version, req.user.uid]
+    );
+    if (!wl) return res.status(403).json({ error:"not_whitelisted" });
+  }
+
+  const entryHtml = String(v.entry_html || "index.html").trim() || "index.html";
+  const SERVER_DIR = path.resolve(process.cwd());
+  const PROJECT_ROOT = path.resolve(SERVER_DIR, "..");
+  const GAME_STORAGE_DIR = path.join(PROJECT_ROOT, "save", "uploads", "games");
+
+  try{
+    const filePath = safeVersionFilePath(GAME_STORAGE_DIR, project, version, entryHtml);
+    const versionDir = path.dirname(filePath);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error:"entry_not_found" });
+    }
+
+    const lowerName = path.basename(filePath).toLowerCase();
+    const looksPackaged = lowerName.endsWith(".html") && fs.existsSync(path.join(versionDir, "script.js")) && fs.existsSync(path.join(versionDir, "assets", "project.json"));
+    if (looksPackaged) {
+      const packedHtml = buildSingleFileGameHtml({
+        htmlPath: filePath,
+        versionDir,
+        project,
+        version
+      });
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${project}-${version}.html"`);
+      return res.send(packedHtml);
+    }
+
+    const downloadName = `${project}-${version}${path.extname(filePath) || ".html"}`;
+    res.download(filePath, downloadName);
+  }catch{
+    return res.status(404).json({ error:"entry_not_found" });
   }
 });

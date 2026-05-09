@@ -127,6 +127,7 @@ async function load(){
       <select id="versionSelect"></select>
     </div>
     <button class="primary" id="playBtn">Play</button>
+    <button class="secondary" id="downloadBtn" type="button">Download HTML</button>
     ${(me && g.owner_username && me.username === g.owner_username)
       ? `<a class="secondary" id="dashBtn" href="/game-dashboard?project=${encodeURIComponent(g.project)}">Open dashboard</a>`
       : ""}
@@ -135,6 +136,8 @@ async function load(){
     <div class="muted" id="playNotice"></div>
   `;
   const sel = document.getElementById("versionSelect");
+  const playBtn = document.getElementById("playBtn");
+  const downloadBtn = document.getElementById("downloadBtn");
   if(versions.length){
     for(const v of versions){
       const opt = document.createElement("option");
@@ -151,19 +154,67 @@ async function load(){
     sel.value = published;
   }else{
     sel.innerHTML = `<option value="">No versions available</option>`;
-    document.getElementById("playBtn").disabled = true;
+    playBtn.disabled = true;
+    if (downloadBtn) downloadBtn.disabled = true;
   }
-  const playBtn = document.getElementById("playBtn");
   const playNotice = document.getElementById("playNotice");
+  async function downloadSelectedVersion(){
+    const version = sel.value;
+    if(!version) return;
+    const entry = entryHtmlMap.get(version) ?? g.entry_html ?? "index.html";
+    const url = `/api/gamehosting/version/html?project=${encodeURIComponent(project)}&version=${encodeURIComponent(version)}`;
+    const token = localStorage.getItem("token");
+    if (!downloadBtn) return;
+    downloadBtn.disabled = true;
+    const prevText = downloadBtn.textContent;
+    downloadBtn.textContent = "Saving...";
+    try{
+      const response = await fetch(url, {
+        headers: token ? { Authorization: "Bearer " + token } : {}
+      });
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") || "";
+      const match = disposition.match(/filename="?([^"]+)"?/i);
+      const filename = match?.[1] || `${project}-${version}-${String(entry).replace(/\\/g, "/").split("/").pop() || "game"}`;
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      downloadBtn.textContent = "Saved";
+      setTimeout(() => {
+        if (downloadBtn) {
+          downloadBtn.textContent = prevText;
+          downloadBtn.disabled = false;
+        }
+      }, 1000);
+    }catch{
+      if (downloadBtn) {
+        downloadBtn.textContent = "Failed";
+        downloadBtn.disabled = false;
+        setTimeout(() => {
+          if (downloadBtn) downloadBtn.textContent = prevText;
+        }, 1000);
+      }
+    }
+  }
   async function updatePlayAccess(){
     const version = sel.value;
     if(!version) return;
     try{
       await api.get(`/api/gamehosting/can-play?project=${encodeURIComponent(project)}&version=${encodeURIComponent(version)}`);
       playBtn.disabled = false;
+      if (downloadBtn) downloadBtn.disabled = false;
       if(playNotice) playNotice.textContent = "";
     }catch{
       playBtn.disabled = true;
+      if (downloadBtn) downloadBtn.disabled = true;
       if(playNotice) playNotice.textContent = "Unpublished: whitelist required.";
     }
   }
@@ -184,6 +235,9 @@ async function load(){
     if(window.electron?.openGame) window.electron.openGame(url);
     else location.href = url;
   };
+  if (downloadBtn) {
+    downloadBtn.onclick = downloadSelectedVersion;
+  }
   sel.addEventListener("change", updatePlayAccess);
   await updatePlayAccess();
   if(libAvailable){
