@@ -1,11 +1,36 @@
 import { DatabaseSync } from "node:sqlite";
 import path from "path";
 import crypto from "crypto";
+import fs from "fs";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, "../..");
+const SAVE_DIR = path.join(PROJECT_ROOT, "save");
+const DB_PATH = path.join(SAVE_DIR, "db");
+const GENERIC_SAVE_PATH = path.join(SAVE_DIR, "save.json");
+
+function ensureSaveFolder() {
+  fs.mkdirSync(SAVE_DIR, { recursive: true });
+  if (!fs.existsSync(GENERIC_SAVE_PATH)) {
+    fs.writeFileSync(
+      GENERIC_SAVE_PATH,
+      JSON.stringify({
+        name: "Yobble Save",
+        created_at: Date.now(),
+        version: 1
+      }, null, 2) + "\n"
+    );
+  }
+}
+
+ensureSaveFolder();
 
 /* -----------------------------
    DB connection
 ------------------------------ */
-export const db = new DatabaseSync(path.resolve("../save/db"));
+export const db = new DatabaseSync(DB_PATH);
 
 /* IMPORTANT: enable foreign keys */
 db.exec("PRAGMA foreign_keys = ON");
@@ -373,6 +398,7 @@ export async function initDb() {
   await addColumnIfMissing("items", "approved_at", "INTEGER");
   await addColumnIfMissing("items", "rejected_reason", "TEXT");
   await addColumnIfMissing("items", "created_at", "INTEGER");
+  await addColumnIfMissing("items", "ai_flag", "TEXT");
 
   await run(`CREATE TABLE IF NOT EXISTS inventory(
     user_id INTEGER NOT NULL,

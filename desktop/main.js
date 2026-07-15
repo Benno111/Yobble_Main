@@ -105,6 +105,60 @@ function resolveOfflineEntryPath(project, version, entry) {
   return null;
 }
 
+function countOfflineFiles(dir) {
+  let total = 0;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === ".complete") continue;
+    const entryPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      total += countOfflineFiles(entryPath);
+    } else if (entry.isFile()) {
+      total += 1;
+    }
+  }
+  return total;
+}
+
+function findOfflineEntry(dir) {
+  const preferred = ["index.html", "index.htm"];
+  for (const candidate of preferred) {
+    if (fs.existsSync(path.join(dir, candidate))) return candidate;
+  }
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const entryPath = path.join(dir, entry.name);
+    if (entry.isFile() && /\.html?$/i.test(entry.name)) return entry.name;
+    if (entry.isDirectory()) {
+      const nested = findOfflineEntry(entryPath);
+      if (nested) return path.posix.join(entry.name, nested.replace(/\\/g, "/"));
+    }
+  }
+  return "index";
+}
+
+function listOfflineGames() {
+  const root = OFFLINE_ROOT();
+  if (!fs.existsSync(root)) return [];
+  const games = [];
+  for (const projectEntry of fs.readdirSync(root, { withFileTypes: true })) {
+    if (!projectEntry.isDirectory()) continue;
+    const projectDir = path.join(root, projectEntry.name);
+    for (const versionEntry of fs.readdirSync(projectDir, { withFileTypes: true })) {
+      if (!versionEntry.isDirectory()) continue;
+      const versionDir = path.join(projectDir, versionEntry.name);
+      const marker = path.join(versionDir, ".complete");
+      if (!fs.existsSync(marker)) continue;
+      games.push({
+        project: projectEntry.name,
+        version: versionEntry.name,
+        entry: findOfflineEntry(versionDir),
+        cachedAt: Number(fs.readFileSync(marker, "utf8")) || 0,
+        files: countOfflineFiles(versionDir)
+      });
+    }
+  }
+  return games.sort((a, b) => b.cachedAt - a.cachedAt);
+}
+
 function buildOfflineFileUrl(project, version, entry) {
   const filePath = resolveOfflineEntryPath(project, version, entry);
   return filePath ? pathToFileURL(filePath).toString() : null;
@@ -286,6 +340,27 @@ ipcMain.handle("open-external", async (_event, targetUrl) => {
   await shell.openExternal(targetUrl);
   return true;
 });
+
+ipcMain.handle("cache-game-offline", async (_event, payload) => {
+  const project = payload?.project;
+  const version = payload?.version;
+  if (!project || !version) {
+    throw new Error("missing_project_or_version");
+  }
+  const versionDir = await ensureOfflineGameFiles(project, version);
+  const files = countOfflineFiles(versionDir);
+  return { ok: true, files };
+});
+
+ipcMain.handle("has-offline-game", (_event, payload) => {
+  const project = payload?.project;
+  const version = payload?.version;
+  const entry = payload?.entry || "index";
+  if (!project || !version) return false;
+  return !!resolveOfflineEntryPath(project, version, entry);
+});
+
+ipcMain.handle("list-offline-games", () => listOfflineGames());
 
 ipcMain.handle("window-minimize", (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);

@@ -7,45 +7,18 @@ import crypto from "crypto";
 import { all, get, run } from "../db.js";
 import { requireAuth, verifyToken } from "../auth.js";
 import { moderateText, ModerationSeverity } from "../ai-moderation.js";
+import { scanUploadedImage } from "../image-moderation.js";
+import { censorText, hasBlockedWord } from "../profanity-filter.js";
 
 const DEFAULT_ROOMS = [];
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_ATTACHMENTS = 5;
-const BAD_WORDS = [
-  "asshole",
-  "bastard",
-  "bitch",
-  "bullshit",
-  "crap",
-  "cunt",
-  "damn",
-  "dick",
-  "fuck",
-  "motherfucker",
-  "nigga",
-  "nigger",
-  "piss",
-  "prick",
-  "shit",
-  "slut",
-  "twat",
-  "wanker"
-];
 const ROOM_NAME_HIGH_PATTERNS = [
   /\b(kill\s+yourself|kys)\b/i,
   /\b(rape|rapist|pedo|pedophile|csam)\b/i,
   /\b(doxx|doxxing|swat)\b/i,
   /\b(heil\s+hitler|gas\s+the\s+jews|white\s+power)\b/i
 ];
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-const badWordPattern = new RegExp(
-  `\\b(${BAD_WORDS.map(escapeRegExp).join("|")})\\b`,
-  "gi"
-);
 const chatBroadcasters = new Set();
 let chatSweepStarted = false;
 
@@ -57,17 +30,6 @@ function broadcastChatMessage(channelId, message) {
       console.error("chat broadcast error", err);
     }
   }
-}
-
-function censorText(value) {
-  if (!value) return "";
-  return String(value).replace(badWordPattern, (match) => "*".repeat(match.length));
-}
-
-function hasBlockedWord(value) {
-  if (!value) return false;
-  badWordPattern.lastIndex = 0;
-  return badWordPattern.test(String(value));
 }
 
 function hasHighRiskRoomName(value) {
@@ -804,6 +766,23 @@ export function createChatRouter({ projectRoot }) {
     const rawText = String(req.body?.text || "").trim().slice(0, MAX_MESSAGE_LENGTH);
     const text = censorText(rawText);
     const files = Array.isArray(req.files) ? req.files : [];
+    for (const f of files) {
+      const imageScan = await scanUploadedImage({
+        file: f,
+        uploaderId: req.user.uid,
+        context: `chat attachment upload; channel=${channelName}; text=${text}`
+      });
+      if (imageScan.blocked) {
+        for (const uploaded of files) {
+          try { fs.unlinkSync(uploaded.path); } catch {}
+        }
+        return res.status(400).json({
+          error: "bad_image_blocked",
+          reason: imageScan.reason || "content_policy_violation",
+          punishment: imageScan.punishment || null
+        });
+      }
+    }
     const moderation = text ? await evaluateChatTextModeration(text) : null;
     if (!text && !files.length) {
       return res.status(400).json({ error: "empty_message" });

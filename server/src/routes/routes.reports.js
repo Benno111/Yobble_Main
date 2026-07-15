@@ -6,6 +6,7 @@ import { requireAuth, requireRole } from "../auth.js";
 import { run, all, get } from "../db.js";
 import { moderateText, ModerationSeverity } from "../ai-moderation.js";
 import { scanAndRemoveBadChatMessages } from "./chat.js";
+import { scanUploadedImage } from "../image-moderation.js";
 
 export const reportsRouter = express.Router();
 
@@ -208,6 +209,20 @@ reportsRouter.post("/evidence", requireAuth, upload.single("file"), async (req,r
   const report_id = Number(req.body?.report_id);
   if(!Number.isFinite(report_id) || !req.file){
     return res.status(400).json({ error:"bad_request" });
+  }
+
+  const imageScan = await scanUploadedImage({
+    file: req.file,
+    uploaderId: req.user.uid,
+    context: `report evidence upload; report_id=${report_id}`
+  });
+  if (imageScan.blocked) {
+    try { fs.unlinkSync(req.file.path); } catch {}
+    return res.status(400).json({
+      error: "bad_image_blocked",
+      reason: imageScan.reason || "content_policy_violation",
+      punishment: imageScan.punishment || null
+    });
   }
 
   await run(

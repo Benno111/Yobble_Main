@@ -1,7 +1,7 @@
 .container{
   max-width: 1240px;
   margin: 0 auto;
-  padding: 28px;
+  padding: 28px 28px 0;
 }
 .app{
   display:flex;
@@ -109,7 +109,10 @@
   font-size: 12px;
 }
 .content{
-  padding: 28px;
+  padding: 28px 28px 0;
+}
+.content > :last-child{
+  margin-bottom: 0;
 }
 .market-shell{
   display:flex;
@@ -196,8 +199,8 @@
 }
 @media (max-width: 900px){
   .sidebar{ display:none; }
-  .container{ padding: 18px; }
-  .content{ padding: 18px; }
+  .container{ padding: 18px 18px 0; }
+  .content{ padding: 18px 18px 0; }
   .topbar{flex-wrap:wrap;gap:12px;height:auto;padding:14px 16px}
   .nav{width:100%}
   .accountSummary--inline{

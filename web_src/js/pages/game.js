@@ -1,12 +1,23 @@
 import { api } from "../api-pages/game.js";
-import { requireAuth } from "../auth.js";
 import { mountTopbar } from "../layout.js";
+import { buildPlayUrl, cacheGameForOffline, getOfflineGames, hasCachedGameEntry } from "../offline-play.js";
 await mountTopbar("games");
 let me = null;
-try{
-  me = await requireAuth();
-}catch{
-  me = null;
+let hasUsableAuth = false;
+const authToken = localStorage.getItem("token") || "";
+if (authToken) {
+  try{
+    const res = await fetch("/api/auth/me", {
+      headers: { Authorization: "Bearer " + authToken }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      me = data.user || data || null;
+      hasUsableAuth = !!me;
+    }
+  }catch{
+    me = null;
+  }
 }
 const project = location.pathname.split("/").filter(Boolean).pop();
 const heroMain = document.getElementById("hero-main");
@@ -41,7 +52,11 @@ function fmtMs(ms){
 }
 async function safeGet(url, fallback){
   try{
-    return await api.get(url);
+    const res = await fetch(url, {
+      headers: hasUsableAuth ? { Authorization: "Bearer " + authToken } : {}
+    });
+    if (!res.ok) return fallback;
+    return await res.json();
   }catch{
     return fallback;
   }
@@ -53,10 +68,44 @@ async function load(){
   const gRes = await safeGet("/api/games/" + encodeURIComponent(project), null);
   if(!gRes){
     const offline = navigator.onLine === false;
+    let cached = getOfflineGames().filter((item) => item.project === project);
+    if (window.electron?.listOfflineGames) {
+      try {
+        const desktopCached = await window.electron.listOfflineGames();
+        cached = [...cached, ...(Array.isArray(desktopCached) ? desktopCached.filter((item) => item.project === project) : [])];
+      } catch {}
+    }
+    const seenCached = new Set();
+    cached = cached.filter((item) => {
+      const key = `${item.project}\n${item.version}\n${item.entry || "index"}`;
+      if (seenCached.has(key)) return false;
+      seenCached.add(key);
+      return true;
+    });
     heroMain.innerHTML = `
       <h1>${offline ? "You're offline" : "Game deleted"}</h1>
-      <p class="muted">${offline ? "The server could not be reached. If you have already launched this game in the desktop or mobile app, it can still open from the local offline cache." : "This game is no longer available."}</p>
+      <p class="muted">${offline ? "The server could not be reached. Saved offline versions can still be opened here." : "This game is no longer available."}</p>
     `;
+    if (offline && cached.length) {
+      heroActions.innerHTML = `
+        <div>
+          <label for="offlineVersionSelect">Saved version</label>
+          <select id="offlineVersionSelect"></select>
+        </div>
+        <button class="primary" id="offlinePlayBtn">Play offline</button>
+      `;
+      const sel = document.getElementById("offlineVersionSelect");
+      for (const item of cached) {
+        const opt = document.createElement("option");
+        opt.value = `${item.version}\n${item.entry || "index"}`;
+        opt.textContent = item.version;
+        sel.appendChild(opt);
+      }
+      document.getElementById("offlinePlayBtn").onclick = () => {
+        const [version, entry] = String(sel.value || "").split("\n");
+        if (version) location.href = buildPlayUrl(project, version, entry || "index");
+      };
+    }
     const unhideBtn = document.getElementById("unhideBtn");
     if (unhideBtn && ["admin","moderator"].includes(me?.role)) {
       unhideBtn.style.display = "inline-flex";
@@ -127,6 +176,7 @@ async function load(){
       <select id="versionSelect"></select>
     </div>
     <button class="primary" id="playBtn">Play</button>
+    <button class="secondary" id="offlineBtn" type="button">Save offline</button>
     <button class="secondary" id="downloadBtn" type="button">Download HTML</button>
     ${(me && g.owner_username && me.username === g.owner_username)
       ? `<a class="secondary" id="dashBtn" href="/game-dashboard?project=${encodeURIComponent(g.project)}">Open dashboard</a>`
@@ -137,6 +187,7 @@ async function load(){
   `;
   const sel = document.getElementById("versionSelect");
   const playBtn = document.getElementById("playBtn");
+  const offlineBtn = document.getElementById("offlineBtn");
   const downloadBtn = document.getElementById("downloadBtn");
   if(versions.length){
     for(const v of versions){
@@ -155,6 +206,7 @@ async function load(){
   }else{
     sel.innerHTML = `<option value="">No versions available</option>`;
     playBtn.disabled = true;
+    if (offlineBtn) offlineBtn.disabled = true;
     if (downloadBtn) downloadBtn.disabled = true;
   }
   const playNotice = document.getElementById("playNotice");
@@ -208,14 +260,26 @@ async function load(){
     const version = sel.value;
     if(!version) return;
     try{
-      await api.get(`/api/gamehosting/can-play?project=${encodeURIComponent(project)}&version=${encodeURIComponent(version)}`);
+      const accessRes = await fetch(`/api/gamehosting/can-play?project=${encodeURIComponent(project)}&version=${encodeURIComponent(version)}`, {
+        headers: hasUsableAuth ? { Authorization: "Bearer " + authToken } : {}
+      });
+      if (!accessRes.ok) throw new Error("access_denied");
       playBtn.disabled = false;
+      if (offlineBtn) offlineBtn.disabled = false;
       if (downloadBtn) downloadBtn.disabled = false;
       if(playNotice) playNotice.textContent = "";
     }catch{
-      playBtn.disabled = true;
+      const entry = entryHtmlMap.get(version) ?? g.entry_html ?? "index";
+      const cached = (window.electron?.hasOfflineGame && await window.electron.hasOfflineGame(project, version, entry))
+        || await hasCachedGameEntry(project, version, entry);
+      playBtn.disabled = !cached;
+      if (offlineBtn) offlineBtn.disabled = true;
       if (downloadBtn) downloadBtn.disabled = true;
-      if(playNotice) playNotice.textContent = "Unpublished: whitelist required.";
+      if(playNotice) {
+        playNotice.textContent = cached
+          ? "Offline copy available."
+          : (navigator.onLine === false ? "No offline copy saved." : "Unpublished: whitelist required.");
+      }
     }
   }
   playBtn.onclick = async ()=>{
@@ -223,7 +287,7 @@ async function load(){
     if(!version) return;
     const entry = entryHtmlMap.get(version) ?? g.entry_html ?? "index";
     let token = "";
-    try{
+    if (hasUsableAuth) try{
       const t = await api.post("/api/launcher/token", { game_project: project });
       token = t.token || "";
     }catch{}
@@ -235,6 +299,29 @@ async function load(){
     if(window.electron?.openGame) window.electron.openGame(url);
     else location.href = url;
   };
+  if (offlineBtn) {
+    offlineBtn.onclick = async () => {
+      const version = sel.value;
+      if(!version) return;
+      const entry = entryHtmlMap.get(version) ?? g.entry_html ?? "index";
+      const prevText = offlineBtn.textContent;
+      offlineBtn.disabled = true;
+      offlineBtn.textContent = "Saving...";
+      try {
+        const result = window.electron?.cacheGameOffline
+          ? await window.electron.cacheGameOffline(project, version)
+          : await cacheGameForOffline({ project, version, entry, title: g.title || project });
+        offlineBtn.textContent = result.files ? `Saved ${result.files} files` : "Saved";
+      } catch {
+        offlineBtn.textContent = "Offline save failed";
+      } finally {
+        setTimeout(() => {
+          offlineBtn.textContent = prevText;
+          offlineBtn.disabled = false;
+        }, 1400);
+      }
+    };
+  }
   if (downloadBtn) {
     downloadBtn.onclick = downloadSelectedVersion;
   }

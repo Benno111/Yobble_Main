@@ -18,6 +18,7 @@ import { statsRouter } from "./routes.stats.js";
 import { appealsRouter } from "./routes.appeals.js";
 import { storageRouter } from "./routes.storage.js";
 import { libraryRouter } from "./routes.library.js";
+import { launcherRouter } from "./routes.launcher.js";
 import { photonRouter } from "./photon.js";
 import { sdkRouter } from "./sdk.js";
 import { customLevelsRouter } from "./custom-levels.js";
@@ -43,6 +44,7 @@ export {
   appealsRouter,
   storageRouter,
   libraryRouter,
+  launcherRouter,
   photonRouter,
   sdkRouter,
   customLevelsRouter,

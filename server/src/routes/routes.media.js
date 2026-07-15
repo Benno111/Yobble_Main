@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import { requireAuth, requireRole } from "../auth.js";
 import { get, run } from "../db.js";
+import { scanUploadedImage } from "../image-moderation.js";
 
 export const mediaRouter = express.Router();
 
@@ -23,6 +24,22 @@ mediaRouter.post("/banner", requireAuth, requireRole("moderator"), upload.single
   const g = await get("SELECT id FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
+  const ext = path.extname(req.file.originalname || ".png").toLowerCase();
+  const declaredMime = ext === ".webp" ? "image/webp" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "image/png";
+  const imageScan = await scanUploadedImage({
+    file: req.file,
+    declaredMime,
+    uploaderId: req.user.uid,
+    context: `game banner upload; project=${project}`
+  });
+  if (imageScan.blocked) {
+    return res.status(400).json({
+      error: "bad_image_blocked",
+      reason: imageScan.reason || "content_policy_violation",
+      punishment: imageScan.punishment || null
+    });
+  }
+
   const SERVER_DIR = path.resolve(process.cwd());
   const PROJECT_ROOT = path.resolve(SERVER_DIR, "..");
   const GAME_STORAGE_DIR = path.join(PROJECT_ROOT, "save", "uploads", "games");
@@ -30,7 +47,6 @@ mediaRouter.post("/banner", requireAuth, requireRole("moderator"), upload.single
   const mediaDir = path.join(GAME_STORAGE_DIR, project, "media");
   fs.mkdirSync(mediaDir, { recursive:true });
 
-  const ext = path.extname(req.file.originalname || ".png") || ".png";
   const filename = "banner" + ext;
   const out = path.join(mediaDir, filename);
   fs.writeFileSync(out, req.file.buffer);
@@ -48,6 +64,22 @@ mediaRouter.post("/screenshot", requireAuth, requireRole("moderator"), upload.si
   const g = await get("SELECT id, screenshots_json FROM games WHERE project=?", [project]);
   if(!g) return res.status(404).json({ error:"game_not_found" });
 
+  const ext = path.extname(req.file.originalname || ".png").toLowerCase();
+  const declaredMime = ext === ".webp" ? "image/webp" : ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "image/png";
+  const imageScan = await scanUploadedImage({
+    file: req.file,
+    declaredMime,
+    uploaderId: req.user.uid,
+    context: `game screenshot upload; project=${project}`
+  });
+  if (imageScan.blocked) {
+    return res.status(400).json({
+      error: "bad_image_blocked",
+      reason: imageScan.reason || "content_policy_violation",
+      punishment: imageScan.punishment || null
+    });
+  }
+
   const SERVER_DIR = path.resolve(process.cwd());
   const PROJECT_ROOT = path.resolve(SERVER_DIR, "..");
   const GAME_STORAGE_DIR = path.join(PROJECT_ROOT, "save", "uploads", "games");
@@ -55,7 +87,6 @@ mediaRouter.post("/screenshot", requireAuth, requireRole("moderator"), upload.si
   const mediaDir = path.join(GAME_STORAGE_DIR, project, "media");
   fs.mkdirSync(mediaDir, { recursive:true });
 
-  const ext = path.extname(req.file.originalname || ".png") || ".png";
   const filename = `${Date.now()}-${safeName(req.file.originalname)}${ext}`.replace(/\.png\.png$/,".png");
   const out = path.join(mediaDir, filename);
   fs.writeFileSync(out, req.file.buffer);

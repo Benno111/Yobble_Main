@@ -6,6 +6,9 @@ import { spawn } from "child_process";
 import unzipper from "unzipper";
 import { requireAuth, requireRole } from "../auth.js";
 import { get, run, all } from "../db.js";
+import { scanUploadedImage } from "../image-moderation.js";
+import { moderateFields, ModerationSeverity } from "../ai-moderation.js";
+import { hasBlockedWord } from "../profanity-filter.js";
 
 export const gameHostingRouter = express.Router();
 
@@ -105,6 +108,65 @@ function getMimeType(fileName) {
     default:
       return "application/octet-stream";
   }
+}
+
+function hasBlockedGameMetadata(fields) {
+  return Object.values(fields).some((value) => hasBlockedWord(value));
+}
+
+function imageMimeFromPath(fileName) {
+  const ext = path.extname(fileName).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  return "";
+}
+
+function readEntryBuffer(entry, maxBytes) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let total = 0;
+    entry.stream()
+      .on("data", (chunk) => {
+        total += chunk.length;
+        if (total > maxBytes) {
+          reject(new Error("entry_too_large"));
+          return;
+        }
+        chunks.push(chunk);
+      })
+      .on("end", () => resolve(Buffer.concat(chunks)))
+      .on("error", reject);
+  });
+}
+
+async function scanGameZipImages(zipPath, uploaderId, context) {
+  const dir = await unzipper.Open.file(zipPath);
+  const imageEntries = dir.files
+    .filter((entry) => !entry.path.endsWith("/") && imageMimeFromPath(entry.path))
+    .slice(0, 30);
+
+  for (const entry of imageEntries) {
+    let buffer;
+    try {
+      buffer = await readEntryBuffer(entry, 8 * 1024 * 1024);
+    } catch {
+      return {
+        blocked: true,
+        reason: "image_in_zip_too_large",
+        punishment: null
+      };
+    }
+    const result = await scanUploadedImage({
+      buffer,
+      declaredMime: imageMimeFromPath(entry.path),
+      uploaderId,
+      context: `${context}; zip_image=${entry.path}`
+    });
+    if (result.blocked) return result;
+  }
+  return { blocked: false };
 }
 
 function escapeInlineScript(text) {
@@ -310,6 +372,31 @@ gameHostingRouter.post("/upload", requireAuth, upload.single("zip"), async (req,
   if(!project) return res.status(400).json({ error:"invalid_project" });
   if(!version || !req.file) return res.status(400).json({ error:"missing_fields" });
 
+  const metadataFields = {
+    title,
+    project: projectInput || project,
+    category: category || "",
+    description: description || ""
+  };
+  if (hasBlockedGameMetadata(metadataFields)) {
+    try { fs.unlinkSync(req.file.path); } catch {}
+    return res.status(400).json({ error: "content_policy_violation", reason: "blocked_word" });
+  }
+
+  try {
+    const aiResult = await moderateFields(metadataFields);
+    if (aiResult.flagged && [ModerationSeverity.MEDIUM, ModerationSeverity.HIGH].includes(aiResult.severity)) {
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(400).json({
+        error: "content_policy_violation",
+        reason: aiResult.reason || "content_policy",
+        severity: aiResult.severity
+      });
+    }
+  } catch (aiErr) {
+    console.error("[ai-moderation] game metadata moderation failed:", aiErr?.message);
+  }
+
   // Upload validation: require entry_html (defaults to index.html)
   let okEntry = false;
   try{
@@ -319,6 +406,20 @@ gameHostingRouter.post("/upload", requireAuth, upload.single("zip"), async (req,
   }
   if(!okEntry){
     return res.status(400).json({ error:"entry_not_found_in_zip", entry_html });
+  }
+
+  const imageScan = await scanGameZipImages(
+    req.file.path,
+    req.user.uid,
+    `game zip upload; project=${project}; title=${title}; version=${version}`
+  );
+  if (imageScan.blocked) {
+    try { fs.unlinkSync(req.file.path); } catch {}
+    return res.status(400).json({
+      error: "bad_image_blocked",
+      reason: imageScan.reason || "content_policy_violation",
+      punishment: imageScan.punishment || null
+    });
   }
 
   // Auto-create game if missing

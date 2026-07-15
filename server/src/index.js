@@ -33,6 +33,7 @@ import {
   appealsRouter,
   storageRouter,
   libraryRouter,
+  launcherRouter,
   photonRouter,
   sdkRouter,
   customLevelsRouter,
@@ -59,6 +60,7 @@ const routerImports = [
   ["appealsRouter", appealsRouter],
   ["storageRouter", storageRouter],
   ["libraryRouter", libraryRouter],
+  ["launcherRouter", launcherRouter],
   ["photonRouter", photonRouter],
   ["sdkRouter", sdkRouter],
   ["customLevelsRouter", customLevelsRouter],
@@ -675,6 +677,8 @@ function readCookie(req, name) {
 }
 
 function enforceIframeHtml(req, res) {
+  if (req.gameLaunchTokenAuthenticated) return true;
+
   const fetchDest = String(req.headers["sec-fetch-dest"] || "");
   const ext = path.extname(req.path || "");
   const isHtmlRequest = !ext || ext === ".html";
@@ -682,6 +686,49 @@ function enforceIframeHtml(req, res) {
     res.status(404).sendFile(path.join(WEB_DIR, "404.html"));
     return false;
   }
+  return true;
+}
+
+function setGameLaunchCookie(req, res, project, version, token) {
+  if (!token || !project || !version || !req.query?.launch_token) return;
+  const cookiePath = `/games/${project}/${version}`;
+  res.cookie("game_launch_token", token, {
+    path: cookiePath,
+    maxAge: 2 * 60 * 1000,
+    sameSite: "lax"
+  });
+}
+
+async function authenticateGameAssetRequest(req, res, project, version) {
+  const launchToken = String(req.query?.launch_token || readCookie(req, "game_launch_token") || "").trim();
+  if (!launchToken || !project) return false;
+
+  const row = await get(
+    `SELECT lt.user_id, u.id, lt.game_project, lt.expires_at, lt.used_at, u.username, u.role, u.is_banned,
+            u.ban_reason, u.banned_at, u.timeout_until, u.timeout_reason, u.delete_at, u.deleted_at
+     FROM launcher_tokens lt
+     JOIN users u ON u.id=lt.user_id
+     WHERE lt.token=?`,
+    [launchToken]
+  );
+  if (!row || row.game_project !== project || row.expires_at < Date.now()) return false;
+  if (row.deleted_at || (row.delete_at && row.delete_at <= Date.now())) return false;
+
+  const authState = await getUserAuthState(row);
+  if (authState.isBanned || authState.activeTempBan || row.timeout_until > authState.now) return false;
+
+  req.user = {
+    uid: row.user_id,
+    username: row.username,
+    role: row.role,
+    is_banned: false,
+    ban_reason: null,
+    banned_at: null,
+    timeout_until: null,
+    timeout_reason: null
+  };
+  req.gameLaunchTokenAuthenticated = true;
+  setGameLaunchCookie(req, res, project, version, launchToken);
   return true;
 }
 
@@ -873,6 +920,7 @@ app.use("/api/stats", statsRouter);
 app.use("/api/appeals", appealsRouter);
 app.use("/api/storage", storageRouter);
 app.use("/api/library", libraryRouter);
+app.use("/api/launcher", launcherRouter);
 app.use("/api/photon", photonRouter);
 app.use("/api/chat", createChatRouter({ projectRoot: PROJECT_ROOT }));
 app.use("/api/gameeditor", gameEditorRouter);
@@ -1141,6 +1189,28 @@ app.use("/games/:project/:version", async (req, res, next) => {
         req.headers.authorization = `Bearer ${cookieToken}`;
         h = req.headers.authorization;
       }
+    }
+    if (!h.startsWith("Bearer ") && await authenticateGameAssetRequest(req, res, project, version)) {
+      const isOwner = g.owner_user_id === req.user.uid;
+      const isPrivileged = req.user.role === "admin" || req.user.role === "moderator";
+      if (isOwner || isPrivileged) {
+        if (!enforceIframeHtml(req, res)) return;
+        return next();
+      }
+
+      if (v) {
+        const wl = await get(
+          `SELECT 1 FROM game_version_whitelist
+           WHERE game_id=? AND version=? AND user_id=?
+           LIMIT 1`,
+          [g.id, version, req.user.uid]
+        );
+        if (wl) {
+          if (!enforceIframeHtml(req, res)) return;
+          return next();
+        }
+      }
+      return res.status(403).send("Not authorized for this version.");
     }
     if (!h.startsWith("Bearer ")) {
       return res.status(401).json({ error: "not_authenticated" });

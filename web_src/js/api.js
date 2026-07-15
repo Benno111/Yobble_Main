@@ -1,7 +1,9 @@
 import { clearAuthState, installAuthStorageGuards, rememberAuthState, repairAuthState } from "./auth-storage.js";
+import { registerOfflinePlayServiceWorker } from "./offline-play.js";
 
 installAuthStorageGuards();
 repairAuthState();
+registerOfflinePlayServiceWorker();
 
 function sanitizeRedirectTarget(target, fallback = "/index") {
   const safeFallback = typeof fallback === "string" && fallback.startsWith("/") ? fallback : "/index";

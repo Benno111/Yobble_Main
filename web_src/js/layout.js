@@ -50,6 +50,9 @@ const HEADER_HTML = `
         <span class="navLabel navLabel-emoji">⤴️</span>
         <span class="navDropdownArrow" aria-hidden="true">▾</span>
       </button>
+      <div class="navDropdownMenu" role="menu">
+        <a href="/upload" id="navUpload" data-page="upload" role="menuitem">Upload</a>
+      </div>
     </div>
     <span id="adminLinks" hidden>
       <a href="/modqueue"><span class="navIcon" aria-hidden="true">🛡️</span><span class="navLabel navLabel-full">Moderation</span><span class="navLabel navLabel-abbr">M</span><span class="navLabel navLabel-emoji">🛡️</span></a>

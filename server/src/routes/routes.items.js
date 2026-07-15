@@ -5,6 +5,7 @@ import fs from "fs";
 import { requireAuth } from "../auth.js";
 import { get, run, all } from "../db.js";
 import { moderateFields, ModerationSeverity } from "../ai-moderation.js";
+import { scanUploadedImage } from "../image-moderation.js";
 
 export const itemsRouter = express.Router();
 
@@ -67,6 +68,21 @@ itemsRouter.post(
         const ext = path.extname(req.file.originalname || ".png").toLowerCase();
         if (![".png", ".jpg", ".jpeg", ".webp"].includes(ext)) {
           return res.status(400).json({ ok: false, error: "bad_icon_type" });
+        }
+        const declaredMime = ext === ".webp" ? "image/webp" : ext === ".png" ? "image/png" : "image/jpeg";
+        const imageScan = await scanUploadedImage({
+          file: req.file,
+          declaredMime,
+          uploaderId: req.user.uid,
+          context: `item icon upload; code=${code}; name=${name}; description=${description}`
+        });
+        if (imageScan.blocked) {
+          return res.status(400).json({
+            ok: false,
+            error: "bad_image_blocked",
+            reason: imageScan.reason || "content_policy_violation",
+            punishment: imageScan.punishment || null
+          });
         }
 
         const serverDir = path.resolve(process.cwd());

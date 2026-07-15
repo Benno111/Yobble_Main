@@ -100,7 +100,10 @@ html, body {
 main {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 20px 20px 0;
+}
+main > :last-child {
+  margin-bottom: 0;
 }
 h1, h2, h3 {
   margin-top: 0;

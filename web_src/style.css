@@ -183,6 +183,7 @@ body.desktop-app .window-controls{
   .navLabel-emoji{display:inline}
 }
 main{max-width:1240px;margin:28px auto 0;padding:0 20px}
+main > :last-child{margin-bottom:0}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
 .item-media,

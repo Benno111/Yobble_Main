@@ -1,15 +1,7 @@
 import { applyTheme } from "../theme.js";
 import { api } from "../api-pages/play.js";
-import { requireAuth } from "../auth.js";
+import { cacheGameForOffline, hasCachedGameEntry } from "../offline-play.js";
 const offline = navigator.onLine === false;
-const hasAuthToken = !!localStorage.getItem("token");
-try {
-  await requireAuth();
-} catch (err) {
-  if (!offline && (!hasAuthToken || (err?.status === 401 || err?.status === 403))) {
-    throw err;
-  }
-}
 const q = new URLSearchParams(location.search);
 if (!q.get("project") && q.get("slug")) {
   q.set("project", q.get("slug"));
@@ -22,6 +14,7 @@ const version = q.get("version") || "";
 const entry = q.get("entry") || "index";
 const token = q.get("launch_token") || "";
 const authToken = localStorage.getItem("token");
+let hasUsableAuth = false;
 const returnTo = q.get("return") || "";
 const frame = document.getElementById("frame");
 const info = document.getElementById("info");
@@ -40,35 +33,54 @@ if(!project || !version){
   info.textContent = "Missing project/version";
   throw new Error("missing params");
 }
+if (authToken) {
+  try {
+    const res = await fetch("/api/auth/me", {
+      headers: { Authorization: "Bearer " + authToken }
+    });
+    if (res.ok) {
+      window.PLATFORM_USER = (await res.json()).user || null;
+      hasUsableAuth = true;
+    }
+  } catch {
+    // Launching should not redirect before the game request can report its own error.
+  }
+}
 let photonConfig = null;
 try{
-  photonConfig = await api.get("/api/photon/config");
+  const photonRes = await fetch("/api/photon/config", { headers: { accept: "application/json" } });
+  photonConfig = photonRes.ok ? await photonRes.json() : null;
 }catch(e){
   photonConfig = null;
 }
 // Start session
 let session_id = null;
 let started_at = null;
-try{
-  const s = await api.post("/api/stats/" + encodeURIComponent(project) + "/session/start", {});
-  session_id = s.session_id;
-  started_at = s.started_at;
-}catch(e){
-  // ignore
+if (hasUsableAuth) {
+  try{
+    const s = await api.post("/api/stats/" + encodeURIComponent(project) + "/session/start", {});
+    session_id = s.session_id;
+    started_at = s.started_at;
+  }catch(e){
+    // ignore
+  }
 }
 titleEl.textContent = project;
 info.textContent = `Version ${version}`;
-if (authToken) {
+if (hasUsableAuth) {
   document.cookie = `auth_token=${encodeURIComponent(authToken)}; path=/api; max-age=300; SameSite=Lax`;
+  document.cookie = `auth_token=${encodeURIComponent(authToken)}; path=/games; max-age=300; SameSite=Lax`;
 }
-try {
-  const me = await api.get("/api/profile/me");
-  const accountTheme = me?.profile?.theme;
-  if (accountTheme) {
-    applyTheme(accountTheme);
+if (hasUsableAuth) {
+  try {
+    const me = await api.get("/api/profile/me");
+    const accountTheme = me?.profile?.theme;
+    if (accountTheme) {
+      applyTheme(accountTheme);
+    }
+  } catch {
+    // Fall back to the local theme if the profile lookup fails.
   }
-} catch {
-  // Fall back to the local theme if the profile lookup fails.
 }
 if (isDesktop) {
   document.body.classList.add("desktop-app");
@@ -94,6 +106,18 @@ if (token) params.set("launch_token", token);
 const qs = params.toString();
 const gameUrl = `/games/${project}/${version}/${entry}${qs ? `?${qs}` : ""}`;
 frame.src = gameUrl;
+if (window.electron?.cacheGameOffline && navigator.onLine !== false) {
+  window.electron.cacheGameOffline(project, version).catch(() => {});
+} else if (navigator.onLine !== false) {
+  cacheGameForOffline({ project, version, entry, title: project }).catch(() => {});
+} else if (
+  !(await hasCachedGameEntry(project, version, entry)) &&
+  !(window.electron?.hasOfflineGame && await window.electron.hasOfflineGame(project, version, entry))
+) {
+  info.textContent = `Version ${version} - offline cache unavailable`;
+} else {
+  info.textContent = `Version ${version} - offline`;
+}
 refreshBtn.onclick = () => {
   frame.src = gameUrl;
 };
